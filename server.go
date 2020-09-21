@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"io"
 	"net"
 	"net/url"
@@ -99,17 +100,29 @@ func (s *Server) Serve(ln net.Listener) error {
 		if err != nil {
 			continue
 		}
-		resp := s.Handler.Serve(url)
+
+		// Gather information about the request
+		certs := rw.(*tls.Conn).ConnectionState().PeerCertificates
+		reqInfo := &RequestInfo{
+			URL:          url,
+			Certificates: certs,
+		}
+		resp := s.Handler.Serve(reqInfo)
 		resp.Write(rw)
 		rw.Close()
 	}
 }
 
+// RequestInfo contains information about a request.
+type RequestInfo struct {
+	URL          *url.URL
+	Certificates []*x509.Certificate
+}
+
 // A Handler responds to a Gemini request.
 type Handler interface {
-	// Serve accepts a url, as that is the only information that is provided in
-	// a Gemini request.
-	Serve(*url.URL) *Response
+	// Serve accepts a Request and returns a Response.
+	Serve(*RequestInfo) *Response
 }
 
 // Mux is a Gemini request multiplexer.
@@ -153,26 +166,26 @@ func (m *Mux) Handle(pattern string, handler Handler) {
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
-func (m *Mux) HandleFunc(pattern string, handlerFunc func(url *url.URL) *Response) {
+func (m *Mux) HandleFunc(pattern string, handlerFunc func(req *RequestInfo) *Response) {
 	handler := HandlerFunc(handlerFunc)
 	m.Handle(pattern, handler)
 }
 
 // Serve responds to the request with the appropriate handler.
-func (m *Mux) Serve(url *url.URL) *Response {
-	h := m.match(url)
+func (m *Mux) Serve(req *RequestInfo) *Response {
+	h := m.match(req.URL)
 	if h == nil {
 		return &Response{
 			Status: StatusNotFound,
 			Meta:   "Not found",
 		}
 	}
-	return h.Serve(url)
+	return h.Serve(req)
 }
 
 // A wrapper around a bare function that implements Handler.
-type HandlerFunc func(url *url.URL) *Response
+type HandlerFunc func(req *RequestInfo) *Response
 
-func (f HandlerFunc) Serve(url *url.URL) *Response {
-	return f(url)
+func (f HandlerFunc) Serve(req *RequestInfo) *Response {
+	return f(req)
 }

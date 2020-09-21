@@ -15,21 +15,7 @@ var (
 )
 
 // Client is a Gemini client.
-// To use a client-side certificate, provide it here.
-//
-// Example:
-//
-//     config := tls.Config{}
-//     cert, err := tls.LoadX509KeyPair("client.crt", "client.key")
-//     if err != nil {
-//         panic(err)
-//     }
-//     config.Certificates = append(config.Certificates, cert)
-//
-type Client struct {
-	// The client's TLS configuration.
-	TLSConfig tls.Config
-}
+type Client struct{}
 
 // Request makes a request for the provided URL. The host is inferred from the URL.
 func (c *Client) Request(url string) (*Response, error) {
@@ -50,9 +36,20 @@ func (c *Client) ProxyRequest(host, url string) (*Response, error) {
 }
 
 // Request is a Gemini request.
+//
+// A Request can optionally be configured with a client certificate. Example:
+//
+//     req := NewRequest(url)
+//     cert, err := tls.LoadX509KeyPair("client.crt", "client.key")
+//     if err != nil {
+//         panic(err)
+//     }
+//     req.Certificates = append(req.Certificates, cert)
+//
 type Request struct {
-	Host string   // host or host:port
-	URL  *url.URL // The URL to request
+	Host         string            // host or host:port
+	URL          *url.URL          // the requested URL
+	Certificates []tls.Certificate // client certificates
 }
 
 // NewRequest returns a new request. The host is inferred from the provided url.
@@ -95,9 +92,10 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		host += ":1965"
 	}
 
+	config := tls.Config{}
 	// Allow self signed certificates
-	config := c.TLSConfig
 	config.InsecureSkipVerify = true
+	config.Certificates = req.Certificates
 
 	conn, err := tls.Dial("tcp", host, &config)
 	if err != nil {

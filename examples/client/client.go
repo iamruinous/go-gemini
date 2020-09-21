@@ -13,6 +13,7 @@ import (
 )
 
 var client gemini.Client
+var cert tls.Certificate
 
 func init() {
 	// Configure a client side certificate.
@@ -22,17 +23,20 @@ func init() {
 	//     openssl ecparam -genkey -name secp384r1 -out client.key
 	//     openssl req -new -x509 -sha256 -key client.key -out client.crt -days 3650
 	//
-	config := tls.Config{}
-	cert, err := tls.LoadX509KeyPair("examples/client/client.crt", "examples/client/client.key")
+	var err error
+	cert, err = tls.LoadX509KeyPair("examples/client/client.crt", "examples/client/client.key")
 	if err != nil {
 		log.Fatal(err)
 	}
-	config.Certificates = append(config.Certificates, cert)
-	client.TLSConfig = config
 }
 
 func makeRequest(url string) {
-	resp, err := client.Request(url)
+	req, err := gemini.NewRequest(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Certificates = append(req.Certificates, cert)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}

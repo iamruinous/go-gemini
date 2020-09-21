@@ -4,9 +4,9 @@ package main
 
 import (
 	"crypto/tls"
-	"git.sr.ht/~adnano/go-gemini"
 	"log"
-	"net/url"
+
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 func main() {
@@ -23,13 +23,15 @@ func main() {
 		log.Fatal(err)
 	}
 	config.Certificates = append(config.Certificates, cert)
+	config.ClientAuth = tls.RequestClientCert
 
 	mux := &gemini.Mux{}
-	mux.HandleFunc("/", func(url *url.URL) *gemini.Response {
+	mux.HandleFunc("/", func(req *gemini.RequestInfo) *gemini.Response {
+		log.Printf("Request for %s with certificates %v", req.URL.String(), req.Certificates)
 		return &gemini.Response{
 			Status: gemini.StatusSuccess,
 			Meta:   "text/gemini",
-			Body:   []byte("You requested " + url.String()),
+			Body:   []byte("You requested " + req.URL.String()),
 		}
 	})
 
