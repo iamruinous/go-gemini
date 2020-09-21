@@ -18,7 +18,7 @@ func main() {
 	//     openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 	//
 	config := tls.Config{}
-	cert, err := tls.LoadX509KeyPair("example/server/server.crt", "example/server/server.key")
+	cert, err := tls.LoadX509KeyPair("examples/server/server.crt", "examples/server/server.key")
 	if err != nil {
 		log.Fatal(err)
 	}

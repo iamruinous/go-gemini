@@ -23,7 +23,7 @@ func init() {
 	//     openssl req -new -x509 -sha256 -key client.key -out client.crt -days 3650
 	//
 	config := tls.Config{}
-	cert, err := tls.LoadX509KeyPair("example/client/client.crt", "example/client/client.key")
+	cert, err := tls.LoadX509KeyPair("examples/client/client.crt", "examples/client/client.key")
 	if err != nil {
 		log.Fatal(err)
 	}

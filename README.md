@@ -12,4 +12,4 @@ See `examples/client` and `examples/server` for an example client and server.
 
 To run the examples:
 
-	go run -tags=example ./example/server
+	go run -tags=example ./examples/server
