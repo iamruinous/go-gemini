@@ -1,0 +1,135 @@
+package gemini
+
+import (
+	"bufio"
+	"crypto/tls"
+	"errors"
+	"io/ioutil"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+var (
+	ProtocolError = errors.New("Protocol error")
+)
+
+// Client is a Gemini client.
+type Client struct {
+	TLSConfig tls.Config
+}
+
+func (c *Client) Get(url string) (*Response, error) {
+	req, err := NewRequest(url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
+
+func (c *Client) GetProxy(host, url string) (*Response, error) {
+	req, err := NewProxyRequest(host, url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
+
+// Request is a Gemini request.
+type Request struct {
+	Host string   // host or host:port
+	URL  *url.URL // The URL to request
+}
+
+// NewRequest returns a new request. The host is inferred from the provided url.
+func NewRequest(rawurl string) (*Request, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ignore UserInfo if present
+	u.User = nil
+
+	return &Request{
+		Host: u.Host,
+		URL:  u,
+	}, nil
+}
+
+// NewProxyRequest makes a new request using the provided host.
+func NewProxyRequest(host, rawurl string) (*Request, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ignore UserInfo if present
+	u.User = nil
+
+	return &Request{
+		Host: host,
+		URL:  u,
+	}, nil
+}
+
+func (c *Client) Do(req *Request) (*Response, error) {
+	host := req.Host
+	if strings.LastIndex(host, ":") == -1 {
+		// The default port is 1965
+		host += ":1965"
+	}
+
+	config := &tls.Config{
+		// Allow self-signed certificates
+		// TODO: Trust on first use
+		InsecureSkipVerify: true,
+	}
+	conn, err := tls.Dial("tcp", host, config)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Write the request
+	request := req.URL.String() + "\r\n"
+	if _, err := conn.Write([]byte(request)); err != nil {
+		return nil, err
+	}
+
+	// Read the response header
+	code := make([]byte, 2)
+	if _, err := conn.Read(code); err != nil {
+		return nil, err
+	}
+	status, err := strconv.Atoi(string(code))
+	if err != nil {
+		return nil, err
+	}
+
+	// Read one space
+	space := make([]byte, 1)
+	if _, err := conn.Read(space); err != nil {
+		return nil, err
+	}
+	if space[0] != ' ' {
+		return nil, ProtocolError
+	}
+
+	// Read the meta
+	scanner := bufio.NewScanner(conn)
+	scanner.Scan()
+	meta := scanner.Text()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Response{
+		Status: status,
+		Meta:   meta,
+		Body:   body,
+	}, nil
+}
