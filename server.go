@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"bufio"
 	"crypto/tls"
 	"io"
 	"net"
@@ -49,12 +48,12 @@ type Response struct {
 	Body   []byte
 }
 
-// Write writes the Response to the provided io.Writer.
+// Write writes the Gemini response header and body to the provided io.Writer.
 func (r *Response) Write(w io.Writer) {
 	header := strconv.Itoa(r.Status) + " " + r.Meta + "\r\n"
 	w.Write([]byte(header))
 
-	// Only write response body on success
+	// Only write the response body on success
 	if r.Status/10 == StatusClassSuccess {
 		w.Write(r.Body)
 	}
@@ -67,7 +66,7 @@ type Server struct {
 	Handler   Handler
 }
 
-// ListenAndServer listens on the given address and serves.
+// ListenAndServe listens for requests at the server's configured address.
 func (s *Server) ListenAndServe() error {
 	addr := s.Addr
 	if addr == "" {
@@ -108,8 +107,8 @@ func (s *Server) Serve(ln net.Listener) error {
 
 // Handler handles a url with a response.
 type Handler interface {
-	// Serve accepts a url, as that is the only information that the client
-	// provides in a request.
+	// Serve accepts a url, as that is the only information that is provided in
+	// a Gemini request.
 	Serve(*url.URL) *Response
 }
 
@@ -139,6 +138,7 @@ func (m *Mux) match(url *url.URL) Handler {
 	return nil
 }
 
+// Handle registers a handler for the given pattern.
 func (m *Mux) Handle(pattern string, handler Handler) {
 	url, err := url.Parse(pattern)
 	if err != nil {
@@ -152,11 +152,13 @@ func (m *Mux) Handle(pattern string, handler Handler) {
 	})
 }
 
+// HandleFunc registers a HandlerFunc for the given pattern.
 func (m *Mux) HandleFunc(pattern string, handlerFunc func(url *url.URL) *Response) {
 	handler := HandlerFunc(handlerFunc)
 	m.Handle(pattern, handler)
 }
 
+// Serve responds to the request with the appropriate handler.
 func (m *Mux) Serve(url *url.URL) *Response {
 	h := m.match(url)
 	if h == nil {
@@ -168,18 +170,9 @@ func (m *Mux) Serve(url *url.URL) *Response {
 	return h.Serve(url)
 }
 
+// A wrapper around a bare function that implements Handler.
 type HandlerFunc func(url *url.URL) *Response
 
 func (f HandlerFunc) Serve(url *url.URL) *Response {
 	return f(url)
-}
-
-// readLine reads a line.
-func readLine(r io.Reader) (string, error) {
-	scanner := bufio.NewScanner(r)
-	scanner.Scan()
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-	return scanner.Text(), nil
 }

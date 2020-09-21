@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"bufio"
 	"crypto/tls"
 	"errors"
 	"io/ioutil"
@@ -11,15 +10,16 @@ import (
 )
 
 var (
-	ProtocolError = errors.New("Protocol error")
+	ErrProtocol = errors.New("Protocol error")
 )
 
 // Client is a Gemini client.
 type Client struct {
-	TLSConfig tls.Config
+	TLSConfig *tls.Config // TODO: Client certificate support
 }
 
-func (c *Client) Get(url string) (*Response, error) {
+// Request makes a request for the provided URL. The host is inferred from the URL.
+func (c *Client) Request(url string) (*Response, error) {
 	req, err := NewRequest(url)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,8 @@ func (c *Client) Get(url string) (*Response, error) {
 	return c.Do(req)
 }
 
-func (c *Client) GetProxy(host, url string) (*Response, error) {
+// ProxyRequest requests the provided URL from the provided host.
+func (c *Client) ProxyRequest(host, url string) (*Response, error) {
 	req, err := NewProxyRequest(host, url)
 	if err != nil {
 		return nil, err
@@ -73,6 +74,7 @@ func NewProxyRequest(host, rawurl string) (*Request, error) {
 	}, nil
 }
 
+// Do completes a request.
 func (c *Client) Do(req *Request) (*Response, error) {
 	host := req.Host
 	if strings.LastIndex(host, ":") == -1 {
@@ -113,13 +115,14 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		return nil, err
 	}
 	if space[0] != ' ' {
-		return nil, ProtocolError
+		return nil, ErrProtocol
 	}
 
 	// Read the meta
-	scanner := bufio.NewScanner(conn)
-	scanner.Scan()
-	meta := scanner.Text()
+	meta, err := readLine(conn)
+	if err != nil {
+		return nil, err
+	}
 
 	// Read the response body
 	body, err := ioutil.ReadAll(conn)
