@@ -74,7 +74,7 @@ func NewProxyRequest(host, rawurl string) (*Request, error) {
 	}, nil
 }
 
-// Do completes a request.
+// Do sends a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
 	host := req.Host
 	if strings.LastIndex(host, ":") == -1 {

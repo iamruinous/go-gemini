@@ -105,7 +105,7 @@ func (s *Server) Serve(ln net.Listener) error {
 	}
 }
 
-// Handler handles a url with a response.
+// A Handler responds to a Gemini request.
 type Handler interface {
 	// Serve accepts a url, as that is the only information that is provided in
 	// a Gemini request.
