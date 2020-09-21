@@ -62,7 +62,7 @@ func (r *Response) Write(w io.Writer) {
 // Server is a Gemini server.
 type Server struct {
 	Addr      string
-	TLSConfig *tls.Config
+	TLSConfig tls.Config
 	Handler   Handler
 }
 
@@ -79,7 +79,7 @@ func (s *Server) ListenAndServe() error {
 	}
 	defer ln.Close()
 
-	tlsListener := tls.NewListener(ln, s.TLSConfig)
+	tlsListener := tls.NewListener(ln, &s.TLSConfig)
 	return s.Serve(tlsListener)
 }
 

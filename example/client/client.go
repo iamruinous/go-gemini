@@ -4,13 +4,32 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
-	"git.sr.ht/~adnano/go-gemini"
 	"log"
 	"os"
+
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 var client gemini.Client
+
+func init() {
+	// Configure a client side certificate.
+	// To generate a certificate, run:
+	//
+	//     openssl genrsa -out client.key 2048
+	//     openssl ecparam -genkey -name secp384r1 -out client.key
+	//     openssl req -new -x509 -sha256 -key client.key -out client.crt -days 3650
+	//
+	config := tls.Config{}
+	cert, err := tls.LoadX509KeyPair("example/client/client.crt", "example/client/client.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	config.Certificates = append(config.Certificates, cert)
+	client.TLSConfig = config
+}
 
 func makeRequest(url string) {
 	resp, err := client.Request(url)

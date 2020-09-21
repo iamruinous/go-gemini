@@ -16,7 +16,19 @@ var (
 
 // Client is a Gemini client.
 type Client struct {
-	TLSConfig *tls.Config // TODO: Client certificate support
+	// The client's TLS configuration.
+	// To use a client-side certificate, provide it here.
+	//
+	// Example:
+	//
+	//     config := tls.Config{}
+	//     cert, err := tls.LoadX509KeyPair("example/server/server.crt", "example/server/server.key")
+	//     if err != nil {
+	//         panic(err)
+	//     }
+	//     config.Certificates = append(config.Certificates, cert)
+	//
+	TLSConfig tls.Config
 }
 
 // Request makes a request for the provided URL. The host is inferred from the URL.
@@ -83,12 +95,11 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		host += ":1965"
 	}
 
-	config := &tls.Config{
-		// Allow self-signed certificates
-		// TODO: Trust on first use
-		InsecureSkipVerify: true,
-	}
-	conn, err := tls.Dial("tcp", host, config)
+	// Allow self signed certificates
+	config := c.TLSConfig
+	config.InsecureSkipVerify = true
+
+	conn, err := tls.Dial("tcp", host, &config)
 	if err != nil {
 		return nil, err
 	}
