@@ -15,19 +15,19 @@ var (
 )
 
 // Client is a Gemini client.
+// To use a client-side certificate, provide it here.
+//
+// Example:
+//
+//     config := tls.Config{}
+//     cert, err := tls.LoadX509KeyPair("client.crt", "client.key")
+//     if err != nil {
+//         panic(err)
+//     }
+//     config.Certificates = append(config.Certificates, cert)
+//
 type Client struct {
 	// The client's TLS configuration.
-	// To use a client-side certificate, provide it here.
-	//
-	// Example:
-	//
-	//     config := tls.Config{}
-	//     cert, err := tls.LoadX509KeyPair("example/server/server.crt", "example/server/server.key")
-	//     if err != nil {
-	//         panic(err)
-	//     }
-	//     config.Certificates = append(config.Certificates, cert)
-	//
 	TLSConfig tls.Config
 }
 
