@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"io/ioutil"
@@ -99,9 +100,11 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		return nil, err
 	}
 
+	buf := bufio.NewReader(conn)
+
 	// Read the response header
 	code := make([]byte, 2)
-	if _, err := conn.Read(code); err != nil {
+	if _, err := buf.Read(code); err != nil {
 		return nil, err
 	}
 	status, err := strconv.Atoi(string(code))
@@ -110,22 +113,20 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	}
 
 	// Read one space
-	space := make([]byte, 1)
-	if _, err := conn.Read(space); err != nil {
+	if space, err := buf.ReadByte(); err != nil {
 		return nil, err
-	}
-	if space[0] != ' ' {
+	} else if space != ' ' {
 		return nil, ErrProtocol
 	}
 
 	// Read the meta
-	meta, err := readLine(conn)
+	meta, err := readLine(buf)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read the response body
-	body, err := ioutil.ReadAll(conn)
+	body, err := ioutil.ReadAll(buf)
 	if err != nil {
 		return nil, err
 	}
