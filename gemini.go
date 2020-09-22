@@ -71,11 +71,6 @@ func NewRequest(rawurl string) (*Request, error) {
 		return nil, err
 	}
 
-	// UserInfo is invalid
-	if u.User != nil {
-		return nil, ErrInvalidURL
-	}
-
 	return &Request{
 		Host: u.Host,
 		URL:  u,
@@ -89,11 +84,6 @@ func NewProxyRequest(host, rawurl string) (*Request, error) {
 		return nil, err
 	}
 
-	// UserInfo is invalid
-	if u.User != nil {
-		return nil, ErrInvalidURL
-	}
-
 	return &Request{
 		Host: host,
 		URL:  u,
@@ -102,7 +92,12 @@ func NewProxyRequest(host, rawurl string) (*Request, error) {
 
 // Write writes the Gemini request to the provided io.Writer.
 func (r *Request) Write(w io.Writer) error {
-	request := r.URL.String() + "\r\n"
+	url := r.URL.String()
+	// UserInfo is invalid
+	if r.URL.User != nil || len(url) > 1024 {
+		return ErrInvalidURL
+	}
+	request := url + "\r\n"
 	_, err := w.Write([]byte(request))
 	return err
 }

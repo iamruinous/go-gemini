@@ -13,10 +13,6 @@ type Client struct{}
 
 // Request makes a request for the provided URL. The host is inferred from the URL.
 func (c *Client) Request(url string) (*Response, error) {
-	if len(url) > 1024 {
-		return nil, ErrInvalidURL
-	}
-
 	req, err := NewRequest(url)
 	if err != nil {
 		return nil, err
@@ -26,10 +22,6 @@ func (c *Client) Request(url string) (*Response, error) {
 
 // ProxyRequest requests the provided URL from the provided host.
 func (c *Client) ProxyRequest(host, url string) (*Response, error) {
-	if len(url) > 1024 {
-		return nil, ErrInvalidURL
-	}
-
 	req, err := NewProxyRequest(host, url)
 	if err != nil {
 		return nil, err

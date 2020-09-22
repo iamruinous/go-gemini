@@ -52,7 +52,7 @@ func (s *Server) Serve(ln net.Listener) error {
 				Status: StatusBadRequest,
 				Meta:   "URL exceeds 1024 bytes",
 			}
-		} else if url, err := url.Parse(rawurl); err != nil {
+		} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
 			resp = &Response{
 				Status: StatusBadRequest,
 				Meta:   "Invalid URL",
