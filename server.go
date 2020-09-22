@@ -92,22 +92,33 @@ func (s *Server) Serve(ln net.Listener) error {
 			return err
 		}
 
-		req, err := readLine(rw)
-		if err != nil {
-			continue
-		}
-		url, err := url.Parse(req)
-		if err != nil {
-			continue
+		var resp *Response
+
+		if rawurl, err := readLine(rw); err != nil {
+			resp = &Response{
+				Status: StatusBadRequest,
+				Meta:   "Bad request",
+			}
+		} else if len(rawurl) > 1024 {
+			resp = &Response{
+				Status: StatusBadRequest,
+				Meta:   "URL exceeds 1024 bytes",
+			}
+		} else if url, err := url.Parse(rawurl); err != nil {
+			resp = &Response{
+				Status: StatusBadRequest,
+				Meta:   "Invalid URL",
+			}
+		} else {
+			// Gather information about the request
+			reqInfo := &RequestInfo{
+				URL:          url,
+				Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
+				RemoteAddr:   rw.RemoteAddr(),
+			}
+			resp = s.Handler.Serve(reqInfo)
 		}
 
-		// Gather information about the request
-		reqInfo := &RequestInfo{
-			URL:          url,
-			Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
-			RemoteAddr:   rw.RemoteAddr(),
-		}
-		resp := s.Handler.Serve(reqInfo)
 		resp.Write(rw)
 		rw.Close()
 	}
