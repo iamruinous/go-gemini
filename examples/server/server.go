@@ -27,7 +27,7 @@ func main() {
 
 	mux := &gemini.Mux{}
 	mux.HandleFunc("/", func(req *gemini.RequestInfo) *gemini.Response {
-		log.Printf("Request for %s with certificates %v", req.URL.String(), req.Certificates)
+		log.Printf("Request from %s for %s with certificates %v", req.RemoteAddr.String(), req.URL.String(), req.Certificates)
 		return &gemini.Response{
 			Status: gemini.StatusSuccess,
 			Meta:   "text/gemini",

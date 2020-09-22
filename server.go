@@ -102,10 +102,10 @@ func (s *Server) Serve(ln net.Listener) error {
 		}
 
 		// Gather information about the request
-		certs := rw.(*tls.Conn).ConnectionState().PeerCertificates
 		reqInfo := &RequestInfo{
 			URL:          url,
-			Certificates: certs,
+			Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
+			RemoteAddr:   rw.RemoteAddr(),
 		}
 		resp := s.Handler.Serve(reqInfo)
 		resp.Write(rw)
@@ -115,8 +115,9 @@ func (s *Server) Serve(ln net.Listener) error {
 
 // RequestInfo contains information about a request.
 type RequestInfo struct {
-	URL          *url.URL
-	Certificates []*x509.Certificate
+	URL          *url.URL            // the requested URL
+	Certificates []*x509.Certificate // client certificates
+	RemoteAddr   net.Addr
 }
 
 // A Handler responds to a Gemini request.
