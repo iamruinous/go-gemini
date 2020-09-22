@@ -2,8 +2,8 @@
 
 [![GoDoc](https://godoc.org/git.sr.ht/~adnano/go-gemini?status.svg)](https://godoc.org/git.sr.ht/~adnano/go-gemini)
 
-`go-gemini` implements the [Gemini protocol](https://gemini.circumlunar.space) in
-Go.
+`go-gemini` implements the [Gemini protocol](https://gemini.circumlunar.space)
+in Go.
 
 It aims to provide an API similar to that of `net/http` to make it easy to
 develop Gemini clients and servers.

@@ -3,62 +3,10 @@ package gemini
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io"
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 )
-
-// Status codes.
-const (
-	StatusInput                     = 10
-	StatusSensitiveInput            = 11
-	StatusSuccess                   = 20
-	StatusRedirectTemporary         = 30
-	StatusRedirectPermanent         = 31
-	StatusTemporaryFailure          = 40
-	StatusServerUnavailable         = 41
-	StatusCGIError                  = 42
-	StatusProxyError                = 43
-	StatusSlowDown                  = 44
-	StatusPermanentFailure          = 50
-	StatusNotFound                  = 51
-	StatusGone                      = 52
-	StatusProxyRequestRefused       = 53
-	StatusBadRequest                = 59
-	StatusClientCertificateRequired = 60
-	StatusCertificateNotAuthorised  = 61
-	StatusCertificateNotValid       = 62
-)
-
-// Status code categories.
-const (
-	StatusClassInput                     = 1
-	StatusClassSuccess                   = 2
-	StatusClassRedirect                  = 3
-	StatusClassTemporaryFailure          = 4
-	StatusClassPermanentFailure          = 5
-	StatusClassClientCertificateRequired = 6
-)
-
-// Response is a Gemini response.
-type Response struct {
-	Status int
-	Meta   string
-	Body   []byte
-}
-
-// Write writes the Gemini response header and body to the provided io.Writer.
-func (r *Response) Write(w io.Writer) {
-	header := strconv.Itoa(r.Status) + " " + r.Meta + "\r\n"
-	w.Write([]byte(header))
-
-	// Only write the response body on success
-	if r.Status/10 == StatusClassSuccess {
-		w.Write(r.Body)
-	}
-}
 
 // Server is a Gemini server.
 type Server struct {
@@ -128,7 +76,7 @@ func (s *Server) Serve(ln net.Listener) error {
 type RequestInfo struct {
 	URL          *url.URL            // the requested URL
 	Certificates []*x509.Certificate // client certificates
-	RemoteAddr   net.Addr
+	RemoteAddr   net.Addr            // client remote address
 }
 
 // A Handler responds to a Gemini request.
@@ -163,7 +111,7 @@ func (m *Mux) match(url *url.URL) Handler {
 	return nil
 }
 
-// Handle registers a handler for the given pattern.
+// Handle registers a Handler for the given pattern.
 func (m *Mux) Handle(pattern string, handler Handler) {
 	url, err := url.Parse(pattern)
 	if err != nil {

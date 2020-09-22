@@ -3,16 +3,9 @@ package gemini
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"io/ioutil"
-	"net/url"
 	"strconv"
 	"strings"
-)
-
-var (
-	ErrProtocol   = errors.New("Protocol error")
-	ErrInvalidURL = errors.New("Invalid URL")
 )
 
 // Client is a Gemini client.
@@ -44,55 +37,6 @@ func (c *Client) ProxyRequest(host, url string) (*Response, error) {
 	return c.Do(req)
 }
 
-// Request is a Gemini request.
-//
-// A Request can optionally be configured with a client certificate. Example:
-//
-//     req := NewRequest(url)
-//     cert, err := tls.LoadX509KeyPair("client.crt", "client.key")
-//     if err != nil {
-//         panic(err)
-//     }
-//     req.Certificates = append(req.Certificates, cert)
-//
-type Request struct {
-	Host         string            // host or host:port
-	URL          *url.URL          // the requested URL
-	Certificates []tls.Certificate // client certificates
-}
-
-// NewRequest returns a new request. The host is inferred from the provided url.
-func NewRequest(rawurl string) (*Request, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return nil, err
-	}
-
-	// Ignore UserInfo if present
-	u.User = nil
-
-	return &Request{
-		Host: u.Host,
-		URL:  u,
-	}, nil
-}
-
-// NewProxyRequest makes a new request using the provided host.
-func NewProxyRequest(host, rawurl string) (*Request, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return nil, err
-	}
-
-	// Ignore UserInfo if present
-	u.User = nil
-
-	return &Request{
-		Host: host,
-		URL:  u,
-	}, nil
-}
-
 // Do sends a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
 	host := req.Host
@@ -113,8 +57,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	defer conn.Close()
 
 	// Write the request
-	request := req.URL.String() + "\r\n"
-	if _, err := conn.Write([]byte(request)); err != nil {
+	if err := req.Write(conn); err != nil {
 		return nil, err
 	}
 
