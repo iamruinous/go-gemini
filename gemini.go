@@ -321,7 +321,6 @@ func (s *Server) Serve(l net.Listener) error {
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
 type ResponseWriter struct {
 	w           *bufio.Writer
-	wroteHeader bool
 	bodyAllowed bool
 }
 
@@ -369,15 +368,15 @@ func (s *Server) respond(conn net.Conn) {
 	if err != nil {
 		return
 	}
-	// Trim carriage return
-	rawurl = rawurl[:len(rawurl)-1]
 	// Read terminating line feed
 	if b, err := r.ReadByte(); err != nil {
 		return
 	} else if b != '\n' {
 		rw.WriteHeader(StatusBadRequest, "Bad request")
 	}
-
+	// Trim carriage return
+	rawurl = rawurl[:len(rawurl)-1]
+	// Ensure URL is valid
 	if len(rawurl) > 1024 {
 		rw.WriteHeader(StatusBadRequest, "Requested URL exceeds 1024 bytes")
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
