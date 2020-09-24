@@ -3,9 +3,11 @@ package gemini
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"log"
 	"net"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Server is a Gemini server.
@@ -33,43 +35,67 @@ func (s *Server) ListenAndServe() error {
 }
 
 // Serve listens for requests on the provided listener.
-func (s *Server) Serve(ln net.Listener) error {
+func (s *Server) Serve(l net.Listener) error {
+	var tempDelay time.Duration // how long to sleep on accept failure
+
 	for {
-		rw, err := ln.Accept()
+		rw, err := l.Accept()
 		if err != nil {
+			// If this is a temporary error, sleep
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				if tempDelay == 0 {
+					tempDelay = 5 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 1 * time.Second; tempDelay > max {
+					tempDelay = max
+				}
+				log.Printf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
+				time.Sleep(tempDelay)
+				continue
+			}
+
+			// Otherwise, return the error
 			return err
 		}
 
-		var resp *Response
-
-		if rawurl, err := readLine(rw); err != nil {
-			resp = &Response{
-				Status: StatusBadRequest,
-				Meta:   "Bad request",
-			}
-		} else if len(rawurl) > 1024 {
-			resp = &Response{
-				Status: StatusBadRequest,
-				Meta:   "URL exceeds 1024 bytes",
-			}
-		} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
-			resp = &Response{
-				Status: StatusBadRequest,
-				Meta:   "Invalid URL",
-			}
-		} else {
-			// Gather information about the request
-			reqInfo := &RequestInfo{
-				URL:          url,
-				Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
-				RemoteAddr:   rw.RemoteAddr(),
-			}
-			resp = s.Handler.Serve(reqInfo)
-		}
-
-		resp.Write(rw)
-		rw.Close()
+		tempDelay = 0
+		go s.respond(rw)
 	}
+}
+
+// respond responds to a connection.
+func (s *Server) respond(rw net.Conn) {
+	var resp *Response
+
+	if rawurl, err := readLine(rw); err != nil {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "Bad request",
+		}
+	} else if len(rawurl) > 1024 {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "URL exceeds 1024 bytes",
+		}
+	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "Invalid URL",
+		}
+	} else {
+		// Gather information about the request
+		reqInfo := &RequestInfo{
+			URL:          url,
+			Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
+			RemoteAddr:   rw.RemoteAddr(),
+		}
+		resp = s.Handler.Serve(reqInfo)
+	}
+
+	resp.Write(rw)
+	rw.Close()
 }
 
 // RequestInfo contains information about a request.
