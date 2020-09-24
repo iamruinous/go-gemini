@@ -253,6 +253,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		Status: status,
 		Meta:   meta,
 		Body:   body,
+		TLS:    conn.ConnectionState(),
 	}, nil
 }
 
