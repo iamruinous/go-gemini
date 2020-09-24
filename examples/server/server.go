@@ -26,7 +26,7 @@ func main() {
 	config.ClientAuth = tls.RequestClientCert
 
 	mux := &gemini.ServeMux{}
-	mux.HandleFunc("/", func(rw gemini.ResponseWriter, req *gemini.Request) {
+	mux.HandleFunc("/", func(rw *gemini.ResponseWriter, req *gemini.Request) {
 		log.Printf("Request from %s for %s with certificates %v", req.RemoteAddr.String(), req.URL.String(), req.TLS.PeerCertificates)
 		rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
 		rw.Write([]byte("You requested " + req.URL.String()))

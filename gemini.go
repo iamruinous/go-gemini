@@ -74,7 +74,6 @@ type Request struct {
 
 	// For client requests, Host specifies the host on which the URL is sought.
 	// If this field is empty, the host will be inferred from the URL.
-
 	// This field is ignored by the server.
 	Host string
 
@@ -163,23 +162,6 @@ type Response struct {
 	// TLS contains information about the TLS connection on which the response
 	// was received.
 	TLS tls.ConnectionState
-}
-
-// ResponseWriter is used by a Gemini handler to construct a Gemini response.
-type ResponseWriter interface {
-	// WriteHeader writes the response header.
-	//
-	// Meta contains more information related to the response status.
-	// For successful responses, Meta should contain the mimetype of the response.
-	// For failure responses, Meta should contain a short description of the failure.
-	// Meta should not be longer than 1024 bytes.
-	WriteHeader(status int, meta string)
-
-	// Write writes the response body.
-	// If the response status does not allow for a response body, Write returns
-	// ErrBodyNotAllowed.
-	// WriteHeader must be called before Write.
-	Write([]byte) (int, error)
 }
 
 // Get makes a request for the provided URL. The host is inferred from the URL.
@@ -336,19 +318,26 @@ func (s *Server) Serve(l net.Listener) error {
 	}
 }
 
-// response represents the server side of a Gemini response.
-type response struct {
+// ResponseWriter is used by a Gemini handler to construct a Gemini response.
+type ResponseWriter struct {
 	w           *bufio.Writer
+	wroteHeader bool
 	bodyAllowed bool
 }
 
-func newResponse(conn net.Conn) *response {
-	return &response{
+func newResponseWriter(conn net.Conn) *ResponseWriter {
+	return &ResponseWriter{
 		w: bufio.NewWriter(conn),
 	}
 }
 
-func (r *response) WriteHeader(status int, meta string) {
+// WriteHeader writes the response header.
+//
+// Meta contains more information related to the response status.
+// For successful responses, Meta should contain the mimetype of the response.
+// For failure responses, Meta should contain a short description of the failure.
+// Meta should not be longer than 1024 bytes.
+func (r *ResponseWriter) WriteHeader(status int, meta string) {
 	r.w.WriteString(strconv.Itoa(status))
 	r.w.WriteByte(' ')
 	r.w.WriteString(meta)
@@ -360,7 +349,11 @@ func (r *response) WriteHeader(status int, meta string) {
 	}
 }
 
-func (r *response) Write(b []byte) (int, error) {
+// Write writes the response body.
+// If the response status does not allow for a response body, Write returns
+// ErrBodyNotAllowed.
+// WriteHeader must be called before Write.
+func (r *ResponseWriter) Write(b []byte) (int, error) {
 	if !r.bodyAllowed {
 		return 0, ErrBodyNotAllowed
 	}
@@ -370,7 +363,7 @@ func (r *response) Write(b []byte) (int, error) {
 // respond responds to a connection.
 func (s *Server) respond(conn net.Conn) {
 	r := bufio.NewReader(conn)
-	rw := newResponse(conn)
+	rw := newResponseWriter(conn)
 	// Read requested URL
 	rawurl, err := r.ReadString('\r')
 	if err != nil {
@@ -406,7 +399,7 @@ func (s *Server) respond(conn net.Conn) {
 // A Handler responds to a Gemini request.
 type Handler interface {
 	// Serve accepts a Request and constructs a Response.
-	Serve(ResponseWriter, *Request)
+	Serve(*ResponseWriter, *Request)
 }
 
 // ServeMux is a Gemini request multiplexer.
@@ -450,13 +443,13 @@ func (m *ServeMux) Handle(pattern string, handler Handler) {
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
-func (m *ServeMux) HandleFunc(pattern string, handlerFunc func(ResponseWriter, *Request)) {
+func (m *ServeMux) HandleFunc(pattern string, handlerFunc func(*ResponseWriter, *Request)) {
 	handler := HandlerFunc(handlerFunc)
 	m.Handle(pattern, handler)
 }
 
 // Serve responds to the request with the appropriate handler.
-func (m *ServeMux) Serve(rw ResponseWriter, req *Request) {
+func (m *ServeMux) Serve(rw *ResponseWriter, req *Request) {
 	h := m.match(req.URL)
 	if h == nil {
 		rw.WriteHeader(StatusNotFound, "Not found")
@@ -466,8 +459,8 @@ func (m *ServeMux) Serve(rw ResponseWriter, req *Request) {
 }
 
 // A wrapper around a bare function that implements Handler.
-type HandlerFunc func(ResponseWriter, *Request)
+type HandlerFunc func(*ResponseWriter, *Request)
 
-func (f HandlerFunc) Serve(rw ResponseWriter, req *Request) {
+func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {
 	f(rw, req)
 }
