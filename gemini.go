@@ -2,11 +2,19 @@
 package gemini
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
+	"io/ioutil"
+	"log"
+	"net"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // Status codes.
@@ -124,4 +132,270 @@ func (r *Response) Write(w io.Writer) error {
 	}
 
 	return nil
+}
+
+// Client is a Gemini client.
+type Client struct{}
+
+// Request makes a request for the provided URL. The host is inferred from the URL.
+func (c *Client) Request(url string) (*Response, error) {
+	req, err := NewRequest(url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
+
+// ProxyRequest requests the provided URL from the provided host.
+func (c *Client) ProxyRequest(host, url string) (*Response, error) {
+	req, err := NewProxyRequest(host, url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
+
+// Do sends a Gemini request and returns a Gemini response.
+func (c *Client) Do(req *Request) (*Response, error) {
+	host := req.Host
+	if strings.LastIndex(host, ":") == -1 {
+		// The default port is 1965
+		host += ":1965"
+	}
+
+	// Allow self signed certificates
+	config := tls.Config{}
+	config.InsecureSkipVerify = true
+	config.Certificates = req.Certificates
+
+	conn, err := tls.Dial("tcp", host, &config)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Write the request
+	if err := req.Write(conn); err != nil {
+		return nil, err
+	}
+
+	// Read the response
+	b, err := ioutil.ReadAll(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure that the response is long enough
+	// The minimum response: <STATUS><SPACE><CR><LF> (5 bytes)
+	if len(b) < 5 {
+		return nil, ErrProtocol
+	}
+
+	// Parse the response header
+	status, err := strconv.Atoi(string(b[:2]))
+	if err != nil {
+		return nil, err
+	}
+
+	// Read one space
+	if b[2] != ' ' {
+		return nil, ErrProtocol
+	}
+
+	// Find the first <CR><LF>
+	i := bytes.Index(b, []byte("\r\n"))
+	if i < 3 {
+		return nil, ErrProtocol
+	}
+
+	// Read the meta
+	meta := string(b[3:i])
+	if len(meta) > 1024 {
+		return nil, ErrProtocol
+	}
+
+	// Read the response body
+	body := b[i+2:]
+
+	return &Response{
+		Status: status,
+		Meta:   meta,
+		Body:   body,
+	}, nil
+}
+
+// Server is a Gemini server.
+type Server struct {
+	Addr      string
+	TLSConfig tls.Config
+	Handler   Handler
+}
+
+// ListenAndServe listens for requests at the server's configured address.
+func (s *Server) ListenAndServe() error {
+	addr := s.Addr
+	if addr == "" {
+		addr = ":1965"
+	}
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
+	tlsListener := tls.NewListener(ln, &s.TLSConfig)
+	return s.Serve(tlsListener)
+}
+
+// Serve listens for requests on the provided listener.
+func (s *Server) Serve(l net.Listener) error {
+	var tempDelay time.Duration // how long to sleep on accept failure
+
+	for {
+		rw, err := l.Accept()
+		if err != nil {
+			// If this is a temporary error, sleep
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				if tempDelay == 0 {
+					tempDelay = 5 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 1 * time.Second; tempDelay > max {
+					tempDelay = max
+				}
+				log.Printf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
+				time.Sleep(tempDelay)
+				continue
+			}
+
+			// Otherwise, return the error
+			return err
+		}
+
+		tempDelay = 0
+		go s.respond(rw)
+	}
+}
+
+// respond responds to a connection.
+func (s *Server) respond(rw net.Conn) {
+	var resp *Response
+
+	if rawurl, err := readLine(rw); err != nil {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "Bad request",
+		}
+	} else if len(rawurl) > 1024 {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "URL exceeds 1024 bytes",
+		}
+	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
+		resp = &Response{
+			Status: StatusBadRequest,
+			Meta:   "Invalid URL",
+		}
+	} else {
+		// Gather information about the request
+		reqInfo := &RequestInfo{
+			URL:          url,
+			Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
+			RemoteAddr:   rw.RemoteAddr(),
+		}
+		resp = s.Handler.Serve(reqInfo)
+	}
+
+	resp.Write(rw)
+	rw.Close()
+}
+
+// RequestInfo contains information about a request.
+type RequestInfo struct {
+	URL          *url.URL            // the requested URL
+	Certificates []*x509.Certificate // client certificates
+	RemoteAddr   net.Addr            // client remote address
+}
+
+// A Handler responds to a Gemini request.
+type Handler interface {
+	// Serve accepts a Request and returns a Response.
+	Serve(*RequestInfo) *Response
+}
+
+// Mux is a Gemini request multiplexer.
+// It matches the URL of each incoming request against a list of registered
+// patterns and calls the handler for the pattern that most closesly matches
+// the URL.
+type Mux struct {
+	entries []muxEntry
+}
+
+type muxEntry struct {
+	scheme  string
+	host    string
+	path    string
+	handler Handler
+}
+
+func (m *Mux) match(url *url.URL) Handler {
+	for _, e := range m.entries {
+		if (e.scheme == "" || url.Scheme == e.scheme) &&
+			(e.host == "" || url.Host == e.host) &&
+			strings.HasPrefix(url.Path, e.path) {
+			return e.handler
+		}
+	}
+	return nil
+}
+
+// Handle registers a Handler for the given pattern.
+func (m *Mux) Handle(pattern string, handler Handler) {
+	url, err := url.Parse(pattern)
+	if err != nil {
+		panic(err)
+	}
+	m.entries = append(m.entries, muxEntry{
+		url.Scheme,
+		url.Host,
+		url.Path,
+		handler,
+	})
+}
+
+// HandleFunc registers a HandlerFunc for the given pattern.
+func (m *Mux) HandleFunc(pattern string, handlerFunc func(req *RequestInfo) *Response) {
+	handler := HandlerFunc(handlerFunc)
+	m.Handle(pattern, handler)
+}
+
+// Serve responds to the request with the appropriate handler.
+func (m *Mux) Serve(req *RequestInfo) *Response {
+	h := m.match(req.URL)
+	if h == nil {
+		return &Response{
+			Status: StatusNotFound,
+			Meta:   "Not found",
+		}
+	}
+	return h.Serve(req)
+}
+
+// A wrapper around a bare function that implements Handler.
+type HandlerFunc func(req *RequestInfo) *Response
+
+func (f HandlerFunc) Serve(req *RequestInfo) *Response {
+	return f(req)
+}
+
+// readLine reads a line.
+func readLine(r io.Reader) (string, error) {
+	scanner := bufio.NewScanner(r)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return scanner.Text(), nil
 }
