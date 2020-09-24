@@ -99,13 +99,21 @@ func NewRequest(rawurl string) (*Request, error) {
 		return nil, err
 	}
 
+	host := u.Host
+
+	// If there is no port, use the default port of 1965
+	if u.Port() == "" {
+		host += ":1965"
+	}
+
 	return &Request{
-		Host: u.Host,
+		Host: host,
 		URL:  u,
 	}, nil
 }
 
 // NewProxyRequest returns a new request using the provided host.
+// The provided host must contain a port.
 func NewProxyRequest(host, rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {

@@ -35,7 +35,8 @@ func makeRequest(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.Certificates = append(req.Certificates, cert)
+	req.TLSConfig.InsecureSkipVerify = true
+	req.TLSConfig.Certificates = append(req.TLSConfig.Certificates, cert)
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
