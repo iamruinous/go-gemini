@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"errors"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -159,12 +158,10 @@ type Response struct {
 	Meta string
 
 	// Body contains the response body.
-	// Body is only used by the server for successful responses.
 	Body []byte
 
 	// TLS contains information about the TLS connection on which the response
 	// was received.
-	// This field is ignored by the server.
 	TLS tls.ConnectionState
 }
 
@@ -194,8 +191,8 @@ func Get(url string) (*Response, error) {
 	return Do(req)
 }
 
-// ProxyRequest requests the provided URL from the provided host.
-func ProxyRequest(host, url string) (*Response, error) {
+// ProxyGet requests the provided URL from the provided host.
+func ProxyGet(host, url string) (*Response, error) {
 	req, err := NewProxyRequest(host, url)
 	if err != nil {
 		return nil, err
@@ -254,7 +251,7 @@ func Do(req *Request) (*Response, error) {
 	// Trim carriage return
 	meta = meta[:len(meta)-1]
 
-	// Ensure meta is less than 1024 bytes
+	// Ensure meta is less than or equal to 1024 bytes
 	if len(meta) > 1024 {
 		return nil, ErrProtocol
 	}
@@ -371,26 +368,39 @@ func (r *response) Write(b []byte) (int, error) {
 }
 
 // respond responds to a connection.
-func (s *Server) respond(rw net.Conn) {
-	resp := newResponse(rw)
-	if rawurl, err := readLine(rw); err != nil {
-		resp.WriteHeader(StatusBadRequest, "Bad request")
-	} else if len(rawurl) > 1024 {
-		resp.WriteHeader(StatusBadRequest, "Requested URL exceeds 1024 bytes")
+func (s *Server) respond(conn net.Conn) {
+	r := bufio.NewReader(conn)
+	rw := newResponse(conn)
+	// Read requested URL
+	rawurl, err := r.ReadString('\r')
+	if err != nil {
+		return
+	}
+	// Trim carriage return
+	rawurl = rawurl[:len(rawurl)-1]
+	// Read terminating line feed
+	if b, err := r.ReadByte(); err != nil {
+		return
+	} else if b != '\n' {
+		rw.WriteHeader(StatusBadRequest, "Bad request")
+	}
+
+	if len(rawurl) > 1024 {
+		rw.WriteHeader(StatusBadRequest, "Requested URL exceeds 1024 bytes")
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
-		// Note that we return an error if User is specified in the URL.
-		resp.WriteHeader(StatusBadRequest, "Requested URL is invalid")
+		// Note that we return an error status if User is specified in the URL
+		rw.WriteHeader(StatusBadRequest, "Requested URL is invalid")
 	} else {
 		// Gather information about the request
 		req := &Request{
 			URL:        url,
-			RemoteAddr: rw.RemoteAddr(),
-			TLS:        rw.(*tls.Conn).ConnectionState(),
+			RemoteAddr: conn.RemoteAddr(),
+			TLS:        conn.(*tls.Conn).ConnectionState(),
 		}
-		s.Handler.Serve(resp, req)
+		s.Handler.Serve(rw, req)
 	}
-	resp.w.Flush()
-	rw.Close()
+	rw.w.Flush()
+	conn.Close()
 }
 
 // A Handler responds to a Gemini request.
@@ -399,11 +409,11 @@ type Handler interface {
 	Serve(ResponseWriter, *Request)
 }
 
-// Mux is a Gemini request multiplexer.
+// ServeMux is a Gemini request multiplexer.
 // It matches the URL of each incoming request against a list of registered
 // patterns and calls the handler for the pattern that most closesly matches
 // the URL.
-type Mux struct {
+type ServeMux struct {
 	entries []muxEntry
 }
 
@@ -414,7 +424,7 @@ type muxEntry struct {
 	handler Handler
 }
 
-func (m *Mux) match(url *url.URL) Handler {
+func (m *ServeMux) match(url *url.URL) Handler {
 	for _, e := range m.entries {
 		if (e.scheme == "" || url.Scheme == e.scheme) &&
 			(e.host == "" || url.Host == e.host) &&
@@ -426,7 +436,7 @@ func (m *Mux) match(url *url.URL) Handler {
 }
 
 // Handle registers a Handler for the given pattern.
-func (m *Mux) Handle(pattern string, handler Handler) {
+func (m *ServeMux) Handle(pattern string, handler Handler) {
 	url, err := url.Parse(pattern)
 	if err != nil {
 		panic(err)
@@ -440,13 +450,13 @@ func (m *Mux) Handle(pattern string, handler Handler) {
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
-func (m *Mux) HandleFunc(pattern string, handlerFunc func(ResponseWriter, *Request)) {
+func (m *ServeMux) HandleFunc(pattern string, handlerFunc func(ResponseWriter, *Request)) {
 	handler := HandlerFunc(handlerFunc)
 	m.Handle(pattern, handler)
 }
 
 // Serve responds to the request with the appropriate handler.
-func (m *Mux) Serve(rw ResponseWriter, req *Request) {
+func (m *ServeMux) Serve(rw ResponseWriter, req *Request) {
 	h := m.match(req.URL)
 	if h == nil {
 		rw.WriteHeader(StatusNotFound, "Not found")
@@ -460,14 +470,4 @@ type HandlerFunc func(ResponseWriter, *Request)
 
 func (f HandlerFunc) Serve(rw ResponseWriter, req *Request) {
 	f(rw, req)
-}
-
-// readLine reads a line.
-func readLine(r io.Reader) (string, error) {
-	scanner := bufio.NewScanner(r)
-	scanner.Scan()
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-	return scanner.Text(), nil
 }
