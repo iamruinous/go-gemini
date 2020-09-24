@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -64,12 +63,33 @@ var (
 //     if err != nil {
 //         panic(err)
 //     }
-//     req.Certificates = append(req.Certificates, cert)
+//     req.TLSConfig.Certificates = append(req.TLSConfig.Certificates, cert)
 //
 type Request struct {
-	Host         string            // host or host:port
-	URL          *url.URL          // the requested URL
-	Certificates []tls.Certificate // client certificates
+	// URL specifies the URL being requested.
+	URL *url.URL
+
+	// For client requests, Host specifies the host on which the URL is sought.
+	// If this field is not set, the host will be inferred from the URL.
+	// This field is ignored by the server.
+	Host string
+
+	// TLSConfig provides a TLS configuration for use by the client.
+	// It is recommended that clients set `InsecureSkipVerify` to true to skip
+	// verifying TLS certificates, and instead adopt a Trust-On-First-Use
+	// method of verifying certificates.
+	// This field is ignored by the server.
+	TLSConfig tls.Config
+
+	// RemoteAddr allows servers and other software to record the network
+	// address that sent the request.
+	// This field is ignored by the client.
+	RemoteAddr net.Addr
+
+	// TLS allows servers and other software to record information about the TLS
+	// connection on which the request was recieved.
+	// This field is ignored by the client.
+	TLS tls.ConnectionState
 }
 
 // NewRequest returns a new request. The host is inferred from the provided url.
@@ -112,9 +132,23 @@ func (r *Request) Write(w io.Writer) error {
 
 // Response is a Gemini response.
 type Response struct {
+	// Status represents the response status.
 	Status int
-	Meta   string
-	Body   []byte
+
+	// Meta contains more information related to the response status.
+	// For successful responses, Meta should contain the mimetype of the response.
+	// For failure responses, Meta should contain a short description of the failure.
+	// Meta should not be longer than 1024 bytes.
+	Meta string
+
+	// Body contains the response body.
+	// Body is only used by the server for successful responses.
+	Body []byte
+
+	// TLS contains information about the TLS connection on which the response
+	// was received.
+	// This field is ignored by the server.
+	TLS tls.ConnectionState
 }
 
 // Write writes the Gemini response header and body to the provided io.Writer.
@@ -157,18 +191,8 @@ func (c *Client) ProxyRequest(host, url string) (*Response, error) {
 
 // Do sends a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
-	host := req.Host
-	if strings.LastIndex(host, ":") == -1 {
-		// The default port is 1965
-		host += ":1965"
-	}
-
-	// Allow self signed certificates
-	config := tls.Config{}
-	config.InsecureSkipVerify = true
-	config.Certificates = req.Certificates
-
-	conn, err := tls.Dial("tcp", host, &config)
+	// Connect to the host
+	conn, err := tls.Dial("tcp", req.Host, &req.TLSConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +250,16 @@ func (c *Client) Do(req *Request) (*Response, error) {
 
 // Server is a Gemini server.
 type Server struct {
-	Addr      string
+	// Addr specifies the address that the server should listen on.
+	// If Addr is empty, the server will listen on the address ":1965".
+	Addr string
+
+	// TLSConfig provides a TLS configuration for use by the server.
 	TLSConfig tls.Config
-	Handler   Handler
+
+	// Handler specifies the Handler for requests.
+	// If Handler is not set, the server will error.
+	Handler Handler
 }
 
 // ListenAndServe listens for requests at the server's configured address.
@@ -291,38 +322,32 @@ func (s *Server) respond(rw net.Conn) {
 	} else if len(rawurl) > 1024 {
 		resp = &Response{
 			Status: StatusBadRequest,
-			Meta:   "URL exceeds 1024 bytes",
+			Meta:   "Requested URL exceeds 1024 bytes",
 		}
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
+		// Note that we return an error if User is specified in the URL.
 		resp = &Response{
 			Status: StatusBadRequest,
-			Meta:   "Invalid URL",
+			Meta:   "Requested URL is invalid",
 		}
 	} else {
 		// Gather information about the request
-		reqInfo := &RequestInfo{
-			URL:          url,
-			Certificates: rw.(*tls.Conn).ConnectionState().PeerCertificates,
-			RemoteAddr:   rw.RemoteAddr(),
+		req := &Request{
+			URL:        url,
+			RemoteAddr: rw.RemoteAddr(),
+			TLS:        rw.(*tls.Conn).ConnectionState(),
 		}
-		resp = s.Handler.Serve(reqInfo)
+		resp = s.Handler.Serve(req)
 	}
 
 	resp.Write(rw)
 	rw.Close()
 }
 
-// RequestInfo contains information about a request.
-type RequestInfo struct {
-	URL          *url.URL            // the requested URL
-	Certificates []*x509.Certificate // client certificates
-	RemoteAddr   net.Addr            // client remote address
-}
-
 // A Handler responds to a Gemini request.
 type Handler interface {
 	// Serve accepts a Request and returns a Response.
-	Serve(*RequestInfo) *Response
+	Serve(*Request) *Response
 }
 
 // Mux is a Gemini request multiplexer.
@@ -366,13 +391,13 @@ func (m *Mux) Handle(pattern string, handler Handler) {
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
-func (m *Mux) HandleFunc(pattern string, handlerFunc func(req *RequestInfo) *Response) {
+func (m *Mux) HandleFunc(pattern string, handlerFunc func(req *Request) *Response) {
 	handler := HandlerFunc(handlerFunc)
 	m.Handle(pattern, handler)
 }
 
 // Serve responds to the request with the appropriate handler.
-func (m *Mux) Serve(req *RequestInfo) *Response {
+func (m *Mux) Serve(req *Request) *Response {
 	h := m.match(req.URL)
 	if h == nil {
 		return &Response{
@@ -384,9 +409,9 @@ func (m *Mux) Serve(req *RequestInfo) *Response {
 }
 
 // A wrapper around a bare function that implements Handler.
-type HandlerFunc func(req *RequestInfo) *Response
+type HandlerFunc func(req *Request) *Response
 
-func (f HandlerFunc) Serve(req *RequestInfo) *Response {
+func (f HandlerFunc) Serve(req *Request) *Response {
 	return f(req)
 }
 
