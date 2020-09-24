@@ -12,7 +12,6 @@ import (
 	"git.sr.ht/~adnano/go-gemini"
 )
 
-var client gemini.Client
 var cert tls.Certificate
 
 func init() {
@@ -37,7 +36,7 @@ func makeRequest(url string) {
 	}
 	req.TLSConfig.InsecureSkipVerify = true
 	req.TLSConfig.Certificates = append(req.TLSConfig.Certificates, cert)
-	resp, err := client.Do(req)
+	resp, err := gemini.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -176,29 +176,26 @@ func (r *Response) Write(w io.Writer) error {
 	return nil
 }
 
-// Client is a Gemini client.
-type Client struct{}
-
-// Request makes a request for the provided URL. The host is inferred from the URL.
-func (c *Client) Request(url string) (*Response, error) {
+// Get makes a request for the provided URL. The host is inferred from the URL.
+func Get(url string) (*Response, error) {
 	req, err := NewRequest(url)
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return Do(req)
 }
 
 // ProxyRequest requests the provided URL from the provided host.
-func (c *Client) ProxyRequest(host, url string) (*Response, error) {
+func ProxyRequest(host, url string) (*Response, error) {
 	req, err := NewProxyRequest(host, url)
 	if err != nil {
 		return nil, err
 	}
-	return c.Do(req)
+	return Do(req)
 }
 
 // Do sends a Gemini request and returns a Gemini response.
-func (c *Client) Do(req *Request) (*Response, error) {
+func Do(req *Request) (*Response, error) {
 	// Connect to the host
 	conn, err := tls.Dial("tcp", req.Host, &req.TLSConfig)
 	if err != nil {
