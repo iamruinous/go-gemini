@@ -15,3 +15,29 @@ See `examples/client` and `examples/server` for an example client and server.
 To run the examples:
 
 	go run -tags=example ./examples/server
+
+## Overview
+
+A quick overview of the Gemini protocol:
+
+1. Client opens connection
+2. Server accepts connection
+3. Client and server complete a TLS handshake
+4. Client validates server certificate
+5. Client sends request
+6. Server sends response header
+7. Server sends response body (only for successful responses)
+8. Server closes connection
+9. Client handles response
+
+The way this is implemented in this package is like so:
+
+1. Client makes a request with `gemini.Get`.
+	There is currently no way to validate server certificates before sending a request.
+2. Server recieves the request and constructs a response.
+	The server calls the `Serve(*ResponseWriter, *Request)` method on the
+	`Handler` field. The handler writes the response. The server then closes
+	the connection.
+5. Client recieves the response as a `*Response`. The client then handles the
+   response. The client can now verify the certificate of the server using a
+   Trust-On-First-Use method.
