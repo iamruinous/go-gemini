@@ -3,6 +3,7 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net"
 	"net/url"
@@ -10,6 +11,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+// Errors.
+var (
+	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow for body")
 )
 
 // Server is a Gemini server.

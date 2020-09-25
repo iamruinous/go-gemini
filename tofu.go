@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// Errors.
 var (
 	ErrInvalidKnownHosts = errors.New("gemini: invalid known hosts")
 )
