@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +13,18 @@ import (
 	"git.sr.ht/~adnano/go-gemini"
 )
 
-var cert tls.Certificate
+var (
+	client = &gemini.Client{
+		VerifyCertificate: func(cert *x509.Certificate) error {
+			// if gemini.Fingerprint(cert) != expected {
+			// 	return errors.New("invalid server certificate")
+			// }
+			return nil
+		},
+	}
+
+	cert tls.Certificate
+)
 
 func init() {
 	// Configure a client side certificate.
@@ -35,10 +47,13 @@ func makeRequest(url string) {
 		log.Fatal(err)
 	}
 	req.Certificate = cert
-	resp, err := gemini.Do(req)
+
+	resp, err := client.Send(req)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println(gemini.Fingerprint(resp.TLS.PeerCertificates[0]))
 
 	fmt.Println("Status code:", resp.Status)
 	fmt.Println("Meta:", resp.Meta)
