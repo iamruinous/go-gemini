@@ -165,11 +165,14 @@ type Response struct {
 }
 
 // Get makes a request for the provided URL. The host is inferred from the URL.
+//
+// Get does not verify server certificates. To verify certificates, use a Request.
 func Get(url string) (*Response, error) {
 	req, err := NewRequest(url)
 	if err != nil {
 		return nil, err
 	}
+	req.TLSConfig.InsecureSkipVerify = true
 	return Do(req)
 }
 
@@ -179,6 +182,7 @@ func ProxyGet(host, url string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	req.TLSConfig.InsecureSkipVerify = true
 	return Do(req)
 }
 

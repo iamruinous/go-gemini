@@ -4,6 +4,7 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"log"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -24,8 +25,14 @@ func main() {
 	}
 	config.Certificates = append(config.Certificates, cert)
 	config.ClientAuth = tls.RequestClientCert
+	config.VerifyPeerCertificate = func(rawCerts [][]byte, chains [][]*x509.Certificate) error {
+		return nil
+	}
 
 	mux := &gemini.ServeMux{}
+	mux.HandleFunc("/cert", func(rw *gemini.ResponseWriter, req *gemini.Request) {
+		rw.WriteHeader(gemini.StatusClientCertificateRequired, "Certificate required")
+	})
 	mux.HandleFunc("/", func(rw *gemini.ResponseWriter, req *gemini.Request) {
 		log.Printf("Request from %s for %s with certificates %v", req.RemoteAddr.String(), req.URL.String(), req.TLS.PeerCertificates)
 		rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
