@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -437,12 +438,14 @@ func (m *ServeMux) Handle(pattern string, handler Handler) {
 	if err != nil {
 		panic(err)
 	}
-	m.entries = append(m.entries, muxEntry{
+	e := muxEntry{
 		url.Scheme,
 		url.Host,
 		url.Path,
 		handler,
-	})
+	}
+	m.entries = appendSorted(m.entries, e)
+	log.Print(m.entries)
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
@@ -459,6 +462,46 @@ func (m *ServeMux) Serve(rw *ResponseWriter, req *Request) {
 		return
 	}
 	h.Serve(rw, req)
+}
+
+// appendSorted appends the entry e in the proper place in entries.
+func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
+	n := len(es)
+	// sort by length
+	i := sort.Search(n, func(i int) bool {
+		// Sort entries by length.
+		// - Entries with a scheme take preference over entries without.
+		// - Entries with a host take preference over entries without.
+		// - Longer paths take preference over shorter paths.
+		//
+		// Long version:
+		// if es[i].scheme != "" {
+		// 	if e.scheme == "" {
+		// 		return false
+		// 	}
+		// 	return len(es[i].scheme) < len(e.scheme)
+		// }
+		// if es[i].host != "" {
+		// 	if e.host == "" {
+		// 		return false
+		// 	}
+		// 	return len(es[i].host) < len(e.host)
+		// }
+		// return len(es[i].path) < len(e.path)
+
+		// Condensed version:
+		return (es[i].scheme == "" || (e.scheme != "" && len(es[i].scheme) < len(e.scheme))) &&
+			(es[i].host == "" || (e.host != "" && len(es[i].host) < len(e.host))) &&
+			len(es[i].path) < len(e.path)
+	})
+	if i == n {
+		return append(es, e)
+	}
+	// we now know that i points at where we want to insert
+	es = append(es, muxEntry{}) // try to grow the slice in place, any entry works.
+	copy(es[i+1:], es[i:])      // Move shorter entries down
+	es[i] = e
+	return es
 }
 
 // A wrapper around a bare function that implements Handler.
