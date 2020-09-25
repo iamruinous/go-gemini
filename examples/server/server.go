@@ -30,20 +30,11 @@ func main() {
 	}
 
 	mux := &gemini.ServeMux{}
-	// mux.HandleFunc("/", func(rw *gemini.ResponseWriter, req *gemini.Request) {
-	// 	log.Printf("Request from %s for %s with certificates %v", req.RemoteAddr.String(), req.URL.String(), req.TLS.PeerCertificates)
-	// 	rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
-	// 	rw.Write([]byte("You requested " + req.URL.String()))
-	// })
-	// mux.HandleFunc("/cert", func(rw *gemini.ResponseWriter, req *gemini.Request) {
-	// 	rw.WriteHeader(gemini.StatusClientCertificateRequired, "Certificate required")
-	// })
-
-	mux.HandleFunc("https://example.com/path", nil)
-	mux.HandleFunc("http://example.com/path", nil)
-	mux.HandleFunc("example.com/path", nil)
-	mux.HandleFunc("/path", nil)
-	mux.HandleFunc("/longpath", nil)
+	mux.HandleFunc("/", func(rw *gemini.ResponseWriter, req *gemini.Request) {
+		log.Printf("Request from %s for %s with certificates %v", req.RemoteAddr.String(), req.URL.String(), req.TLS.PeerCertificates)
+		rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
+		rw.Write([]byte("You requested " + req.URL.String()))
+	})
 
 	server := gemini.Server{
 		TLSConfig: config,

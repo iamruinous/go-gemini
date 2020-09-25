@@ -415,17 +415,15 @@ type ServeMux struct {
 }
 
 type muxEntry struct {
-	scheme  string
-	host    string
-	path    string
+	u       *url.URL
 	handler Handler
 }
 
 func (m *ServeMux) match(url *url.URL) Handler {
 	for _, e := range m.entries {
-		if (e.scheme == "" || url.Scheme == e.scheme) &&
-			(e.host == "" || url.Host == e.host) &&
-			strings.HasPrefix(url.Path, e.path) {
+		if (e.u.Scheme == "" || url.Scheme == e.u.Scheme) &&
+			(e.u.Host == "" || url.Host == e.u.Host) &&
+			strings.HasPrefix(url.Path, e.u.Path) {
 			return e.handler
 		}
 	}
@@ -439,13 +437,10 @@ func (m *ServeMux) Handle(pattern string, handler Handler) {
 		panic(err)
 	}
 	e := muxEntry{
-		url.Scheme,
-		url.Host,
-		url.Path,
+		url,
 		handler,
 	}
 	m.entries = appendSorted(m.entries, e)
-	log.Print(m.entries)
 }
 
 // HandleFunc registers a HandlerFunc for the given pattern.
@@ -490,9 +485,9 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 		// return len(es[i].path) < len(e.path)
 
 		// Condensed version:
-		return (es[i].scheme == "" || (e.scheme != "" && len(es[i].scheme) < len(e.scheme))) &&
-			(es[i].host == "" || (e.host != "" && len(es[i].host) < len(e.host))) &&
-			len(es[i].path) < len(e.path)
+		return (es[i].u.Scheme == "" || (e.u.Scheme != "" && len(es[i].u.Scheme) < len(e.u.Scheme))) &&
+			(es[i].u.Host == "" || (e.u.Host != "" && len(es[i].u.Host) < len(e.u.Host))) &&
+			len(es[i].u.Path) < len(e.u.Path)
 	})
 	if i == n {
 		return append(es, e)
