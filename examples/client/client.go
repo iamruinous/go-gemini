@@ -34,8 +34,7 @@ func makeRequest(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.TLSConfig.InsecureSkipVerify = true
-	req.TLSConfig.Certificates = append(req.TLSConfig.Certificates, cert)
+	req.Certificate = cert
 	resp, err := gemini.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -63,9 +62,9 @@ func makeRequest(url string) {
 	case gemini.StatusClassPermanentFailure:
 		log.Fatal("Permanent failure")
 	case gemini.StatusClassClientCertificateRequired:
-		log.Fatal("Client Certificate Required")
+		log.Fatal("Client certificate required")
 	default:
-		log.Fatal("Protocol Error")
+		log.Fatal("Protocol error")
 	}
 }
 

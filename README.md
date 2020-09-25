@@ -32,40 +32,12 @@ A quick overview of the Gemini protocol:
 
 The way this is implemented in this package is like so:
 
-1. Client makes a request with `NewRequest`. The client can verify server
-   certificates in the Request options, see [Recommended TLS
-   configuration](#recommended-tls-configuration).
+1. Client makes a request with `NewRequest`. The client then sends the request
+	with `Do(*Request) (*Response, error)`.
 2. Server recieves the request and constructs a response.
 	The server calls the `Serve(*ResponseWriter, *Request)` method on the
 	`Handler` field. The handler writes the response. The server then closes
 	the connection.
 5. Client recieves the response as a `*Response`. The client then handles the
-   response. The client can now verify the certificate of the server using a
-   Trust-On-First-Use method.
-
-## Recommended TLS configuration
-
-For clients, the recommended TLS configuration is as follows:
-
-```go
-// Accept self-signed server certificates
-req.TLSConfig.InsecureSkipVerify = true
-// Manually verify server certificates, using TOFU
-req.TLSConfig.VerifyPeerCertificate = func(rawCerts [][]byte, chains [][]*x509.Certificate) error {
-	// Verify the server certificate here
-	// Return an error on failure, or nil on success
-	return nil
-}
-```
-
-Note that `gemini.Get` does not verify server certificates.
-
-For servers, the recommended TLS configuration is as follows:
-
-```go
-// Specify a certificate
-// To load a certificate, use `tls.LoadX509KeyPair`.
-srv.TLSConfig.Certificates = append(srv.TLSConfig.Certificates, cert)
-// Request client certificates
-srv.TLSConfig.ClientAuth = tls.RequestClientCert
-```
+	response. The client can now verify the certificate of the server using a
+	Trust-On-First-Use method.

@@ -78,12 +78,8 @@ type Request struct {
 	// This field is ignored by the server.
 	Host string
 
-	// TLSConfig provides a TLS configuration for use by the client.
-	// It is recommended that clients set `InsecureSkipVerify` to true to skip
-	// verifying TLS certificates, and instead adopt a Trust-On-First-Use
-	// method of verifying certificates.
-	// This field is ignored by the server.
-	TLSConfig tls.Config
+	// The certificate to use for the request.
+	Certificate tls.Certificate
 
 	// RemoteAddr allows servers and other software to record the network
 	// address that sent the request.
@@ -133,7 +129,7 @@ func NewProxyRequest(host, rawurl string) (*Request, error) {
 // write writes the Gemini request to the provided buffered writer.
 func (r *Request) write(w *bufio.Writer) error {
 	url := r.URL.String()
-	// UserInfo is invalid
+	// User is invalid
 	if r.URL.User != nil || len(url) > 1024 {
 		return ErrInvalidURL
 	}
@@ -165,32 +161,14 @@ type Response struct {
 	TLS tls.ConnectionState
 }
 
-// Get makes a request for the provided URL. The host is inferred from the URL.
-//
-// Get does not verify server certificates. To verify certificates, use a Request.
-func Get(url string) (*Response, error) {
-	req, err := NewRequest(url)
-	if err != nil {
-		return nil, err
-	}
-	req.TLSConfig.InsecureSkipVerify = true
-	return Do(req)
-}
-
-// ProxyGet requests the provided URL from the provided host.
-func ProxyGet(host, url string) (*Response, error) {
-	req, err := NewProxyRequest(host, url)
-	if err != nil {
-		return nil, err
-	}
-	req.TLSConfig.InsecureSkipVerify = true
-	return Do(req)
-}
-
 // Do sends a Gemini request and returns a Gemini response.
 func Do(req *Request) (*Response, error) {
 	// Connect to the host
-	conn, err := tls.Dial("tcp", req.Host, &req.TLSConfig)
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{req.Certificate},
+	}
+	conn, err := tls.Dial("tcp", req.Host, config)
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +245,9 @@ type Server struct {
 	// If Addr is empty, the server will listen on the address ":1965".
 	Addr string
 
-	// TLSConfig provides a TLS configuration for use by the server.
-	TLSConfig tls.Config
+	// Certificate provides a TLS certificate for use by the server.
+	// Using a self-signed certificate is recommended.
+	Certificate tls.Certificate
 
 	// Handler specifies the Handler for requests.
 	// If Handler is not set, the server will error.
@@ -278,6 +257,7 @@ type Server struct {
 // ListenAndServe listens for requests at the server's configured address.
 func (s *Server) ListenAndServe() error {
 	addr := s.Addr
+
 	if addr == "" {
 		addr = ":1965"
 	}
@@ -288,7 +268,12 @@ func (s *Server) ListenAndServe() error {
 	}
 	defer ln.Close()
 
-	tlsListener := tls.NewListener(ln, &s.TLSConfig)
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		Certificates:       []tls.Certificate{s.Certificate},
+		ClientAuth:         tls.RequestClientCert,
+	}
+	tlsListener := tls.NewListener(ln, config)
 	return s.Serve(tlsListener)
 }
 
