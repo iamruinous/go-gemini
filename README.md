@@ -45,9 +45,8 @@ The way this is implemented in this package is like so:
 
 ## TOFU
 
-This package provides an easy way to implement Trust-On-First-Use in your
-clients. Here is a simple example client using TOFU to authenticate
-certificates:
+This package provides an easy way to implement Trust On First Use in your
+clients. Here is a simple client using TOFU to authenticate certificates:
 
 ```go
 client := &gemini.Client{
