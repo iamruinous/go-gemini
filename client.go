@@ -19,6 +19,7 @@ var (
 	ErrInvalidURL            = errors.New("gemini: requested URL is invalid")
 	ErrCertificateNotValid   = errors.New("gemini: certificate is invalid")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
+	ErrCertificateUnknown    = errors.New("gemini: certificate is unknown")
 )
 
 // Request represents a Gemini request.
@@ -171,7 +172,8 @@ type Client struct {
 
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
-	TrustCertificate func(cert *x509.Certificate, knownHosts *KnownHosts) bool
+	// If error is not nil, the connection will be aborted.
+	TrustCertificate func(cert *x509.Certificate, knownHosts *KnownHosts) error
 }
 
 // Send sends a Gemini request and returns a Gemini response.
@@ -196,8 +198,8 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				if c.KnownHosts == nil || !c.KnownHosts.Has(cert) {
 					return ErrCertificateNotTrusted
 				}
-			} else if !c.TrustCertificate(cert, c.KnownHosts) {
-				return ErrCertificateNotTrusted
+			} else if err := c.TrustCertificate(cert, c.KnownHosts); err != nil {
+				return err
 			}
 			return nil
 		},

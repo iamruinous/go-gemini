@@ -15,9 +15,9 @@ import (
 
 var (
 	client = &gemini.Client{
-		TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) bool {
+		TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 			// Trust all certificates
-			return true
+			return nil
 		},
 	}
 	cert tls.Certificate

@@ -71,6 +71,33 @@ func (k *KnownHosts) Has(cert *x509.Certificate) bool {
 	return false
 }
 
+// Lookup looks for the provided certificate in the list of known hosts.
+// If the hostname is in the list, but the fingerprint differs,
+// Lookup returns ErrCertificateNotTrusted.
+// If the hostname is not in the list, Lookup returns ErrCertificateUnknown.
+// If the certificate is found and the fingerprint matches, error will be nil.
+func (k *KnownHosts) Lookup(cert *x509.Certificate) error {
+	now := time.Now().Unix()
+	hostname := cert.Subject.CommonName
+	fingerprint := Fingerprint(cert)
+	for i := range k.hosts {
+		if k.hosts[i].Hostname != hostname {
+			continue
+		}
+		if k.hosts[i].Expires <= now {
+			// Certificate is expired
+			continue
+		}
+		if k.hosts[i].Fingerprint == fingerprint {
+			// Fingerprint matches
+			return nil
+		}
+		// Fingerprint does not match
+		return ErrCertificateNotTrusted
+	}
+	return ErrCertificateUnknown
+}
+
 // Parse parses the provided reader and adds the parsed known hosts to the list.
 // Invalid lines are ignored.
 func (k *KnownHosts) Parse(r io.Reader) {
