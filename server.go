@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Errors.
+// Server errors.
 var (
 	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow for body")
 )

@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// Errors.
+// Client errors.
 var (
 	ErrProtocol              = errors.New("gemini: protocol error")
 	ErrInvalidURL            = errors.New("gemini: requested URL is invalid")
