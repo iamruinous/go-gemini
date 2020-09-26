@@ -15,10 +15,7 @@ import (
 
 var (
 	client = &gemini.Client{
-		VerifyCertificate: func(cert *x509.Certificate) error {
-			// if gemini.Fingerprint(cert) != expected {
-			// 	return errors.New("invalid server certificate")
-			// }
+		VerifyCertificate: func(cert *x509.Certificate, req *gemini.Request) error {
 			return nil
 		},
 	}

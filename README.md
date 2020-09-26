@@ -33,7 +33,8 @@ A quick overview of the Gemini protocol:
 The way this is implemented in this package is like so:
 
 1. Client makes a request with `NewRequest`. The client then sends the request
-	with `Send(*Request) (*Response, error)`.
+	with `Send(*Request) (*Response, error)`. The client can optionally verify
+	the server certificates with `VerifyCertificate(*x509.Certificate, *Request)`
 2. Server recieves the request and constructs a response.
 	The server calls the `Serve(*ResponseWriter, *Request)` method on the
 	`Handler` field. The handler writes the response. The server then closes

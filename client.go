@@ -166,7 +166,7 @@ func (resp *Response) read(r *bufio.Reader) error {
 type Client struct {
 	// VerifyCertificate, if not nil, will be called to verify the server certificate.
 	// If error is not nil, the connection will be aborted.
-	VerifyCertificate func(cert *x509.Certificate) error
+	VerifyCertificate func(cert *x509.Certificate, req *Request) error
 }
 
 // Send sends a Gemini request and returns a Gemini response.
@@ -180,7 +180,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			if err != nil {
 				return err
 			}
-			return c.VerifyCertificate(cert)
+			return c.VerifyCertificate(cert, req)
 		},
 	}
 	conn, err := tls.Dial("tcp", req.Host, config)
