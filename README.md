@@ -71,27 +71,25 @@ client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownH
 Advanced clients can prompt the user for what to do when encountering an unknown certificate:
 
 ```go
-client := &gemini.Client{
-	TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
-		err := knownHosts.Lookup(cert)
-		if err != nil {
-			switch err {
-			case gemini.ErrCertificateNotTrusted:
-				// Alert the user that the certificate is not trusted
-				alertUser()
-			case gemini.ErrCertificateUnknown:
-				// Prompt the user to trust the certificate
-				if userTrustsCertificateTemporarily() {
-					// Temporarily trust the certificate
-					return nil
-				} else if user.TrustsCertificatePermanently() {
-					// Add the certificate to the known hosts file
-					knownHosts.Add(cert)
-					return nil
-				}
+client.TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+	err := knownHosts.Lookup(cert)
+	if err != nil {
+		switch err {
+		case gemini.ErrCertificateNotTrusted:
+			// Alert the user that the certificate is not trusted
+			alertUser()
+		case gemini.ErrCertificateUnknown:
+			// Prompt the user to trust the certificate
+			if userTrustsCertificateTemporarily() {
+				// Temporarily trust the certificate
+				return nil
+			} else if user.TrustsCertificatePermanently() {
+				// Add the certificate to the known hosts file
+				knownHosts.Add(cert)
+				return nil
 			}
 		}
-		return err
-	},
+	}
+	return err
 }
 ```
