@@ -163,14 +163,14 @@ func (resp *Response) read(r *bufio.Reader) error {
 }
 
 // Client represents a Gemini client.
-type Client struct {
-	// VerifyCertificate, if not nil, will be called to verify the server certificate.
+type Client interface {
+	// VerifyCertificate will be called to verify the server certificate.
 	// If error is not nil, the connection will be aborted.
-	VerifyCertificate func(cert *x509.Certificate, req *Request) error
+	VerifyCertificate(cert *x509.Certificate, req *Request) error
 }
 
 // Send sends a Gemini request and returns a Gemini response.
-func (c *Client) Send(req *Request) (*Response, error) {
+func Send(c Client, req *Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,

@@ -71,9 +71,18 @@ type KnownHost struct {
 	Expires     int64  // unix time of certificate notAfter date
 }
 
+func NewKnownHost(cert *x509.Certificate) KnownHost {
+	return KnownHost{
+		Hostname:    cert.Subject.CommonName,
+		Algorithm:   "SHA-512",
+		Fingerprint: Fingerprint(cert),
+		Expires:     cert.NotAfter.Unix(),
+	}
+}
+
 // Write writes the known host to the provided io.Writer.
 func (k KnownHost) Write(w io.Writer) (int, error) {
-	s := fmt.Sprintf("\n%s %s %s %d", k.Hostname, k.Algorithm, k.Fingerprint, k.Expires)
+	s := fmt.Sprintf("%s %s %s %d\n", k.Hostname, k.Algorithm, k.Fingerprint, k.Expires)
 	return w.Write([]byte(s))
 }
 

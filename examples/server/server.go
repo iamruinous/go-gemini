@@ -15,7 +15,7 @@ func main() {
 	//
 	//     openssl genrsa -out server.key 2048
 	//     openssl ecparam -genkey -name secp384r1 -out server.key
-	//     openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
+	//     openssl req -new -x509 -sha512 -key server.key -out server.crt -days 365
 	//
 	cert, err := tls.LoadX509KeyPair("examples/server/server.crt", "examples/server/server.key")
 	if err != nil {
@@ -27,9 +27,6 @@ func main() {
 		rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
 		rw.Write([]byte("You requested " + req.URL.String()))
 		log.Printf("Request from %s for %s", req.RemoteAddr.String(), req.URL)
-		if len(req.TLS.PeerCertificates) != 0 {
-			log.Print("Client certificate: ", gemini.Fingerprint(req.TLS.PeerCertificates[0]))
-		}
 	})
 
 	server := gemini.Server{

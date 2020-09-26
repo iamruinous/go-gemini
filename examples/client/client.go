@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	client = &gemini.Client{
-		VerifyCertificate: func(cert *x509.Certificate, req *gemini.Request) error {
-			return nil
+	client = &gemini.TOFUClient{
+		Trusts: func(cert *x509.Certificate, req *gemini.Request) bool {
+			// Trust all certificates
+			return true
 		},
 	}
-
 	cert tls.Certificate
 )
 
@@ -29,7 +29,7 @@ func init() {
 	//
 	//     openssl genrsa -out client.key 2048
 	//     openssl ecparam -genkey -name secp384r1 -out client.key
-	//     openssl req -new -x509 -sha256 -key client.key -out client.crt -days 3650
+	//     openssl req -new -x509 -sha512 -key client.key -out client.crt -days 365
 	//
 	var err error
 	cert, err = tls.LoadX509KeyPair("examples/client/client.crt", "examples/client/client.key")
@@ -45,12 +45,10 @@ func makeRequest(url string) {
 	}
 	req.Certificate = cert
 
-	resp, err := client.Send(req)
+	resp, err := gemini.Send(client, req)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(gemini.Fingerprint(resp.TLS.PeerCertificates[0]))
 
 	fmt.Println("Status code:", resp.Status)
 	fmt.Println("Meta:", resp.Meta)
