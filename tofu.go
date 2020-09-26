@@ -33,25 +33,16 @@ func (k KnownHosts) Has(hostname string, cert *x509.Certificate) bool {
 	return false
 }
 
-// KnownHost represents a known host.
-type KnownHost struct {
-	Hostname    string // e.g. gemini.circumlunar.space
-	Algorithm   string // fingerprint algorithm e.g. SHA-512
-	Fingerprint string // fingerprint in hexadecimal, with ':' between each octet
-	Expires     int64  // unix time of certificate notAfter date
-}
-
 // ParseKnownHosts parses and returns a list of known hosts from the provided io.Reader.
-func ParseKnownHosts(r io.Reader) (KnownHosts, error) {
-	hosts := []KnownHost{}
-
+// Invalid lines are ignored.
+func ParseKnownHosts(r io.Reader) (hosts KnownHosts) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		text := scanner.Text()
 
 		parts := strings.Split(text, " ")
 		if len(parts) < 4 {
-			return nil, ErrInvalidKnownHosts
+			continue
 		}
 
 		hostname := parts[0]
@@ -59,7 +50,7 @@ func ParseKnownHosts(r io.Reader) (KnownHosts, error) {
 		fingerprint := parts[2]
 		expires, err := strconv.ParseInt(parts[3], 10, 0)
 		if err != nil {
-			return nil, ErrInvalidKnownHosts
+			continue
 		}
 
 		hosts = append(hosts, KnownHost{
@@ -69,13 +60,21 @@ func ParseKnownHosts(r io.Reader) (KnownHosts, error) {
 			Expires:     expires,
 		})
 	}
-
-	return hosts, nil
+	return
 }
 
-// AppendKnownHost appends the host to the provided io.Writer.
-func AppendKnownHost(host KnownHost, w io.Writer) error {
-	return nil
+// KnownHost represents a known host.
+type KnownHost struct {
+	Hostname    string // e.g. gemini.circumlunar.space
+	Algorithm   string // fingerprint algorithm e.g. SHA-512
+	Fingerprint string // fingerprint in hexadecimal, with ':' between each octet
+	Expires     int64  // unix time of certificate notAfter date
+}
+
+// Write writes the known host to the provided io.Writer.
+func (k KnownHost) Write(w io.Writer) (int, error) {
+	s := fmt.Sprintf("\n%s %s %s %d", k.Hostname, k.Algorithm, k.Fingerprint, k.Expires)
+	return w.Write([]byte(s))
 }
 
 // Fingerprint returns the SHA-512 fingerprint of the provided certificate.
