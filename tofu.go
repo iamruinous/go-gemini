@@ -57,20 +57,6 @@ func (k *KnownHosts) Add(cert *x509.Certificate) {
 	}
 }
 
-// Has reports whether the provided certificate is in the list.
-func (k *KnownHosts) Has(cert *x509.Certificate) bool {
-	now := time.Now().Unix()
-	hostname := cert.Subject.CommonName
-	fingerprint := Fingerprint(cert)
-	for i := range k.hosts {
-		if k.hosts[i].Expires > now && k.hosts[i].Hostname == hostname &&
-			k.hosts[i].Fingerprint == fingerprint {
-			return true
-		}
-	}
-	return false
-}
-
 // Lookup looks for the provided certificate in the list of known hosts.
 // If the hostname is in the list, but the fingerprint differs,
 // Lookup returns ErrCertificateNotTrusted.

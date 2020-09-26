@@ -195,8 +195,10 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			}
 			// Check that the client trusts the certificate
 			if c.TrustCertificate == nil {
-				if c.KnownHosts == nil || !c.KnownHosts.Has(cert) {
+				if c.KnownHosts == nil {
 					return ErrCertificateNotTrusted
+				} else if err := c.KnownHosts.Lookup(cert); err != nil {
+					return err
 				}
 			} else if err := c.TrustCertificate(cert, c.KnownHosts); err != nil {
 				return err
