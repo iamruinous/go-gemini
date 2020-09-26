@@ -106,14 +106,14 @@ func makeRequest(url string) {
 }
 
 func userTrustsCertificateTemporarily() bool {
-	fmt.Println("Do you want to trust the certificate temporarily? (y/n)")
+	fmt.Print("Do you want to trust the certificate temporarily? (y/n) ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	return scanner.Text() == "y"
 }
 
 func userTrustsCertificatePermanently() bool {
-	fmt.Println("How about permanently? (y/n)")
+	fmt.Print("How about permanently? (y/n) ")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	return scanner.Text() == "y"
