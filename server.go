@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"crypto/tls"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +19,7 @@ import (
 // Server errors.
 var (
 	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow for body")
+	ErrNotAFile       = errors.New("gemini: not a file")
 )
 
 // Server is a Gemini server.
@@ -233,23 +237,6 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 		// - Entries with a scheme take preference over entries without.
 		// - Entries with a host take preference over entries without.
 		// - Longer paths take preference over shorter paths.
-		//
-		// Long version:
-		// if es[i].scheme != "" {
-		// 	if e.scheme == "" {
-		// 		return false
-		// 	}
-		// 	return len(es[i].scheme) < len(e.scheme)
-		// }
-		// if es[i].host != "" {
-		// 	if e.host == "" {
-		// 		return false
-		// 	}
-		// 	return len(es[i].host) < len(e.host)
-		// }
-		// return len(es[i].path) < len(e.path)
-
-		// Condensed version:
 		return (es[i].u.Scheme == "" || (e.u.Scheme != "" && len(es[i].u.Scheme) < len(e.u.Scheme))) &&
 			(es[i].u.Host == "" || (e.u.Host != "" && len(es[i].u.Host) < len(e.u.Host))) &&
 			len(es[i].u.Path) < len(e.u.Path)
@@ -269,4 +256,63 @@ type HandlerFunc func(*ResponseWriter, *Request)
 
 func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {
 	f(rw, req)
+}
+
+// ServeDir serves files from a directory.
+type ServeDir struct {
+	path string // path to the directory
+}
+
+// FileServer takes a filesystem and returns a handler which uses that filesystem.
+func FileServer(fsys FS) Handler {
+	return fsHandler{
+		fsys,
+	}
+}
+
+type fsHandler struct {
+	FS
+}
+
+func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
+	// FIXME: Don't serve paths with .. in them
+	f, err := fsys.Open(req.URL.Path)
+	if err != nil {
+		rw.WriteHeader(StatusNotFound, "Not found")
+		return
+	}
+	// TODO: detect mimetype
+	mime := "text/gemini"
+	rw.WriteHeader(StatusSuccess, mime)
+	// Copy file to response writer
+	io.Copy(rw, f)
+}
+
+// TODO: replace with fs.FS when available
+type FS interface {
+	Open(name string) (File, error)
+}
+
+// TODO: replace with fs.File when available
+type File interface {
+	Stat() (os.FileInfo, error)
+	Read([]byte) (int, error)
+	Close() error
+}
+
+// Dir implements FS using the native filesystem restricted to a specific directory.
+type Dir string
+
+func (d Dir) Open(name string) (File, error) {
+	path := filepath.Join(string(d), name)
+	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	if stat, err := f.Stat(); err == nil {
+		if !stat.Mode().IsRegular() {
+			return nil, ErrNotAFile
+		}
+	}
+	return f, nil
 }

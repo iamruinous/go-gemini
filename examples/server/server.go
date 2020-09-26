@@ -23,11 +23,7 @@ func main() {
 	}
 
 	mux := &gemini.ServeMux{}
-	mux.HandleFunc("/", func(rw *gemini.ResponseWriter, req *gemini.Request) {
-		rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
-		rw.Write([]byte("You requested " + req.URL.String()))
-		log.Printf("Request from %s for %s", req.RemoteAddr.String(), req.URL)
-	})
+	mux.Handle("/", gemini.FileServer(gemini.Dir("/var/www")))
 
 	server := gemini.Server{
 		Handler:     mux,

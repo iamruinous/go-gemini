@@ -71,7 +71,7 @@ client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownH
 Advanced clients can prompt the user for what to do when encountering an unknown certificate:
 
 ```go
-client.TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 	err := knownHosts.Lookup(cert)
 	if err != nil {
 		switch err {

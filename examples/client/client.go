@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"os"
@@ -26,6 +27,29 @@ func init() {
 
 	client = &gemini.Client{
 		KnownHosts: knownHosts,
+	}
+
+	client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+		err := knownHosts.Lookup(cert)
+		if err != nil {
+			switch err {
+			case gemini.ErrCertificateNotTrusted:
+				// Alert the user that the certificate is not trusted
+				fmt.Println("error: certificate is not trusted!")
+				fmt.Println("This could indicate a Man-in-the-Middle attack.")
+			case gemini.ErrCertificateUnknown:
+				// Prompt the user to trust the certificate
+				if userTrustsCertificateTemporarily() {
+					// Temporarily trust the certificate
+					return nil
+				} else if userTrustsCertificatePermanently() {
+					// Add the certificate to the known hosts file
+					knownHosts.Add(cert)
+					return nil
+				}
+			}
+		}
+		return err
 	}
 
 	// Configure a client side certificate.
@@ -79,6 +103,20 @@ func makeRequest(url string) {
 	default:
 		log.Fatal("Protocol error")
 	}
+}
+
+func userTrustsCertificateTemporarily() bool {
+	fmt.Println("Do you want to trust the certificate temporarily? (y/n)")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return scanner.Text() == "y"
+}
+
+func userTrustsCertificatePermanently() bool {
+	fmt.Println("How about permanently? (y/n)")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return scanner.Text() == "y"
 }
 
 func main() {
