@@ -179,6 +179,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS12,
 		Certificates:       []tls.Certificate{req.Certificate},
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			// Parse the certificate

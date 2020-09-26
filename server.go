@@ -49,6 +49,7 @@ func (s *Server) ListenAndServe() error {
 
 	config := &tls.Config{
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS12,
 		Certificates:       []tls.Certificate{s.Certificate},
 		ClientAuth:         tls.RequestClientCert,
 	}
