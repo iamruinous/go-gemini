@@ -264,6 +264,7 @@ type ServeDir struct {
 }
 
 // FileServer takes a filesystem and returns a handler which uses that filesystem.
+// The returned Handler rejects requests containing '..' in them.
 func FileServer(fsys FS) Handler {
 	return fsHandler{
 		fsys,
@@ -275,6 +276,12 @@ type fsHandler struct {
 }
 
 func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
+	if containsDotDot(req.URL.Path) {
+		// Reject requests with '..' in them
+		rw.WriteHeader(StatusBadRequest, "Invalid URL path")
+		return
+	}
+
 	// FIXME: Don't serve paths with .. in them
 	f, err := fsys.Open(req.URL.Path)
 	if err != nil {
@@ -287,6 +294,20 @@ func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
 	// Copy file to response writer
 	io.Copy(rw, f)
 }
+
+func containsDotDot(v string) bool {
+	if !strings.Contains(v, "..") {
+		return false
+	}
+	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
+		if ent == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
 // TODO: replace with fs.FS when available
 type FS interface {
