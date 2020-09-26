@@ -26,7 +26,7 @@ func (k KnownHosts) Has(hostname string, cert *x509.Certificate) bool {
 	now := time.Now().Unix()
 	fingerprint := Fingerprint(cert)
 	for i := range k {
-		if k[i].Expires < now && k[i].Hostname == hostname && k[i].Fingerprint == fingerprint {
+		if k[i].Expires > now && k[i].Hostname == hostname && k[i].Fingerprint == fingerprint {
 			return true
 		}
 	}
