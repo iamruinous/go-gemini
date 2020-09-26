@@ -45,31 +45,30 @@ The way this is implemented in this package is like so:
 
 ## TOFU
 
-This package provides an easy way to implement Trust On First Use in your
-clients. Here is a simple client using TOFU to authenticate certificates:
+`go-gemini` makes it easy to implement Trust On First Use in your clients.
+
+Clients can load the default list of known hosts:
 
 ```go
-client := &gemini.Client{
-	KnownHosts: gemini.LoadKnownHosts(),
-	TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
-		// If the certificate is in the known hosts list, allow the connection
-		if err := knownHosts.Lookup(cert); {
-			return true
-		}
-		// Prompt the user
-		if userTrustsCertificateTemporarily() {
-			// Temporarily trust the certificate
-			return true
-		} else if userTrustsCertificatePermanently() {
-			// Add the certificate to the known hosts file
-			knownHosts.Add(cert)
-			return true
-		}
-		// User does not trust the certificate
-		return false
-	},
+client := &Client{}
+knownHosts, err := gemini.LoadKnownHosts()
+if err != nil {
+	log.Fatal(err)
+}
+client.KnownHosts = knownHosts
+```
+
+Clients can then specify how to trust certificates in the `TrustCertificate`
+field:
+
+```go
+client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+	// If the certificate is in the known hosts list, allow the connection
+	return knownHosts.Lookup(cert)
 }
 ```
+
+Advanced clients can prompt the user for what to do when encountering an unknown certificate:
 
 ```go
 client := &gemini.Client{
