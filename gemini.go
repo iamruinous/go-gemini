@@ -1,5 +1,10 @@
 package gemini
 
+import (
+	"crypto/x509"
+	"sync"
+)
+
 // Status codes.
 const (
 	StatusInput                     = 10
@@ -35,3 +40,36 @@ const (
 var (
 	crlf = []byte("\r\n")
 )
+
+// DefaultClient is the default client. It is used by Send.
+//
+// On the first request, DefaultClient will load the default list of known hosts.
+var DefaultClient *Client
+
+func init() {
+	DefaultClient = &Client{
+		TrustCertificate: func(cert *x509.Certificate, knownHosts *KnownHosts) error {
+			// Load the hosts only once. This is so that the hosts don't have to be loaded
+			// for those using their own clients.
+			setupDefaultClientOnce.Do(setupDefaultClient)
+			return knownHosts.Lookup(cert)
+		},
+	}
+}
+
+var setupDefaultClientOnce sync.Once
+
+func setupDefaultClient() {
+	knownHosts, err := LoadKnownHosts()
+	if err != nil {
+		knownHosts = &KnownHosts{}
+	}
+	DefaultClient.KnownHosts = knownHosts
+}
+
+// Send sends a Gemini request and returns a Gemini response.
+//
+// Send is a wrapper around DefaultClient.Send.
+func Send(req *Request) (*Response, error) {
+	return DefaultClient.Send(req)
+}
