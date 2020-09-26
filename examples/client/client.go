@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	client = &gemini.TOFUClient{
-		Trusts: func(cert *x509.Certificate, req *gemini.Request) bool {
+	client = &gemini.Client{
+		TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) bool {
 			// Trust all certificates
 			return true
 		},
@@ -45,7 +45,7 @@ func makeRequest(url string) {
 	}
 	req.Certificate = cert
 
-	resp, err := gemini.Send(client, req)
+	resp, err := client.Send(req)
 	if err != nil {
 		log.Fatal(err)
 	}

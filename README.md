@@ -33,11 +33,41 @@ A quick overview of the Gemini protocol:
 The way this is implemented in this package is like so:
 
 1. Client makes a request with `NewRequest`. The client then sends the request
-	with `Send(*Request) (*Response, error)`. The client can optionally verify
-	the server certificate with `VerifyCertificate(*x509.Certificate, *Request)`
+	with `(*Client).Send(*Request) (*Response, error)`. The client then determines whether
+	to trust the certificate in `TrustCertificte(*x509.Certificate, *KnownHosts) bool`.
+	(See [TOFU](#tofu)).
 2. Server recieves the request and constructs a response.
 	The server calls the `Serve(*ResponseWriter, *Request)` method on the
 	`Handler` field. The handler writes the response. The server then closes
 	the connection.
 3. Client recieves the response as a `*Response`. The client then handles the
 	response.
+
+## TOFU
+
+This package provides an easy way to implement Trust-On-First-Use in your
+clients. Here is a simple example client using TOFU to authenticate
+certificates:
+
+```go
+client := &gemini.Client{
+	KnownHosts: gemini.LoadKnownHosts(".local/share/gemini/known_hosts"),
+	TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) bool {
+		// If the certificate is in the known hosts list, allow the connection
+		if knownHosts.Has(cert) {
+			return true
+		}
+		// Prompt the user
+		if userTrustsCertificateTemporarily() {
+			// Temporarily trust the certificate
+			return true
+		} else if userTrustsCertificatePermanently() {
+			// Add the certificate to the known hosts file
+			knownHosts.Add(cert)
+			return true
+		}
+		// User does not trust the certificate
+		return false
+	},
+}
+```

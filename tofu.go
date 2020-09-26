@@ -5,37 +5,75 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// Errors.
-var (
-	ErrInvalidKnownHosts = errors.New("gemini: invalid known hosts")
-)
-
 // KnownHosts represents a list of known hosts.
-type KnownHosts []KnownHost
+type KnownHosts struct {
+	hosts []KnownHost
+	file  *os.File
+}
 
-// Has reports whether the given hostname and certificate are in the list.
-func (k KnownHosts) Has(hostname string, cert *x509.Certificate) bool {
+// LoadKnownHosts loads the known hosts from the provided path.
+// It creates the path and any of its parent directories if they do not exist.
+// The returned KnownHosts appends to the file whenever a certificate is added.
+func LoadKnownHosts(path string) (*KnownHosts, error) {
+	if dir := filepath.Dir(path); dir != "." {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	k := &KnownHosts{}
+	k.Parse(f)
+	f.Close()
+	// Open the file for append-only use
+	f, err = os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	k.file = f
+	return k, nil
+}
+
+// Add adds a certificate to the KnownHosts.
+// If KnownHosts was loaded from a file, Add will append to the file.
+func (k *KnownHosts) Add(cert *x509.Certificate) {
+	host := NewKnownHost(cert)
+	k.hosts = append(k.hosts, host)
+	// Append to the file
+	if k.file != nil {
+		host.Write(k.file)
+	}
+}
+
+// Has reports whether the provided certificate is in the list.
+func (k *KnownHosts) Has(cert *x509.Certificate) bool {
 	now := time.Now().Unix()
+	hostname := cert.Subject.CommonName
 	fingerprint := Fingerprint(cert)
-	for i := range k {
-		if k[i].Expires > now && k[i].Hostname == hostname && k[i].Fingerprint == fingerprint {
+	for i := range k.hosts {
+		if k.hosts[i].Expires > now && k.hosts[i].Hostname == hostname &&
+			k.hosts[i].Fingerprint == fingerprint {
 			return true
 		}
 	}
 	return false
 }
 
-// ParseKnownHosts parses and returns a list of known hosts from the provided io.Reader.
+// Parse parses the provided reader and adds the parsed known hosts to the list.
 // Invalid lines are ignored.
-func ParseKnownHosts(r io.Reader) (hosts KnownHosts) {
+func (k *KnownHosts) Parse(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -53,14 +91,13 @@ func ParseKnownHosts(r io.Reader) (hosts KnownHosts) {
 			continue
 		}
 
-		hosts = append(hosts, KnownHost{
+		k.hosts = append(k.hosts, KnownHost{
 			Hostname:    hostname,
 			Algorithm:   algorithm,
 			Fingerprint: fingerprint,
 			Expires:     expires,
 		})
 	}
-	return
 }
 
 // KnownHost represents a known host.
@@ -71,6 +108,7 @@ type KnownHost struct {
 	Expires     int64  // unix time of certificate notAfter date
 }
 
+// NewKnownHost creates a new known host from a certificate.
 func NewKnownHost(cert *x509.Certificate) KnownHost {
 	return KnownHost{
 		Hostname:    cert.Subject.CommonName,
