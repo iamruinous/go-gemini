@@ -50,7 +50,7 @@ clients. Here is a simple client using TOFU to authenticate certificates:
 
 ```go
 client := &gemini.Client{
-	KnownHosts: gemini.LoadKnownHosts(".local/share/gemini/known_hosts"),
+	KnownHosts: gemini.LoadKnownHosts(),
 	TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 		// If the certificate is in the known hosts list, allow the connection
 		if err := knownHosts.Lookup(cert); {

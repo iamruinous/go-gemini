@@ -20,10 +20,22 @@ type KnownHosts struct {
 	file  *os.File
 }
 
+// LoadKnownHosts loads the known hosts from the default known hosts path.
+// The default path is $XDG_DATA_HOME/gemini/known_hosts
+// It creates the path and any of its parent directories if they do not exist.
+// The returned KnownHosts appends to the file whenever a certificate is added.
+func LoadKnownHosts() (*KnownHosts, error) {
+	path, err := defaultKnownHostsPath()
+	if err != nil {
+		return nil, err
+	}
+	return LoadKnownHostsFrom(path)
+}
+
 // LoadKnownHosts loads the known hosts from the provided path.
 // It creates the path and any of its parent directories if they do not exist.
 // The returned KnownHosts appends to the file whenever a certificate is added.
-func LoadKnownHosts(path string) (*KnownHosts, error) {
+func LoadKnownHostsFrom(path string) (*KnownHosts, error) {
 	if dir := filepath.Dir(path); dir != "." {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
@@ -148,4 +160,28 @@ func Fingerprint(cert *x509.Certificate) string {
 		fmt.Fprintf(&buf, "%02X", f)
 	}
 	return buf.String()
+}
+
+// defaultKnownHostsPath returns the default known_hosts path.
+// The default path is $XDG_DATA_HOME/gemini/known_hosts
+func defaultKnownHostsPath() (string, error) {
+	dataDir, err := userDataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dataDir, "gemini", "known_hosts"), nil
+}
+
+// userDataDir returns the user data directory.
+func userDataDir() (string, error) {
+	dataDir, ok := os.LookupEnv("XDG_DATA_HOME")
+	if ok {
+		return dataDir, nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "share"), nil
 }
