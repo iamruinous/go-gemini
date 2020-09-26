@@ -5,7 +5,6 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"log"
 	"os"
@@ -14,17 +13,21 @@ import (
 )
 
 var (
-	client = &gemini.Client{
-		KnownHosts: gemini.LoadKnownHosts(),
-		TrustCertificate: func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
-			// Trust all certificates
-			return nil
-		},
-	}
-	cert tls.Certificate
+	client *gemini.Client
+	cert   tls.Certificate
 )
 
 func init() {
+	// Load the list of known hosts
+	knownHosts, err := gemini.LoadKnownHosts()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client = &gemini.Client{
+		KnownHosts: knownHosts,
+	}
+
 	// Configure a client side certificate.
 	// To generate a certificate, run:
 	//
@@ -32,7 +35,6 @@ func init() {
 	//     openssl ecparam -genkey -name secp384r1 -out client.key
 	//     openssl req -new -x509 -sha512 -key client.key -out client.crt -days 365
 	//
-	var err error
 	cert, err = tls.LoadX509KeyPair("examples/client/client.crt", "examples/client/client.key")
 	if err != nil {
 		log.Fatal(err)
