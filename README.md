@@ -34,8 +34,7 @@ The way this is implemented in this package is like so:
 
 1. Client makes a request with `NewRequest`. The client then sends the request
 	with `(*Client).Send(*Request) (*Response, error)`. The client then determines whether
-	to trust the certificate in `TrustCertificte(*x509.Certificate, *KnownHosts) bool`.
-	(See [TOFU](#tofu)).
+	to trust the certificate (see [TOFU](#tofu)).
 2. Server recieves the request and constructs a response.
 	The server calls the `Serve(*ResponseWriter, *Request)` method on the
 	`Handler` field. The handler writes the response. The server then closes
@@ -47,37 +46,46 @@ The way this is implemented in this package is like so:
 
 `go-gemini` makes it easy to implement Trust On First Use in your clients.
 
-Clients can load the default list of known hosts:
+The default client loads known hosts from `$XDG_DATA_HOME/gemini/known_hosts`.
+If that is all you need, you can simply use the top-level `Send` function:
+
+```go
+// Send uses the default client, which will load the default list of known
+hosts.
+req := gemini.NewRequest("gemini://example.com")
+gemini.Send(req)
+```
+
+Clients can also load their own list of known hosts:
 
 ```go
 client := &Client{}
-knownHosts, err := gemini.LoadKnownHosts()
-if err != nil {
+if err := client.KnownHosts.LoadFrom("path/to/my/known_hosts"); err != nil {
 	log.Fatal(err)
 }
-client.KnownHosts = knownHosts
 ```
 
 Clients can then specify how to trust certificates in the `TrustCertificate`
 field:
 
 ```go
-client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 	// If the certificate is in the known hosts list, allow the connection
-	return knownHosts.Lookup(cert)
+	return knownHosts.Lookup(hostname, cert)
 }
 ```
 
 Advanced clients can prompt the user for what to do when encountering an unknown certificate:
 
 ```go
-client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 	err := knownHosts.Lookup(cert)
 	if err != nil {
 		switch err {
 		case gemini.ErrCertificateNotTrusted:
 			// Alert the user that the certificate is not trusted
-			alertUser()
+			fmt.Printf("Warning: certificate for %s is not trusted!\n", hostname)
+			fmt.Println("This could indicate a Man-in-the-Middle attack.")
 		case gemini.ErrCertificateUnknown:
 			// Prompt the user to trust the certificate
 			if userTrustsCertificateTemporarily() {
@@ -93,3 +101,5 @@ client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownH
 	return err
 }
 ```
+
+See `examples/client` for an example client.

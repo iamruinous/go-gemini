@@ -28,7 +28,7 @@ func init() {
 			switch err {
 			case gemini.ErrCertificateNotTrusted:
 				// Alert the user that the certificate is not trusted
-				fmt.Println("error: certificate is not trusted!")
+				fmt.Printf("Warning: certificate for %s is not trusted!\n", hostname)
 				fmt.Println("This could indicate a Man-in-the-Middle attack.")
 			case gemini.ErrCertificateUnknown:
 				// Prompt the user to trust the certificate
@@ -43,6 +43,10 @@ func init() {
 			}
 		}
 		return err
+	}
+
+	client.GetCertificate = func(req *gemini.Request, store *gemini.CertificateStore) *tls.Certificate {
+		return &cert
 	}
 
 	// Configure a client side certificate.
