@@ -34,6 +34,7 @@ func init() {
 				// Prompt the user to trust the certificate
 				if userTrustsCertificateTemporarily() {
 					// Temporarily trust the certificate
+					knownHosts.AddTemporary(hostname, cert)
 					return nil
 				} else if userTrustsCertificatePermanently() {
 					// Add the certificate to the known hosts file

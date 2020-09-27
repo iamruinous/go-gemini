@@ -69,6 +69,13 @@ func (k *KnownHosts) Add(hostname string, cert *x509.Certificate) {
 	}
 }
 
+// AddTemporary adds a certificate to the list of known hosts,
+// without writing it to a file.
+func (k *KnownHosts) AddTemporary(hostname string, cert *x509.Certificate) {
+	host := NewKnownHost(hostname, cert)
+	k.hosts = append(k.hosts, host)
+}
+
 // Lookup looks for the provided certificate in the list of known hosts.
 // If the hostname is in the list, but the fingerprint differs,
 // Lookup returns ErrCertificateNotTrusted.
