@@ -79,7 +79,7 @@ func (k *KnownHosts) AddTemporary(hostname string, cert *x509.Certificate) {
 // Lookup looks for the provided certificate in the list of known hosts.
 // If the hostname is in the list, but the fingerprint differs,
 // Lookup returns ErrCertificateNotTrusted.
-// If the hostname is not in the list, Lookup returns ErrCertificateUnknown.
+// If the hostname is not in the list, Lookup returns ErrUnknownCertificate.
 // If the certificate is found and the fingerprint matches, error will be nil.
 func (k *KnownHosts) Lookup(hostname string, cert *x509.Certificate) error {
 	now := time.Now().Unix()
@@ -99,7 +99,7 @@ func (k *KnownHosts) Lookup(hostname string, cert *x509.Certificate) error {
 		// Fingerprint does not match
 		return ErrCertificateNotTrusted
 	}
-	return ErrCertificateUnknown
+	return ErrUnknownCertificate
 }
 
 // Parse parses the provided reader and adds the parsed known hosts to the list.

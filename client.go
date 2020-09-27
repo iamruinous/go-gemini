@@ -15,11 +15,11 @@ import (
 
 // Client errors.
 var (
-	ErrProtocol              = errors.New("gemini: protocol error")
-	ErrInvalidURL            = errors.New("gemini: requested URL is invalid")
-	ErrCertificateNotValid   = errors.New("gemini: certificate is invalid")
+	ErrInvalidURL            = errors.New("gemini: invalid URL")
+	ErrInvalidResponse       = errors.New("gemini: invalid response")
+	ErrInvalidCertificate    = errors.New("gemini: invalid certificate")
+	ErrUnknownCertificate    = errors.New("gemini: unknown certificate")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
-	ErrCertificateUnknown    = errors.New("gemini: certificate is unknown")
 )
 
 // Request represents a Gemini request.
@@ -133,11 +133,18 @@ func (resp *Response) read(r *bufio.Reader) error {
 	}
 	resp.Status = status
 
+	// Disregard invalid status codes
+	const minStatus, maxStatus = 1, 6
+	statusClass := status / 10
+	if statusClass < minStatus || statusClass > maxStatus {
+		return ErrInvalidResponse
+	}
+
 	// Read one space
 	if b, err := r.ReadByte(); err != nil {
 		return err
 	} else if b != ' ' {
-		return ErrProtocol
+		return ErrInvalidResponse
 	}
 
 	// Read the meta
@@ -149,7 +156,7 @@ func (resp *Response) read(r *bufio.Reader) error {
 	meta = meta[:len(meta)-1]
 	// Ensure meta is less than or equal to 1024 bytes
 	if len(meta) > 1024 {
-		return ErrProtocol
+		return ErrInvalidResponse
 	}
 	resp.Meta = meta
 
@@ -157,7 +164,7 @@ func (resp *Response) read(r *bufio.Reader) error {
 	if b, err := r.ReadByte(); err != nil {
 		return err
 	} else if b != '\n' {
-		return ErrProtocol
+		return ErrInvalidResponse
 	}
 
 	// Read response body
@@ -244,11 +251,11 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	// Read the response
 	resp := &Response{}
 	r := bufio.NewReader(conn)
-	// Store connection information
-	resp.TLS = conn.ConnectionState()
 	if err := resp.read(r); err != nil {
 		return nil, err
 	}
+	// Store connection information
+	resp.TLS = conn.ConnectionState()
 	return resp, nil
 }
 
