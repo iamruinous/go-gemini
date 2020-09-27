@@ -106,7 +106,7 @@ func loginPassword(rw *gemini.ResponseWriter, req *gemini.Request) {
 				session.authorized = true
 				rw.WriteHeader(gemini.StatusRedirectTemporary, "gemini://localhost/profile")
 			} else {
-				rw.WriteHeader(gemini.StatusInput, "Wrong password. Please try again.\nPassword:")
+				rw.WriteHeader(gemini.StatusInput, "Wrong password. Please try again")
 			}
 		}
 	} else {
@@ -121,6 +121,10 @@ func logout(rw *gemini.ResponseWriter, req *gemini.Request) {
 	}
 	rw.WriteHeader(gemini.StatusSuccess, "text/gemini")
 	rw.Write([]byte("Successfully logged out.\n"))
+}
+
+func badLogin(rw *gemini.ResponseWriter, req *gemini.Request) {
+
 }
 
 func profile(rw *gemini.ResponseWriter, req *gemini.Request) {

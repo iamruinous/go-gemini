@@ -4,39 +4,39 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"os"
 
 	"git.sr.ht/~adnano/go-gemini"
 )
 
 var (
-	client *gemini.Client
-	cert   tls.Certificate
+	scanner = bufio.NewScanner(os.Stdin)
+	client  *gemini.Client
 )
 
 func init() {
+	// Initialize the client
 	client = &gemini.Client{}
-	client.KnownHosts.Load()
-
+	client.KnownHosts.Load() // Load known hosts
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
 		if err != nil {
 			switch err {
 			case gemini.ErrCertificateNotTrusted:
 				// Alert the user that the certificate is not trusted
-				fmt.Printf("Warning: certificate for %s is not trusted!\n", hostname)
+				fmt.Printf("Warning: Certificate for %s is not trusted!\n", hostname)
 				fmt.Println("This could indicate a Man-in-the-Middle attack.")
 			case gemini.ErrCertificateUnknown:
 				// Prompt the user to trust the certificate
-				if userTrustsCertificateTemporarily() {
+				trust := trustCertificate(cert)
+				switch trust {
+				case trustOnce:
 					// Temporarily trust the certificate
 					knownHosts.AddTemporary(hostname, cert)
 					return nil
-				} else if userTrustsCertificatePermanently() {
+				case trustAlways:
 					// Add the certificate to the known hosts file
 					knownHosts.Add(hostname, cert)
 					return nil
@@ -45,79 +45,88 @@ func init() {
 		}
 		return err
 	}
-
-	client.GetCertificate = func(req *gemini.Request, store *gemini.CertificateStore) *tls.Certificate {
-		return &cert
-	}
-
-	// Configure a client side certificate.
-	// To generate a TLS key pair, run:
-	//
-	//     go run -tags=example ../cert
-	var err error
-	cert, err = tls.LoadX509KeyPair("examples/client/localhost.crt", "examples/client/localhost.key")
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
-func makeRequest(url string) {
-	req, err := gemini.NewRequest(url)
-	if err != nil {
-		log.Fatal(err)
-	}
-	req.Certificate = &cert
-
+// sendRequest sends a request to the given url.
+func sendRequest(req *gemini.Request) error {
 	resp, err := client.Send(req)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	fmt.Println("Status code:", resp.Status)
-	fmt.Println("Meta:", resp.Meta)
 
 	switch resp.Status / 10 {
 	case gemini.StatusClassInput:
-		scanner := bufio.NewScanner(os.Stdin)
 		fmt.Printf("%s: ", resp.Meta)
 		scanner.Scan()
-		query := scanner.Text()
-		makeRequest(url + "?" + query)
-		return
+		req.URL.RawQuery = scanner.Text()
+		return sendRequest(req)
 	case gemini.StatusClassSuccess:
-		fmt.Print("Body:\n", string(resp.Body))
+		fmt.Print(string(resp.Body))
+		return nil
 	case gemini.StatusClassRedirect:
-		log.Print("Redirecting to ", resp.Meta)
-		makeRequest(resp.Meta)
-		return
+		fmt.Println("Redirecting to ", resp.Meta)
+		req, err := gemini.NewRequest(resp.Meta)
+		if err != nil {
+			return err
+		}
+		return sendRequest(req)
 	case gemini.StatusClassTemporaryFailure:
-		log.Fatal("Temporary failure")
+		return fmt.Errorf("Temporary failure: %s", resp.Meta)
 	case gemini.StatusClassPermanentFailure:
-		log.Fatal("Permanent failure")
+		return fmt.Errorf("Permanent failure: %s", resp.Meta)
 	case gemini.StatusClassClientCertificateRequired:
-		log.Fatal("Client certificate required")
+		fmt.Println("Generating client certificate for", req.Hostname())
+		return nil // TODO: Generate and store client certificate
 	default:
-		log.Fatal("Protocol error")
+		return fmt.Errorf("Protocol error: Server sent an invalid response")
 	}
 }
 
-func userTrustsCertificateTemporarily() bool {
-	fmt.Print("Do you want to trust the certificate temporarily? (y/n) ")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	return scanner.Text() == "y"
-}
+type trust int
 
-func userTrustsCertificatePermanently() bool {
-	fmt.Print("How about permanently? (y/n) ")
-	scanner := bufio.NewScanner(os.Stdin)
+const (
+	trustAbort trust = iota
+	trustOnce
+	trustAlways
+)
+
+const trustPrompt = `The certificate offered by this server is of unknown trust. Its fingerprint is:
+%s
+
+If you knew the fingerprint to expect in advance, verify that this matches.
+Otherwise, this should be safe to trust.
+
+[t]rust always; trust [o]nce; [a]bort
+=> `
+
+func trustCertificate(cert *x509.Certificate) trust {
+	fmt.Printf(trustPrompt, gemini.Fingerprint(cert))
 	scanner.Scan()
-	return scanner.Text() == "y"
+	switch scanner.Text() {
+	case "t":
+		return trustAlways
+	case "o":
+		return trustOnce
+	default:
+		return trustAbort
+	}
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatalf("usage: %s gemini://...", os.Args[0])
+		fmt.Println("usage: %s gemini://...", os.Args[0])
+		os.Exit(1)
 	}
-	makeRequest(os.Args[1])
+
+	url := os.Args[1]
+	req, err := gemini.NewRequest(url)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if err := sendRequest(req); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

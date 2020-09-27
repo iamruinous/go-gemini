@@ -201,6 +201,9 @@ func (c *Client) Send(req *Request) (*Response, error) {
 					return cert, nil
 				}
 			}
+			if req.Certificate == nil {
+				return &tls.Certificate{}, nil
+			}
 			return req.Certificate, nil
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
