@@ -77,9 +77,8 @@ func (k *KnownHosts) Add(cert *x509.Certificate) {
 // Lookup returns ErrCertificateNotTrusted.
 // If the hostname is not in the list, Lookup returns ErrCertificateUnknown.
 // If the certificate is found and the fingerprint matches, error will be nil.
-func (k *KnownHosts) Lookup(cert *x509.Certificate) error {
+func (k *KnownHosts) Lookup(hostname string, cert *x509.Certificate) error {
 	now := time.Now().Unix()
-	hostname := cert.Subject.CommonName
 	fingerprint := Fingerprint(cert)
 	for i := range k.hosts {
 		if k.hosts[i].Hostname != hostname {

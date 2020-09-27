@@ -45,6 +45,11 @@ type Request struct {
 	TLS tls.ConnectionState
 }
 
+// Hostname returns the request host without the port.
+func (r *Request) Hostname() string {
+	return hostname(r.Host)
+}
+
 // NewRequest returns a new request. The host is inferred from the provided url.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
@@ -180,7 +185,7 @@ type Client struct {
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
 	// If error is not nil, the connection will be aborted.
-	TrustCertificate func(cert *x509.Certificate, knownHosts *KnownHosts) error
+	TrustCertificate func(req *Request, cert *x509.Certificate, knownHosts *KnownHosts) error
 }
 
 // Send sends a Gemini request and returns a Gemini response.
@@ -205,15 +210,15 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				return err
 			}
 			// Check that the certificate is valid for the hostname
-			if err := cert.VerifyHostname(hostname(req.Host)); err != nil {
+			if err := cert.VerifyHostname(req.Hostname()); err != nil {
 				return err
 			}
 			// Check that the client trusts the certificate
 			if c.TrustCertificate == nil {
-				if err := c.KnownHosts.Lookup(cert); err != nil {
+				if err := c.KnownHosts.Lookup(req.Hostname(), cert); err != nil {
 					return err
 				}
-			} else if err := c.TrustCertificate(cert, &c.KnownHosts); err != nil {
+			} else if err := c.TrustCertificate(req, cert, &c.KnownHosts); err != nil {
 				return err
 			}
 			return nil

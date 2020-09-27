@@ -48,11 +48,11 @@ var DefaultClient *Client
 
 func init() {
 	DefaultClient = &Client{
-		TrustCertificate: func(cert *x509.Certificate, knownHosts *KnownHosts) error {
+		TrustCertificate: func(req *Request, cert *x509.Certificate, knownHosts *KnownHosts) error {
 			// Load the hosts only once. This is so that the hosts don't have to be loaded
 			// for those using their own clients.
 			setupDefaultClientOnce.Do(setupDefaultClient)
-			return knownHosts.Lookup(cert)
+			return knownHosts.Lookup(req.Hostname(), cert)
 		},
 	}
 }

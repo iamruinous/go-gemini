@@ -22,8 +22,8 @@ func init() {
 	client = &gemini.Client{}
 	client.KnownHosts.Load()
 
-	client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
-		err := knownHosts.Lookup(cert)
+	client.TrustCertificate = func(req *gemini.Request, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+		err := knownHosts.Lookup(req.Hostname(), cert)
 		if err != nil {
 			switch err {
 			case gemini.ErrCertificateNotTrusted:
