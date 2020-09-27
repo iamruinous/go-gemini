@@ -10,7 +10,8 @@ develop Gemini clients and servers.
 
 ## Examples
 
-See `examples/client` and `examples/server` for an example client and server.
+There are a few examples provided in the `examples` directory.
+Some examples might require you to generate TLS certificates.
 
 To run the examples:
 
@@ -34,7 +35,7 @@ The way this is implemented in this package is like so:
 
 1. Client makes a request with `NewRequest`. The client then sends the request
 	with `(*Client).Send(*Request) (*Response, error)`. The client then determines whether
-	to trust the certificate (see [TOFU](#tofu)).
+	to trust the certificate (see [Trust On First Use](#trust-on-first-use)).
 2. Server recieves the request and constructs a response.
 	The server calls the `Serve(*ResponseWriter, *Request)` method on the
 	`Handler` field. The handler writes the response. The server then closes
@@ -42,7 +43,7 @@ The way this is implemented in this package is like so:
 3. Client recieves the response as a `*Response`. The client then handles the
 	response.
 
-## TOFU
+## Trust On First Use
 
 `go-gemini` makes it easy to implement Trust On First Use in your clients.
 
@@ -103,3 +104,10 @@ client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHos
 ```
 
 See `examples/client` for an example client.
+
+## Client Authentication
+
+Gemini takes advantage of client certificates for authentication.
+
+See `examples/auth` for an example server which authenticates its users with a
+username and password, and uses their client certificate to remember sessions.
