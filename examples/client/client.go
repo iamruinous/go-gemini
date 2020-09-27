@@ -19,15 +19,8 @@ var (
 )
 
 func init() {
-	// Load the list of known hosts
-	knownHosts, err := gemini.LoadKnownHosts()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	client = &gemini.Client{
-		KnownHosts: knownHosts,
-	}
+	client = &gemini.Client{}
+	client.KnownHosts.Load()
 
 	client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 		err := knownHosts.Lookup(cert)
@@ -53,12 +46,10 @@ func init() {
 	}
 
 	// Configure a client side certificate.
-	// To generate a certificate, run:
+	// To generate a TLS key pair, run:
 	//
-	//     openssl genrsa -out client.key 2048
-	//     openssl ecparam -genkey -name secp384r1 -out client.key
-	//     openssl req -new -x509 -sha512 -key client.key -out client.crt -days 365
-	//
+	//     go run -tags=example ../cert
+	var cert tls.Certificate
 	cert, err = tls.LoadX509KeyPair("examples/client/localhost.crt", "examples/client/localhost.key")
 	if err != nil {
 		log.Fatal(err)

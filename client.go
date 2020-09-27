@@ -168,7 +168,7 @@ func (resp *Response) read(r *bufio.Reader) error {
 // Client represents a Gemini client.
 type Client struct {
 	// KnownHosts is a list of known hosts that the client trusts.
-	KnownHosts *KnownHosts
+	KnownHosts KnownHosts
 
 	// CertificateStore contains all the certificates that the client has stored.
 	CertificateStore *CertificateStore
@@ -210,12 +210,10 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			}
 			// Check that the client trusts the certificate
 			if c.TrustCertificate == nil {
-				if c.KnownHosts == nil {
-					return ErrCertificateNotTrusted
-				} else if err := c.KnownHosts.Lookup(cert); err != nil {
+				if err := c.KnownHosts.Lookup(cert); err != nil {
 					return err
 				}
-			} else if err := c.TrustCertificate(cert, c.KnownHosts); err != nil {
+			} else if err := c.TrustCertificate(cert, &c.KnownHosts); err != nil {
 				return err
 			}
 			return nil

@@ -15,50 +15,50 @@ import (
 )
 
 // KnownHosts represents a list of known hosts.
+// The zero value for KnownHosts is an empty list ready to use.
 type KnownHosts struct {
 	hosts []KnownHost
 	file  *os.File
 }
 
-// LoadKnownHosts loads the known hosts from the default known hosts path.
-// The default path is $XDG_DATA_HOME/gemini/known_hosts
+// Load loads the known hosts from the default known hosts path, which is
+// `$XDG_DATA_HOME/gemini/known_hosts`.
 // It creates the path and any of its parent directories if they do not exist.
-// The returned KnownHosts appends to the file whenever a certificate is added.
-func LoadKnownHosts() (*KnownHosts, error) {
+// KnownHosts will append to the file whenever a certificate is added.
+func (k *KnownHosts) Load() error {
 	path, err := defaultKnownHostsPath()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return LoadKnownHostsFrom(path)
+	return k.LoadFrom(path)
 }
 
-// LoadKnownHosts loads the known hosts from the provided path.
+// LoadFrom loads the known hosts from the provided path.
 // It creates the path and any of its parent directories if they do not exist.
-// The returned KnownHosts appends to the file whenever a certificate is added.
-func LoadKnownHostsFrom(path string) (*KnownHosts, error) {
+// KnownHosts will append to the file whenever a certificate is added.
+func (k *KnownHosts) LoadFrom(path string) error {
 	if dir := filepath.Dir(path); dir != "." {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	k := &KnownHosts{}
 	k.Parse(f)
 	f.Close()
 	// Open the file for append-only use
 	f, err = os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	k.file = f
-	return k, nil
+	return nil
 }
 
-// Add adds a certificate to the KnownHosts.
+// Add adds a certificate to the list of known hosts.
 // If KnownHosts was loaded from a file, Add will append to the file.
 func (k *KnownHosts) Add(cert *x509.Certificate) {
 	host := NewKnownHost(cert)
@@ -122,6 +122,13 @@ func (k *KnownHosts) Parse(r io.Reader) {
 			Fingerprint: fingerprint,
 			Expires:     expires,
 		})
+	}
+}
+
+// Write writes the known hosts to the provided io.Writer.
+func (k *KnownHosts) Write(w io.Writer) {
+	for _, h := range k.hosts {
+		h.Write(w)
 	}
 }
 

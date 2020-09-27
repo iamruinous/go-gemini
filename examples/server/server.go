@@ -13,10 +13,7 @@ func main() {
 	// Load a TLS key pair.
 	// To generate a TLS key pair, run:
 	//
-	//     openssl genrsa -out server.key 2048
-	//     openssl ecparam -genkey -name secp384r1 -out server.key
-	//     openssl req -new -x509 -sha512 -key server.key -out server.crt -days 365
-	//
+	//     go run -tags=example ../cert
 	cert, err := tls.LoadX509KeyPair("examples/server/localhost.crt", "examples/server/localhost.key")
 	if err != nil {
 		log.Fatal(err)

@@ -60,11 +60,7 @@ func init() {
 var setupDefaultClientOnce sync.Once
 
 func setupDefaultClient() {
-	knownHosts, err := LoadKnownHosts()
-	if err != nil {
-		knownHosts = &KnownHosts{}
-	}
-	DefaultClient.KnownHosts = knownHosts
+	DefaultClient.KnownHosts.Load()
 }
 
 // Send sends a Gemini request and returns a Gemini response.
