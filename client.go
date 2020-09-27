@@ -185,7 +185,7 @@ type Client struct {
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
 	// If error is not nil, the connection will be aborted.
-	TrustCertificate func(req *Request, cert *x509.Certificate, knownHosts *KnownHosts) error
+	TrustCertificate func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error
 }
 
 // Send sends a Gemini request and returns a Gemini response.
@@ -219,7 +219,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				if err := c.KnownHosts.Lookup(req.Hostname(), cert); err != nil {
 					return err
 				}
-			} else if err := c.TrustCertificate(req, cert, &c.KnownHosts); err != nil {
+			} else if err := c.TrustCertificate(req.Hostname(), cert, &c.KnownHosts); err != nil {
 				return err
 			}
 			return nil
