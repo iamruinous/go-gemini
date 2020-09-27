@@ -61,11 +61,14 @@ func (k *KnownHosts) LoadFrom(path string) error {
 // Add adds a certificate to the list of known hosts.
 // If KnownHosts was loaded from a file, Add will append to the file.
 func (k *KnownHosts) Add(cert *x509.Certificate) {
-	host := NewKnownHost(cert)
-	k.hosts = append(k.hosts, host)
-	// Append to the file
-	if k.file != nil {
-		host.Write(k.file)
+	// Add an entry per hostname
+	for _, name := range cert.DNSNames {
+		host := NewKnownHost(name, cert)
+		k.hosts = append(k.hosts, host)
+		// Append to the file
+		if k.file != nil {
+			host.Write(k.file)
+		}
 	}
 }
 
@@ -140,10 +143,10 @@ type KnownHost struct {
 	Expires     int64  // unix time of certificate notAfter date
 }
 
-// NewKnownHost creates a new known host from a certificate.
-func NewKnownHost(cert *x509.Certificate) KnownHost {
+// NewKnownHost creates a new known host from a hostname and a certificate.
+func NewKnownHost(hostname string, cert *x509.Certificate) KnownHost {
 	return KnownHost{
-		Hostname:    cert.Subject.CommonName,
+		Hostname:    hostname,
 		Algorithm:   "SHA-512",
 		Fingerprint: Fingerprint(cert),
 		Expires:     cert.NotAfter.Unix(),
