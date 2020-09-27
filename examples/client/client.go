@@ -49,7 +49,7 @@ func init() {
 	// To generate a TLS key pair, run:
 	//
 	//     go run -tags=example ../cert
-	var cert tls.Certificate
+	var err error
 	cert, err = tls.LoadX509KeyPair("examples/client/localhost.crt", "examples/client/localhost.key")
 	if err != nil {
 		log.Fatal(err)
