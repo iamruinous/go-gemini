@@ -60,15 +60,12 @@ func (k *KnownHosts) LoadFrom(path string) error {
 
 // Add adds a certificate to the list of known hosts.
 // If KnownHosts was loaded from a file, Add will append to the file.
-func (k *KnownHosts) Add(cert *x509.Certificate) {
-	// Add an entry per hostname
-	for _, name := range cert.DNSNames {
-		host := NewKnownHost(name, cert)
-		k.hosts = append(k.hosts, host)
-		// Append to the file
-		if k.file != nil {
-			host.Write(k.file)
-		}
+func (k *KnownHosts) Add(hostname string, cert *x509.Certificate) {
+	host := NewKnownHost(hostname, cert)
+	k.hosts = append(k.hosts, host)
+	// Append to the file
+	if k.file != nil {
+		host.Write(k.file)
 	}
 }
 

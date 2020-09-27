@@ -37,7 +37,7 @@ func init() {
 					return nil
 				} else if userTrustsCertificatePermanently() {
 					// Add the certificate to the known hosts file
-					knownHosts.Add(cert)
+					knownHosts.Add(req.Hostname(), cert)
 					return nil
 				}
 			}
