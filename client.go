@@ -205,8 +205,8 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				return err
 			}
 			// Check that the certificate is valid for the hostname
-			if cert.Subject.CommonName != hostname(req.Host) {
-				return ErrCertificateNotValid
+			if err := cert.VerifyHostname(req.Host); err != nil {
+				return err
 			}
 			// Check that the client trusts the certificate
 			if c.TrustCertificate == nil {

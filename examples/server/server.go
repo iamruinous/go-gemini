@@ -17,7 +17,7 @@ func main() {
 	//     openssl ecparam -genkey -name secp384r1 -out server.key
 	//     openssl req -new -x509 -sha512 -key server.key -out server.crt -days 365
 	//
-	cert, err := tls.LoadX509KeyPair("examples/server/server.crt", "examples/server/server.key")
+	cert, err := tls.LoadX509KeyPair("examples/server/localhost.crt", "examples/server/localhost.key")
 	if err != nil {
 		log.Fatal(err)
 	}

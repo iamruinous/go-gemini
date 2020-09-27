@@ -83,7 +83,7 @@ client.TrustCertificate = func(cert *x509.Certificate, knownHosts *gemini.KnownH
 			if userTrustsCertificateTemporarily() {
 				// Temporarily trust the certificate
 				return nil
-			} else if user.TrustsCertificatePermanently() {
+			} else if userTrustsCertificatePermanently() {
 				// Add the certificate to the known hosts file
 				knownHosts.Add(cert)
 				return nil
