@@ -65,7 +65,7 @@ func makeRequest(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.Certificate = cert
+	req.Certificate = &cert
 
 	resp, err := client.Send(req)
 	if err != nil {

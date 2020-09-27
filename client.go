@@ -32,7 +32,8 @@ type Request struct {
 	Host string
 
 	// Certificate specifies the TLS certificate to use for the request.
-	Certificate tls.Certificate
+	// This field is ignored by the server.
+	Certificate *tls.Certificate
 
 	// RemoteAddr allows servers and other software to record the network
 	// address that sent the request.
@@ -194,14 +195,13 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS12,
-		Certificates:       []tls.Certificate{req.Certificate},
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			if c.GetCertificate != nil {
 				if cert := c.GetCertificate(req, c.CertificateStore); cert != nil {
 					return cert, nil
 				}
 			}
-			return &req.Certificate, nil
+			return req.Certificate, nil
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			// Parse the certificate
