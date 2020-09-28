@@ -38,14 +38,14 @@ const (
 	StatusClassCertificateRequired = 6
 )
 
-var (
-	crlf = []byte("\r\n")
-)
-
 // DefaultClient is the default client. It is used by Send.
 //
 // On the first request, DefaultClient will load the default list of known hosts.
 var DefaultClient *Client
+
+var (
+	crlf = []byte("\r\n")
+)
 
 func init() {
 	DefaultClient = &Client{
