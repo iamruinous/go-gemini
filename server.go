@@ -212,7 +212,7 @@ func InputHandler(prompt string) Handler {
 	})
 }
 
-// Redirect replies to the request with a redirect to the given url.
+// Redirect replies to the request with a redirect to the given URL.
 func Redirect(rw *ResponseWriter, req *Request, url string) {
 	rw.WriteHeader(StatusRedirect, url)
 }

@@ -47,7 +47,7 @@ func init() {
 	}
 }
 
-// sendRequest sends a request to the given url.
+// sendRequest sends a request to the given URL.
 func sendRequest(req *gmi.Request) error {
 	resp, err := client.Send(req)
 	if err != nil {

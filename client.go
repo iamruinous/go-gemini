@@ -28,6 +28,7 @@ type Request struct {
 	URL *url.URL
 
 	// For client requests, Host specifies the host on which the URL is sought.
+	// Host must contain a port.
 	// This field is ignored by the server.
 	Host string
 
