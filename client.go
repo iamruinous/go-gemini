@@ -267,7 +267,6 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	// Resend the request with a certificate if the server responded
 	// with CertificateRequired
 	if resp.Status == StatusCertificateRequired {
-		log.Print("Client certificate required")
 		// Check to see if a certificate was already provided to prevent an infinite loop
 		if req.Certificate != nil {
 			return resp, nil
