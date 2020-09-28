@@ -34,6 +34,7 @@ type Request struct {
 	Host string
 
 	// Certificate specifies the TLS certificate to use for the request.
+	// Request certificates take precedence over client certificates.
 	// This field is ignored by the server.
 	Certificate *tls.Certificate
 
@@ -188,8 +189,10 @@ type Client struct {
 	// CertificateStore contains all the certificates that the client has stored.
 	CertificateStore CertificateStore
 
-	// GetCertificate, if not nil, will be called to determine which certificate
-	// to use when the server responds with CertificateRequired.
+	// GetCertificate, if not nil, will be called when a server requests a certificate.
+	// The returned certificate will be used when sending the request again.
+	// If the certificate is nil, the request will not be sent again and
+	// the response will be returned.
 	GetCertificate func(hostname string, store CertificateStore) *tls.Certificate
 
 	// TrustCertificate, if not nil, will be called to determine whether the
@@ -205,6 +208,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS12,
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			// Request certificates take precedence over client certificates
 			if req.Certificate != nil {
 				return req.Certificate, nil
 			}

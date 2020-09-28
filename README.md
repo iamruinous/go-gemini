@@ -82,5 +82,35 @@ certificate. See `examples/client` for an example.
 
 Gemini takes advantage of client certificates for authentication.
 
-See `examples/auth` for an example server which authenticates its users with a
+If a server responds with `StatusCertificateRequired`, clients will generate a
+certificate for the site and resend the request with the provided certificate.
+In order for this to work, clients must specify the fields `CertificateStore`
+and `GetCertificate`:
+
+```go
+// Initialize the certificate store.
+client.CertificateStore = gmi.NewCertificateStore()
+// GetCertificate is called when a server requests a certificate.
+// The returned certificate, if not nil, will be used when resending the request.
+client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.Certificate {
+	// If the certificate is in the store, return it
+	if cert, ok := store[hostname]; ok {
+		return cert
+	}
+	// Otherwise, generate a certificate
+	duration := time.Hour
+	cert, err := gmi.NewCertificate(hostname, duration)
+	if err != nil {
+		return nil
+	}
+	// Store and return the certificate
+	store[hostname] = &cert
+	return &cert
+}
+```
+
+Servers can then authenticate their clients with the fingerprint of their
+certificates.
+
+See `examples/auth` for an example server which authenticates its users with
 username and password, and uses their client certificate to remember sessions.
