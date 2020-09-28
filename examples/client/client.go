@@ -54,6 +54,7 @@ func sendRequest(req *gmi.Request) error {
 		return err
 	}
 
+	// TODO: More fine-grained analysis of the status code.
 	switch resp.Status / 10 {
 	case gmi.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
@@ -78,7 +79,7 @@ func sendRequest(req *gmi.Request) error {
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
 	case gmi.StatusClassPermanentFailure:
 		return fmt.Errorf("Permanent failure: %s", resp.Meta)
-	case gmi.StatusClassClientCertificateRequired:
+	case gmi.StatusClassCertificateRequired:
 		fmt.Println("Generating client certificate for", req.Hostname())
 		return nil // TODO: Generate and store client certificate
 	}

@@ -174,7 +174,7 @@ type Handler interface {
 	Serve(*ResponseWriter, *Request)
 }
 
-// NotFound replies to the request with a NotFound status code.
+// NotFound replies to the request with the NotFound status code.
 func NotFound(rw *ResponseWriter, req *Request) {
 	rw.WriteHeader(StatusNotFound, "Not found")
 }
@@ -183,6 +183,17 @@ func NotFound(rw *ResponseWriter, req *Request) {
 // the status code NotFound.
 func NotFoundHandler() Handler {
 	return HandlerFunc(NotFound)
+}
+
+// Gone replies to the request with the Gone status code.
+func Gone(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusGone, "Gone")
+}
+
+// GoneHandler returns a simple handler that responds to each request with
+// the status code Gone.
+func GoneHandler() Handler {
+	return HandlerFunc(Gone)
 }
 
 // Redirect replies to the request with a redirect to the given url.
@@ -215,6 +226,32 @@ func InputHandler(prompt string) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
 		Input(rw, req, prompt)
 	})
+}
+
+// Sensitive responds to the request with a request for sensitive input
+// using the given prompt.
+func SensitiveInput(rw *ResponseWriter, req *Request, prompt string) {
+	rw.WriteHeader(StatusSensitiveInput, prompt)
+}
+
+// SensitiveInputHandler returns a simpler handler that responds to each request
+// with a request for sensitive input.
+func SensitiveInputHandler(prompt string) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		SensitiveInput(rw, req, prompt)
+	})
+}
+
+// CertificateRequired responds to the request with the CertificateRequired
+// status code.
+func CertificateRequired(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusCertificateRequired, "Certificate required")
+}
+
+// CertificateNotAuthorized responds to the request with
+// the CertificateNotAuthorized status code.
+func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
 // ServeMux is a Gemini request multiplexer.

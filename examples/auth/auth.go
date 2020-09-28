@@ -85,7 +85,7 @@ func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 			rw.WriteHeader(gmi.StatusRedirect, "/login/password")
 		}
 	} else {
-		rw.WriteHeader(gmi.StatusClientCertificateRequired, "Certificate required")
+		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
 	}
 }
 
@@ -93,7 +93,7 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorised, "Not authorized")
+			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Not authorized")
 			return
 		}
 
@@ -109,7 +109,7 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 			}
 		}
 	} else {
-		rw.WriteHeader(gmi.StatusClientCertificateRequired, "Certificate required")
+		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
 	}
 }
 
@@ -126,7 +126,7 @@ func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorised, "Certificate not authorized")
+			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Certificate not authorized")
 			return
 		}
 		user := logins[session.username]
@@ -134,7 +134,7 @@ func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
 		rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 		rw.Write([]byte(profile))
 	} else {
-		rw.WriteHeader(gmi.StatusClientCertificateRequired, "Certificate required")
+		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
 	}
 }
 
@@ -142,17 +142,17 @@ func admin(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorised, "Certificate not authorized")
+			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Certificate not authorized")
 			return
 		}
 		user := logins[session.username]
 		if !user.admin {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorised, "Admins only!")
+			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Admins only!")
 			return
 		}
 		rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 		rw.Write([]byte("Welcome to the admin portal.\n"))
 	} else {
-		rw.WriteHeader(gmi.StatusClientCertificateRequired, "Certificate required")
+		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
 	}
 }
