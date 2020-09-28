@@ -66,7 +66,7 @@ func sendRequest(req *gmi.Request) error {
 	case gmi.StatusClassRedirect:
 		fmt.Println("Redirecting to", resp.Meta)
 		// Make the request to the same host
-		red, err := gmi.NewProxyRequest(req.Host, resp.Meta)
+		red, err := gmi.NewRequestTo(req.Host, resp.Meta)
 		if err != nil {
 			return err
 		}

@@ -51,7 +51,7 @@ func (r *Request) Hostname() string {
 	return hostname(r.Host)
 }
 
-// NewRequest returns a new request. The host is inferred from the provided url.
+// NewRequest returns a new request. The host is inferred from the provided URL.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
@@ -71,9 +71,9 @@ func NewRequest(rawurl string) (*Request, error) {
 	}, nil
 }
 
-// NewProxyRequest returns a new request using the provided host.
-// The provided host must contain a port.
-func NewProxyRequest(host, rawurl string) (*Request, error) {
+// NewRequestTo returns a new request for the provided URL to the provided host.
+// The host must contain a port.
+func NewRequestTo(rawurl, host string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, err
