@@ -46,11 +46,11 @@ func main() {
 
 	handler := &gmi.ServeMux{}
 	handler.HandleFunc("/", welcome)
-	handler.HandleFunc("/login", login)
-	handler.HandleFunc("/login/password", loginPassword)
-	handler.HandleFunc("/profile", profile)
-	handler.HandleFunc("/admin", admin)
-	handler.HandleFunc("/logout", logout)
+	handler.HandleFunc("/login/", login)
+	handler.HandleFunc("/login/password/", loginPassword)
+	handler.HandleFunc("/profile/", profile)
+	handler.HandleFunc("/admin/", admin)
+	handler.HandleFunc("/logout/", logout)
 
 	server := &gmi.Server{
 		Certificate: cert,
@@ -74,15 +74,13 @@ func welcome(rw *gmi.ResponseWriter, req *gmi.Request) {
 
 func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
-		if username := req.URL.RawQuery; username == "" {
-			gmi.Input(rw, req, "Username")
-		} else {
+		gmi.WithInput(rw, req, "Username", func(username string) {
 			fingerprint := gmi.Fingerprint(cert)
 			sessions[fingerprint] = &session{
 				username: username,
 			}
 			gmi.Redirect(rw, req, "/login/password")
-		}
+		})
 	})
 }
 
@@ -94,9 +92,7 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 			return
 		}
 
-		if password := req.URL.RawQuery; password == "" {
-			gmi.SensitiveInput(rw, req, "Password")
-		} else {
+		gmi.WithSensitiveInput(rw, req, "Password", func(password string) {
 			expected := logins[session.username].password
 			if password == expected {
 				session.authorized = true
@@ -104,7 +100,7 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 			} else {
 				gmi.SensitiveInput(rw, req, "Wrong password. Try again")
 			}
-		}
+		})
 	})
 }
 

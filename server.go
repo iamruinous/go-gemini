@@ -213,6 +213,42 @@ func InputHandler(prompt string) Handler {
 	})
 }
 
+// WithInput either responds to the request with StatusInput if no input
+// is provided, or calls f with the input when provided.
+func WithInput(rw *ResponseWriter, req *Request, prompt string, f func(string)) {
+	input := req.URL.RawQuery
+	if input == "" {
+		Input(rw, req, prompt)
+		return
+	}
+	f(input)
+}
+
+// Sensitive responds to the request with a request for sensitive input
+// using the given prompt.
+func SensitiveInput(rw *ResponseWriter, req *Request, prompt string) {
+	rw.WriteHeader(StatusSensitiveInput, prompt)
+}
+
+// SensitiveInputHandler returns a simpler handler that responds to each request
+// with a request for sensitive input.
+func SensitiveInputHandler(prompt string) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		SensitiveInput(rw, req, prompt)
+	})
+}
+
+// WithSensitiveInput either responds to the request with StatusSensitiveInput
+// if no input is provided, or calls f with the input when provided.
+func WithSensitiveInput(rw *ResponseWriter, req *Request, prompt string, f func(string)) {
+	input := req.URL.RawQuery
+	if input == "" {
+		SensitiveInput(rw, req, prompt)
+		return
+	}
+	f(input)
+}
+
 // Redirect replies to the request with a redirect to the given URL.
 func Redirect(rw *ResponseWriter, req *Request, url string) {
 	rw.WriteHeader(StatusRedirect, url)
@@ -241,32 +277,6 @@ func PermanentRedirectHandler(url string) Handler {
 	})
 }
 
-// Sensitive responds to the request with a request for sensitive input
-// using the given prompt.
-func SensitiveInput(rw *ResponseWriter, req *Request, prompt string) {
-	rw.WriteHeader(StatusSensitiveInput, prompt)
-}
-
-// SensitiveInputHandler returns a simpler handler that responds to each request
-// with a request for sensitive input.
-func SensitiveInputHandler(prompt string) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		SensitiveInput(rw, req, prompt)
-	})
-}
-
-// CertificateRequired responds to the request with the CertificateRequired
-// status code.
-func CertificateRequired(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusCertificateRequired, "Certificate required")
-}
-
-// CertificateNotAuthorized responds to the request with
-// the CertificateNotAuthorized status code.
-func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
-}
-
 // NotFound replies to the request with the NotFound status code.
 func NotFound(rw *ResponseWriter, req *Request) {
 	rw.WriteHeader(StatusNotFound, "Not found")
@@ -287,6 +297,18 @@ func Gone(rw *ResponseWriter, req *Request) {
 // the status code Gone.
 func GoneHandler() Handler {
 	return HandlerFunc(Gone)
+}
+
+// CertificateRequired responds to the request with the CertificateRequired
+// status code.
+func CertificateRequired(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusCertificateRequired, "Certificate required")
+}
+
+// CertificateNotAuthorized responds to the request with
+// the CertificateNotAuthorized status code.
+func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
 // WithCertificate responds with CertificateRequired if the client did not
