@@ -2,8 +2,10 @@
 package gmi
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"sync"
+	"time"
 )
 
 // Status codes.
@@ -54,11 +56,27 @@ func init() {
 		setupDefaultClientOnce.Do(setupDefaultClient)
 		return knownHosts.Lookup(hostname, cert)
 	}
+	DefaultClient.GetCertificate = func(hostname string, store CertificateStore) *tls.Certificate {
+		// If the certificate is in the store, return it
+		if cert, ok := store[hostname]; ok {
+			return cert
+		}
+		// Otherwise, generate a certificate
+		duration := time.Hour
+		cert, err := NewCertificate(hostname, duration)
+		if err != nil {
+			return nil
+		}
+		// Store and return the certificate
+		store[hostname] = &cert
+		return &cert
+	}
 }
 
 var setupDefaultClientOnce sync.Once
 
 func setupDefaultClient() {
+	DefaultClient.CertificateStore = NewCertificateStore()
 	DefaultClient.KnownHosts.Load()
 }
 

@@ -84,8 +84,8 @@ Gemini takes advantage of client certificates for authentication.
 
 If a server responds with `StatusCertificateRequired`, clients will generate a
 certificate for the site and resend the request with the provided certificate.
-In order for this to work, clients must specify the fields `CertificateStore`
-and `GetCertificate`:
+The default client handles this for you. Other clients must specify the fields
+`CertificateStore` and `GetCertificate`:
 
 ```go
 // Initialize the certificate store.
@@ -108,6 +108,7 @@ client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.C
 	return &cert
 }
 ```
+
 
 Servers can then authenticate their clients with the fingerprint of their
 certificates.
