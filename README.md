@@ -1,8 +1,8 @@
-# go-gemini
+# gmi
 
 [![GoDoc](https://godoc.org/git.sr.ht/~adnano/gmi?status.svg)](https://godoc.org/git.sr.ht/~adnano/gmi)
 
-`go-gemini` implements the [Gemini protocol](https://gemini.circumlunar.space)
+Package `gmi` implements the [Gemini protocol](https://gemini.circumlunar.space)
 in Go.
 
 It aims to provide an API similar to that of `net/http` to make it easy to
