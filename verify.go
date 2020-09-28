@@ -1,4 +1,12 @@
-package gemini
+// Hostname verification code from the crypto/x509 package.
+// Modified to allow Common Names in the short term, until new certificates
+// can be issued with SANs.
+
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package gmi
 
 import (
 	"crypto/x509"
@@ -8,14 +16,6 @@ import (
 	"strings"
 	"unicode/utf8"
 )
-
-// Hostname verification code from the crypto/x509 package.
-// Modified to allow Common Names in the short term, until new certificates
-// can be issued with SANs.
-
-// Copyright 2011 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
 
 var (
 	oidExtensionSubjectAltName = []int{2, 5, 29, 17}

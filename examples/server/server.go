@@ -20,10 +20,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := &gemini.ServeMux{}
-	mux.Handle("/", gemini.FileServer(gemini.Dir("/var/www")))
+	mux := &gmi.ServeMux{}
+	mux.Handle("/", gmi.FileServer(gmi.Dir("/var/www")))
 
-	server := gemini.Server{
+	server := gmi.Server{
 		Handler:     mux,
 		Certificate: cert,
 	}

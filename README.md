@@ -59,7 +59,7 @@ gemini.Send(req)
 Clients can also load their own list of known hosts:
 
 ```go
-client := &Client{}
+client := &gmi.Client{}
 if err := client.KnownHosts.LoadFrom("path/to/my/known_hosts"); err != nil {
 	log.Fatal(err)
 }
@@ -69,7 +69,7 @@ Clients can then specify how to trust certificates in the `TrustCertificate`
 field:
 
 ```go
-client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gmi.KnownHosts) error {
 	// If the certificate is in the known hosts list, allow the connection
 	return knownHosts.Lookup(hostname, cert)
 }

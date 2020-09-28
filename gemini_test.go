@@ -1,4 +1,4 @@
-package gemini
+package gmi
 
 import (
 	"math/rand"

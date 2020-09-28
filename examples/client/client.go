@@ -13,22 +13,22 @@ import (
 
 var (
 	scanner = bufio.NewScanner(os.Stdin)
-	client  *gemini.Client
+	client  *gmi.Client
 )
 
 func init() {
 	// Initialize the client
-	client = &gemini.Client{}
+	client = &gmi.Client{}
 	client.KnownHosts.Load() // Load known hosts
-	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
+	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gmi.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
 		if err != nil {
 			switch err {
-			case gemini.ErrCertificateNotTrusted:
+			case gmi.ErrCertificateNotTrusted:
 				// Alert the user that the certificate is not trusted
 				fmt.Printf("Warning: Certificate for %s is not trusted!\n", hostname)
 				fmt.Println("This could indicate a Man-in-the-Middle attack.")
-			case gemini.ErrUnknownCertificate:
+			case gmi.ErrUnknownCertificate:
 				// Prompt the user to trust the certificate
 				trust := trustCertificate(cert)
 				switch trust {
@@ -48,33 +48,33 @@ func init() {
 }
 
 // sendRequest sends a request to the given url.
-func sendRequest(req *gemini.Request) error {
+func sendRequest(req *gmi.Request) error {
 	resp, err := client.Send(req)
 	if err != nil {
 		return err
 	}
 
 	switch resp.Status / 10 {
-	case gemini.StatusClassInput:
+	case gmi.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
 		scanner.Scan()
 		req.URL.RawQuery = scanner.Text()
 		return sendRequest(req)
-	case gemini.StatusClassSuccess:
+	case gmi.StatusClassSuccess:
 		fmt.Print(string(resp.Body))
 		return nil
-	case gemini.StatusClassRedirect:
+	case gmi.StatusClassRedirect:
 		fmt.Println("Redirecting to ", resp.Meta)
-		req, err := gemini.NewRequest(resp.Meta)
+		req, err := gmi.NewRequest(resp.Meta)
 		if err != nil {
 			return err
 		}
 		return sendRequest(req)
-	case gemini.StatusClassTemporaryFailure:
+	case gmi.StatusClassTemporaryFailure:
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
-	case gemini.StatusClassPermanentFailure:
+	case gmi.StatusClassPermanentFailure:
 		return fmt.Errorf("Permanent failure: %s", resp.Meta)
-	case gemini.StatusClassClientCertificateRequired:
+	case gmi.StatusClassClientCertificateRequired:
 		fmt.Println("Generating client certificate for", req.Hostname())
 		return nil // TODO: Generate and store client certificate
 	}
@@ -99,7 +99,7 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(cert *x509.Certificate) trust {
-	fmt.Printf(trustPrompt, gemini.Fingerprint(cert))
+	fmt.Printf(trustPrompt, gmi.Fingerprint(cert))
 	scanner.Scan()
 	switch scanner.Text() {
 	case "t":
@@ -118,7 +118,7 @@ func main() {
 	}
 
 	url := os.Args[1]
-	req, err := gemini.NewRequest(url)
+	req, err := gmi.NewRequest(url)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

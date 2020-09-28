@@ -1,5 +1,5 @@
 // Package gemini implements the Gemini protocol.
-package gemini
+package gmi
 
 import (
 	"bufio"
