@@ -82,8 +82,7 @@ func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 			sessions[fingerprint] = &session{
 				username: username,
 			}
-			// TODO: Remove scheme and host once example client can handle relative redirects
-			rw.WriteHeader(gmi.StatusRedirect, "gemini://localhost/login/password")
+			rw.WriteHeader(gmi.StatusRedirect, "/login/password")
 		}
 	} else {
 		rw.WriteHeader(gmi.StatusClientCertificateRequired, "Certificate required")
@@ -103,9 +102,8 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 		} else {
 			expected := logins[session.username].password
 			if password == expected {
-				// TODO: Remove scheme and host once example client can handle relative redirects
 				session.authorized = true
-				rw.WriteHeader(gmi.StatusRedirect, "gemini://localhost/profile")
+				rw.WriteHeader(gmi.StatusRedirect, "/profile")
 			} else {
 				rw.WriteHeader(gmi.StatusInput, "Wrong password. Please try again")
 			}

@@ -64,12 +64,16 @@ func sendRequest(req *gmi.Request) error {
 		fmt.Print(string(resp.Body))
 		return nil
 	case gmi.StatusClassRedirect:
-		fmt.Println("Redirecting to ", resp.Meta)
-		req, err := gmi.NewRequest(resp.Meta)
+		fmt.Println("Redirecting to", resp.Meta)
+		// Make the request to the same host
+		red, err := gmi.NewProxyRequest(req.Host, resp.Meta)
 		if err != nil {
 			return err
 		}
-		return sendRequest(req)
+		// Handle relative redirects
+		red.URL = req.URL.ResolveReference(red.URL)
+		fmt.Println(red.URL, red.Host)
+		return sendRequest(red)
 	case gmi.StatusClassTemporaryFailure:
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
 	case gmi.StatusClassPermanentFailure:
