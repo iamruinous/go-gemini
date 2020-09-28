@@ -32,7 +32,7 @@ func TestServeMuxEntryOrder(t *testing.T) {
 	for _, s := range a {
 		mux.Handle(s, nil)
 	}
-	for i, e := range mux.entries {
+	for i, e := range mux.es {
 		s := e.u.String()
 		if s != expected[i] {
 			t.Errorf("wrong order of mux entries: expected %s, got %s", expected[i], s)

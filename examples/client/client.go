@@ -8,9 +8,11 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 
-	gmi "git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -76,8 +78,16 @@ func sendRequest(req *gmi.Request) error {
 	switch resp.Status / 10 {
 	case gmi.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
-		scanner.Scan()
-		req.URL.RawQuery = scanner.Text()
+		if resp.Status == gmi.StatusSensitiveInput {
+			input, err := terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				return err
+			}
+			req.URL.RawQuery = string(input)
+		} else {
+			scanner.Scan()
+			req.URL.RawQuery = scanner.Text()
+		}
 		return sendRequest(req)
 	case gmi.StatusClassSuccess:
 		fmt.Print(string(resp.Body))
@@ -135,7 +145,7 @@ func trustCertificate(cert *x509.Certificate) trust {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: %s gemini://...", os.Args[0])
+		fmt.Printf("usage: %s gemini://...", os.Args[0])
 		os.Exit(1)
 	}
 

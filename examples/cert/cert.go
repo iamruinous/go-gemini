@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	gmi "git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 func main() {
