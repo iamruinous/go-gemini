@@ -185,7 +185,9 @@ type Client struct {
 	// KnownHosts is a list of known hosts that the client trusts.
 	KnownHosts KnownHosts
 
-	// CertificateStore contains all the certificates that the client has stored.
+	// CertificateStore maps hostnames to certificates.
+	// It is used to determine which certificate to use when the server requests
+	// a certificate.
 	CertificateStore CertificateStore
 
 	// GetCertificate, if not nil, will be called when a server requests a certificate.
