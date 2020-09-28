@@ -50,7 +50,8 @@ type Request struct {
 
 // Hostname returns the request host without the port.
 func (r *Request) Hostname() string {
-	return hostname(r.Host)
+	host, _ := splitHostPort(r.Host)
+	return host
 }
 
 // NewRequest returns a new request. The host is inferred from the provided URL.
@@ -299,13 +300,4 @@ func validCertificate(cert *x509.Certificate) bool {
 	}
 	// No need to check hash algorithms, hopefully tls has checked for us already
 	return true
-}
-
-// hostname extracts the host name from a valid host or host:port
-func hostname(host string) string {
-	i := strings.LastIndexByte(host, ':')
-	if i != -1 {
-		return host[:i]
-	}
-	return host
 }
