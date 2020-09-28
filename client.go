@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/url"
 	"strconv"
@@ -188,7 +189,7 @@ type Client struct {
 	CertificateStore CertificateStore
 
 	// GetCertificate, if not nil, will be called to determine which certificate
-	// (if any) should be used for a request.
+	// to use when the server responds with CertificateRequired.
 	GetCertificate func(hostname string, store CertificateStore) *tls.Certificate
 
 	// TrustCertificate, if not nil, will be called to determine whether the
@@ -204,11 +205,6 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS12,
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			if c.GetCertificate != nil {
-				if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {
-					return cert, nil
-				}
-			}
 			if req.Certificate != nil {
 				return req.Certificate, nil
 			}
@@ -261,6 +257,22 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	}
 	// Store connection information
 	resp.TLS = conn.ConnectionState()
+
+	// Resend the request with a certificate if the server responded
+	// with CertificateRequired
+	if resp.Status == StatusCertificateRequired {
+		// Check to see if a certificate was already provided to prevent an infinite loop
+		if req.Certificate != nil {
+			return resp, nil
+		}
+		if c.GetCertificate != nil {
+			if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {
+				req.Certificate = cert
+				return c.Send(req)
+			}
+		}
+	}
+
 	return resp, nil
 }
 

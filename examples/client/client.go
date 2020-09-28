@@ -89,7 +89,6 @@ func sendRequest(req *gmi.Request) error {
 		}
 		// Handle relative redirects
 		red.URL = req.URL.ResolveReference(red.URL)
-		fmt.Println(red.URL, red.Host)
 		return sendRequest(red)
 	case gmi.StatusClassTemporaryFailure:
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
