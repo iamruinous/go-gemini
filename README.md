@@ -52,8 +52,8 @@ If that is all you need, you can simply use the top-level `Send` function:
 
 ```go
 // Send uses the default client, which will load the default list of known hosts.
-req := gemini.NewRequest("gemini://example.com")
-gemini.Send(req)
+req := gmi.NewRequest("gemini://example.com")
+gmi.Send(req)
 ```
 
 Clients can also load their own list of known hosts:
