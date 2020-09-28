@@ -79,7 +79,7 @@ func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 			sessions[fingerprint] = &session{
 				username: username,
 			}
-			gmi.Redirect(rw, req, "/login/password")
+			gmi.Redirect(rw, req, "/login#password")
 		})
 	})
 }

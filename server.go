@@ -579,6 +579,11 @@ func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
 // If there is no registered handler that applies to the request,
 // Handler returns a ``page not found'' handler and an empty pattern.
 func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
+	// Refuse requests for non-gemini schemes.
+	if r.URL.Scheme != "gemini" {
+		return NotFoundHandler(), ""
+	}
+
 	// All other requests have any port stripped and path cleaned
 	// before passing to mux.handler.
 	host := stripHostPort(r.Host)
