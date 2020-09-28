@@ -199,47 +199,6 @@ type Handler interface {
 	Serve(*ResponseWriter, *Request)
 }
 
-// NotFound replies to the request with the NotFound status code.
-func NotFound(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusNotFound, "Not found")
-}
-
-// NotFoundHandler returns a simple handler that responds to each request with
-// the status code NotFound.
-func NotFoundHandler() Handler {
-	return HandlerFunc(NotFound)
-}
-
-// Gone replies to the request with the Gone status code.
-func Gone(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusGone, "Gone")
-}
-
-// GoneHandler returns a simple handler that responds to each request with
-// the status code Gone.
-func GoneHandler() Handler {
-	return HandlerFunc(Gone)
-}
-
-// Redirect replies to the request with a redirect to the given url.
-// If permanent is true, Redirect will respond with a permanent redirect.
-func Redirect(rw *ResponseWriter, req *Request, url string, permanent bool) {
-	if permanent {
-		rw.WriteHeader(StatusRedirectPermanent, url)
-	} else {
-		rw.WriteHeader(StatusRedirect, url)
-	}
-}
-
-// RedirectHandler returns a simple handler that responds to each request with
-// a redirect to the given URL.
-// If permanent is true, the handler will respond with a permanent redirect.
-func RedirectHandler(url string, permanent bool) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		Redirect(rw, req, url, permanent)
-	})
-}
-
 // Input responds to the request with a request for input using the given prompt.
 func Input(rw *ResponseWriter, req *Request, prompt string) {
 	rw.WriteHeader(StatusInput, prompt)
@@ -250,6 +209,34 @@ func Input(rw *ResponseWriter, req *Request, prompt string) {
 func InputHandler(prompt string) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
 		Input(rw, req, prompt)
+	})
+}
+
+// Redirect replies to the request with a redirect to the given url.
+func Redirect(rw *ResponseWriter, req *Request, url string) {
+	rw.WriteHeader(StatusRedirect, url)
+}
+
+// RedirectHandler returns a simple handler that responds to each request with
+// a redirect to the given URL.
+// If permanent is true, the handler will respond with a permanent redirect.
+func RedirectHandler(url string) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		Redirect(rw, req, url)
+	})
+}
+
+// PermanentRedirect replies to the request with a permanent redirect to the given URL.
+func PermanentRedirect(rw *ResponseWriter, req *Request, url string) {
+	rw.WriteHeader(StatusRedirectPermanent, url)
+}
+
+// PermanentRedirectHandler returns a simple handler that responds to each request with
+// a redirect to the given URL.
+// If permanent is true, the handler will respond with a permanent redirect.
+func PermanentRedirectHandler(url string) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		PermanentRedirect(rw, req, url)
 	})
 }
 
@@ -277,6 +264,28 @@ func CertificateRequired(rw *ResponseWriter, req *Request) {
 // the CertificateNotAuthorized status code.
 func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
 	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
+}
+
+// NotFound replies to the request with the NotFound status code.
+func NotFound(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusNotFound, "Not found")
+}
+
+// NotFoundHandler returns a simple handler that responds to each request with
+// the status code NotFound.
+func NotFoundHandler() Handler {
+	return HandlerFunc(NotFound)
+}
+
+// Gone replies to the request with the Gone status code.
+func Gone(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusGone, "Gone")
+}
+
+// GoneHandler returns a simple handler that responds to each request with
+// the status code Gone.
+func GoneHandler() Handler {
+	return HandlerFunc(Gone)
 }
 
 // ServeMux is a Gemini request multiplexer.

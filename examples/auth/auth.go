@@ -81,7 +81,7 @@ func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 			sessions[fingerprint] = &session{
 				username: username,
 			}
-			gmi.Redirect(rw, req, "/login/password", false)
+			gmi.Redirect(rw, req, "/login/password")
 		}
 	} else {
 		gmi.CertificateRequired(rw, req)
@@ -102,7 +102,7 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 			expected := logins[session.username].password
 			if password == expected {
 				session.authorized = true
-				gmi.Redirect(rw, req, "/profile", false)
+				gmi.Redirect(rw, req, "/profile")
 			} else {
 				gmi.SensitiveInput(rw, req, "Wrong password. Try again")
 			}
