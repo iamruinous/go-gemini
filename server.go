@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -385,7 +384,7 @@ type File interface {
 type Dir string
 
 func (d Dir) Open(name string) (File, error) {
-	path := filepath.Join(string(d), name)
+	path := path.Join(string(d), name)
 	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
