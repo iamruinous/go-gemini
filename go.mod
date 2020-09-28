@@ -1,4 +1,4 @@
-module git.sr.ht/~adnano/go-gemini
+module git.sr.ht/~adnano/gmi
 
 go 1.15
 

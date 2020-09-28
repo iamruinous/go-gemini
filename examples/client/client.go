@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/gmi"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

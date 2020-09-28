@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 
-	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/gmi"
 )
 
 type user struct {
