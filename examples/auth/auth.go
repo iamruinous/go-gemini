@@ -45,7 +45,7 @@ func main() {
 	}
 
 	handler := &gmi.ServeMux{}
-	handler.HandleFunc("", welcome)
+	handler.HandleFunc("/", welcome)
 	handler.HandleFunc("/login", login)
 	handler.HandleFunc("/login/password", loginPassword)
 	handler.HandleFunc("/profile", profile)
@@ -69,23 +69,22 @@ func getSession(crt *x509.Certificate) (*session, bool) {
 }
 
 func welcome(rw *gmi.ResponseWriter, req *gmi.Request) {
-	rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 	rw.Write([]byte("Welcome to this example.\n=> /login Login\n"))
 }
 
 func login(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		if username := req.URL.RawQuery; username == "" {
-			rw.WriteHeader(gmi.StatusInput, "Username")
+			gmi.Input(rw, req, "Username")
 		} else {
 			fingerprint := gmi.Fingerprint(req.TLS.PeerCertificates[0])
 			sessions[fingerprint] = &session{
 				username: username,
 			}
-			rw.WriteHeader(gmi.StatusRedirect, "/login/password")
+			gmi.Redirect(rw, req, "/login/password", false)
 		}
 	} else {
-		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
+		gmi.CertificateRequired(rw, req)
 	}
 }
 
@@ -93,23 +92,23 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Not authorized")
+			gmi.CertificateNotAuthorized(rw, req)
 			return
 		}
 
 		if password := req.URL.RawQuery; password == "" {
-			rw.WriteHeader(gmi.StatusInput, "Password")
+			gmi.SensitiveInput(rw, req, "Password")
 		} else {
 			expected := logins[session.username].password
 			if password == expected {
 				session.authorized = true
-				rw.WriteHeader(gmi.StatusRedirect, "/profile")
+				gmi.Redirect(rw, req, "/profile", false)
 			} else {
-				rw.WriteHeader(gmi.StatusInput, "Wrong password. Please try again")
+				gmi.SensitiveInput(rw, req, "Wrong password. Try again")
 			}
 		}
 	} else {
-		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
+		gmi.CertificateRequired(rw, req)
 	}
 }
 
@@ -118,7 +117,6 @@ func logout(rw *gmi.ResponseWriter, req *gmi.Request) {
 		fingerprint := gmi.Fingerprint(req.TLS.PeerCertificates[0])
 		delete(sessions, fingerprint)
 	}
-	rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 	rw.Write([]byte("Successfully logged out.\n"))
 }
 
@@ -126,15 +124,14 @@ func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Certificate not authorized")
+			gmi.CertificateNotAuthorized(rw, req)
 			return
 		}
 		user := logins[session.username]
 		profile := fmt.Sprintf("Username: %s\nAdmin: %t\n=> /logout Logout", session.username, user.admin)
-		rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 		rw.Write([]byte(profile))
 	} else {
-		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
+		gmi.CertificateRequired(rw, req)
 	}
 }
 
@@ -142,17 +139,16 @@ func admin(rw *gmi.ResponseWriter, req *gmi.Request) {
 	if len(req.TLS.PeerCertificates) > 0 {
 		session, ok := getSession(req.TLS.PeerCertificates[0])
 		if !ok {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Certificate not authorized")
+			gmi.CertificateNotAuthorized(rw, req)
 			return
 		}
 		user := logins[session.username]
 		if !user.admin {
-			rw.WriteHeader(gmi.StatusCertificateNotAuthorized, "Admins only!")
+			gmi.CertificateNotAuthorized(rw, req)
 			return
 		}
-		rw.WriteHeader(gmi.StatusSuccess, "text/gemini")
 		rw.Write([]byte("Welcome to the admin portal.\n"))
 	} else {
-		rw.WriteHeader(gmi.StatusCertificateRequired, "Certificate required")
+		gmi.CertificateRequired(rw, req)
 	}
 }

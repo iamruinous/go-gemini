@@ -145,11 +145,11 @@ func (r *ResponseWriter) SetMimetype(mimetype string) {
 // SetMimetype. If no mimetype is set, a default of "text/gemini" will be used.
 func (r *ResponseWriter) Write(b []byte) (int, error) {
 	if !r.wroteHeader {
-		if r.mimetype != "" {
-			r.WriteHeader(StatusSuccess, r.mimetype)
-		} else {
-			r.WriteHeader(StatusSuccess, "text/gemini")
+		mimetype := r.mimetype
+		if mimetype == "" {
+			mimetype = "text/gemini"
 		}
+		r.WriteHeader(StatusSuccess, mimetype)
 	}
 	if !r.bodyAllowed {
 		return 0, ErrBodyNotAllowed
@@ -395,8 +395,7 @@ func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
 		return
 	}
 	// TODO: detect mimetype
-	mime := "text/gemini"
-	rw.WriteHeader(StatusSuccess, mime)
+	rw.SetMimetype("text/gemini")
 	// Copy file to response writer
 	io.Copy(rw, f)
 }
