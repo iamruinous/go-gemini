@@ -454,10 +454,9 @@ func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 // header, stripping the port number and redirecting any request containing . or
 // .. elements or repeated slashes to an equivalent, cleaner URL.
 type ServeMux struct {
-	mu    sync.RWMutex
-	m     map[string]muxEntry
-	es    []muxEntry // slice of entries sorted from longest to shortest.
-	hosts bool       // whether any patterns contain hostnames
+	mu sync.RWMutex
+	m  map[string]muxEntry
+	es []muxEntry // slice of entries sorted from longest to shortest.
 }
 
 type muxEntry struct {
@@ -646,13 +645,9 @@ func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	}
 	e := muxEntry{h: handler, pattern: pattern, u: url}
 	mux.m[pattern] = e
-	if pattern[len(pattern)-1] == '/' {
-		mux.es = appendSorted(mux.es, e)
-	}
-
-	if pattern[0] != '/' {
-		mux.hosts = true
-	}
+	// if pattern[len(pattern)-1] == '/' {
+	mux.es = appendSorted(mux.es, e)
+	// }
 }
 
 func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
@@ -662,9 +657,27 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 		// - Entries with a scheme take preference over entries without.
 		// - Entries with a host take preference over entries without.
 		// - Longer paths take preference over shorter paths.
-		return (es[i].u.Scheme == "" || (e.u.Scheme != "" && len(es[i].u.Scheme) < len(e.u.Scheme))) &&
-			(es[i].u.Host == "" || (e.u.Host != "" && len(es[i].u.Host) < len(e.u.Host))) &&
-			len(es[i].u.Path) < len(e.u.Path)
+		if e.u.Scheme != "" {
+			if es[i].u.Scheme == "" {
+				return true
+			}
+			if es[i].u.Scheme != e.u.Scheme {
+				return len(es[i].u.Scheme) < len(e.u.Scheme)
+			}
+		} else if es[i].u.Scheme != "" {
+			return false
+		}
+		if e.u.Host != "" {
+			if es[i].u.Host == "" {
+				return true
+			}
+			if es[i].u.Host != e.u.Host {
+				return len(es[i].u.Scheme) < len(e.u.Scheme)
+			}
+		} else if es[i].u.Host != "" {
+			return false
+		}
+		return len(es[i].u.Path) < len(e.u.Path)
 	})
 	if i == n {
 		return append(es, e)

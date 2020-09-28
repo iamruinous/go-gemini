@@ -24,13 +24,18 @@ func TestServeMuxEntryOrder(t *testing.T) {
 
 	// Shuffle input
 	a := make([]string, len(expected))
-	copy(expected, a)
+	copy(a, expected)
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
 
 	mux := &ServeMux{}
 	for _, s := range a {
-		mux.Handle(s, nil)
+		mux.Handle(s, NotFoundHandler())
+		var es string
+		for i := range mux.es {
+			es += mux.es[i].u.String() + " "
+		}
+		t.Logf(es)
 	}
 	for i, e := range mux.es {
 		s := e.u.String()
