@@ -73,24 +73,22 @@ func welcome(rw *gmi.ResponseWriter, req *gmi.Request) {
 }
 
 func login(rw *gmi.ResponseWriter, req *gmi.Request) {
-	if len(req.TLS.PeerCertificates) > 0 {
+	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
 		if username := req.URL.RawQuery; username == "" {
 			gmi.Input(rw, req, "Username")
 		} else {
-			fingerprint := gmi.Fingerprint(req.TLS.PeerCertificates[0])
+			fingerprint := gmi.Fingerprint(cert)
 			sessions[fingerprint] = &session{
 				username: username,
 			}
 			gmi.Redirect(rw, req, "/login/password")
 		}
-	} else {
-		gmi.CertificateRequired(rw, req)
-	}
+	})
 }
 
 func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
-	if len(req.TLS.PeerCertificates) > 0 {
-		session, ok := getSession(req.TLS.PeerCertificates[0])
+	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+		session, ok := getSession(cert)
 		if !ok {
 			gmi.CertificateNotAuthorized(rw, req)
 			return
@@ -107,22 +105,20 @@ func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
 				gmi.SensitiveInput(rw, req, "Wrong password. Try again")
 			}
 		}
-	} else {
-		gmi.CertificateRequired(rw, req)
-	}
+	})
 }
 
 func logout(rw *gmi.ResponseWriter, req *gmi.Request) {
-	if len(req.TLS.PeerCertificates) > 0 {
-		fingerprint := gmi.Fingerprint(req.TLS.PeerCertificates[0])
+	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+		fingerprint := gmi.Fingerprint(cert)
 		delete(sessions, fingerprint)
-	}
+	})
 	rw.Write([]byte("Successfully logged out.\n"))
 }
 
 func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
-	if len(req.TLS.PeerCertificates) > 0 {
-		session, ok := getSession(req.TLS.PeerCertificates[0])
+	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+		session, ok := getSession(cert)
 		if !ok {
 			gmi.CertificateNotAuthorized(rw, req)
 			return
@@ -130,14 +126,12 @@ func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
 		user := logins[session.username]
 		profile := fmt.Sprintf("Username: %s\nAdmin: %t\n=> /logout Logout", session.username, user.admin)
 		rw.Write([]byte(profile))
-	} else {
-		gmi.CertificateRequired(rw, req)
-	}
+	})
 }
 
 func admin(rw *gmi.ResponseWriter, req *gmi.Request) {
-	if len(req.TLS.PeerCertificates) > 0 {
-		session, ok := getSession(req.TLS.PeerCertificates[0])
+	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+		session, ok := getSession(cert)
 		if !ok {
 			gmi.CertificateNotAuthorized(rw, req)
 			return
@@ -148,7 +142,5 @@ func admin(rw *gmi.ResponseWriter, req *gmi.Request) {
 			return
 		}
 		rw.Write([]byte("Welcome to the admin portal.\n"))
-	} else {
-		gmi.CertificateRequired(rw, req)
-	}
+	})
 }
