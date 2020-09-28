@@ -41,20 +41,18 @@ const (
 // DefaultClient is the default client. It is used by Send.
 //
 // On the first request, DefaultClient will load the default list of known hosts.
-var DefaultClient *Client
+var DefaultClient = &Client{}
 
 var (
 	crlf = []byte("\r\n")
 )
 
 func init() {
-	DefaultClient = &Client{
-		TrustCertificate: func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error {
-			// Load the hosts only once. This is so that the hosts don't have to be loaded
-			// for those using their own clients.
-			setupDefaultClientOnce.Do(setupDefaultClient)
-			return knownHosts.Lookup(hostname, cert)
-		},
+	DefaultClient.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error {
+		// Load the hosts only once. This is so that the hosts don't have to be loaded
+		// for those using their own clients.
+		setupDefaultClientOnce.Do(setupDefaultClient)
+		return knownHosts.Lookup(hostname, cert)
 	}
 }
 
