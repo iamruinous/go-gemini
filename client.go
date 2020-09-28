@@ -185,11 +185,11 @@ type Client struct {
 	KnownHosts KnownHosts
 
 	// CertificateStore contains all the certificates that the client has stored.
-	CertificateStore *CertificateStore
+	CertificateStore CertificateStore
 
 	// GetCertificate, if not nil, will be called to determine which certificate
 	// (if any) should be used for a request.
-	GetCertificate func(req *Request, store *CertificateStore) *tls.Certificate
+	GetCertificate func(hostname string, store CertificateStore) *tls.Certificate
 
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
@@ -205,14 +205,14 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		MinVersion:         tls.VersionTLS12,
 		GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			if c.GetCertificate != nil {
-				if cert := c.GetCertificate(req, c.CertificateStore); cert != nil {
+				if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {
 					return cert, nil
 				}
 			}
-			if req.Certificate == nil {
-				return &tls.Certificate{}, nil
+			if req.Certificate != nil {
+				return req.Certificate, nil
 			}
-			return req.Certificate, nil
+			return &tls.Certificate{}, nil
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			// Parse the certificate

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"math/big"
@@ -14,27 +15,25 @@ import (
 )
 
 // CertificateStore maps hostnames to certificates.
-type CertificateStore struct {
-	store map[string]*x509.Certificate // map of hostnames to certificates
+type CertificateStore map[string]*tls.Certificate
+
+// NewCertificateStore creates and returns a new certificate store.
+func NewCertificateStore() CertificateStore {
+	return map[string]*tls.Certificate{}
 }
 
-func NewCertificateStore() *CertificateStore {
-	return &CertificateStore{
-		store: map[string]*x509.Certificate{},
+// NewCertificate creates and returns a new parsed certificate.
+func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {
+	crt, key, err := NewRawCertificate(host, duration)
+	if err != nil {
+		return tls.Certificate{}, err
 	}
+	return tls.X509KeyPair(crt, key)
 }
 
-func (c *CertificateStore) Put(hostname string, cert *x509.Certificate) {
-	c.store[hostname] = cert
-}
-
-func (c *CertificateStore) Get(hostname string) *x509.Certificate {
-	return c.store[hostname]
-}
-
-// NewCertificate creates and returns a raw certificate for the given host.
+// NewRawCertificate creates and returns a raw certificate for the given host.
 // It generates a self-signed TLS certificate and a ED25519 private key.
-func NewCertificate(host string) (crt, key []byte, err error) {
+func NewRawCertificate(host string, duration time.Duration) (crt, key []byte, err error) {
 	// Generate a ED25519 private key
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -47,8 +46,7 @@ func NewCertificate(host string) (crt, key []byte, err error) {
 	keyUsage := x509.KeyUsageDigitalSignature
 
 	notBefore := time.Now()
-	validFor := 365 * 24 * time.Hour
-	notAfter := notBefore.Add(validFor)
+	notAfter := notBefore.Add(duration)
 
 	// Generate the serial number
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)

@@ -4,21 +4,22 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"os"
+	"time"
 
-	"git.sr.ht/~adnano/go-gemini"
+	gmi "git.sr.ht/~adnano/go-gemini"
 )
 
 var (
 	scanner = bufio.NewScanner(os.Stdin)
-	client  *gmi.Client
+	client  = &gmi.Client{}
 )
 
 func init() {
 	// Initialize the client
-	client = &gmi.Client{}
 	client.KnownHosts.Load() // Load known hosts
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gmi.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
@@ -45,6 +46,21 @@ func init() {
 		}
 		return err
 	}
+
+	client.CertificateStore = gmi.NewCertificateStore()
+	client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.Certificate {
+		if cert, ok := store[hostname]; ok {
+			return cert
+		}
+		// Generate a certificate
+		duration := time.Hour
+		cert, err := gmi.NewCertificate(hostname, duration)
+		if err != nil {
+			return nil
+		}
+		store[hostname] = &cert
+		return &cert
+	}
 }
 
 // sendRequest sends a request to the given URL.
@@ -67,7 +83,7 @@ func sendRequest(req *gmi.Request) error {
 	case gmi.StatusClassRedirect:
 		fmt.Println("Redirecting to", resp.Meta)
 		// Make the request to the same host
-		red, err := gmi.NewRequestTo(req.Host, resp.Meta)
+		red, err := gmi.NewRequestTo(resp.Meta, req.Host)
 		if err != nil {
 			return err
 		}

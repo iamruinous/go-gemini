@@ -4,19 +4,21 @@ package main
 
 import (
 	"log"
+	"time"
 
-	"git.sr.ht/~adnano/go-gemini"
+	gmi "git.sr.ht/~adnano/go-gemini"
 )
 
 func main() {
 	host := "localhost"
 
-	crt, key, err := gemini.NewCertificate(host)
+	duration := 365 * 24 * time.Hour
+	crt, key, err := gmi.NewRawCertificate(host, duration)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := gemini.WriteCertificate(host, crt, key); err != nil {
+	if err := gmi.WriteCertificate(host, crt, key); err != nil {
 		log.Fatal(err)
 	}
 }
