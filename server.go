@@ -95,6 +95,8 @@ func (s *Server) Serve(l net.Listener) error {
 type ResponseWriter struct {
 	w           *bufio.Writer
 	bodyAllowed bool
+	wroteHeader bool
+	mimetype    string
 }
 
 func newResponseWriter(conn net.Conn) *ResponseWriter {
@@ -104,12 +106,16 @@ func newResponseWriter(conn net.Conn) *ResponseWriter {
 }
 
 // WriteHeader writes the response header.
+// If the header has already been written, WriteHeader does nothing.
 //
 // Meta contains more information related to the response status.
 // For successful responses, Meta should contain the mimetype of the response.
 // For failure responses, Meta should contain a short description of the failure.
 // Meta should not be longer than 1024 bytes.
 func (r *ResponseWriter) WriteHeader(status int, meta string) {
+	if r.wroteHeader {
+		return
+	}
 	r.w.WriteString(strconv.Itoa(status))
 	r.w.WriteByte(' ')
 	r.w.WriteString(meta)
@@ -119,13 +125,32 @@ func (r *ResponseWriter) WriteHeader(status int, meta string) {
 	if status/10 == StatusClassSuccess {
 		r.bodyAllowed = true
 	}
+	r.wroteHeader = true
+}
+
+// SetMimetype sets the mimetype that will be written for a successful response.
+// The provided mimetype will only be used if Write is called without calling
+// WriteHeader.
+// If the mimetype is not set, it will default to "text/gemini".
+func (r *ResponseWriter) SetMimetype(mimetype string) {
+	r.mimetype = mimetype
 }
 
 // Write writes the response body.
 // If the response status does not allow for a response body, Write returns
 // ErrBodyNotAllowed.
-// WriteHeader must be called before Write.
+//
+// If WriteHeader has not yet been called, Write calls
+// WriteHeader(StatusSuccess, mimetype) where mimetype is the mimetype set in
+// SetMimetype. If no mimetype is set, a default of "text/gemini" will be used.
 func (r *ResponseWriter) Write(b []byte) (int, error) {
+	if !r.wroteHeader {
+		if r.mimetype != "" {
+			r.WriteHeader(StatusSuccess, r.mimetype)
+		} else {
+			r.WriteHeader(StatusSuccess, "text/gemini")
+		}
+	}
 	if !r.bodyAllowed {
 		return 0, ErrBodyNotAllowed
 	}
