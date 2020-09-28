@@ -40,7 +40,6 @@ type Server struct {
 // ListenAndServe listens for requests at the server's configured address.
 func (s *Server) ListenAndServe() error {
 	addr := s.Addr
-
 	if addr == "" {
 		addr = ":1965"
 	}
@@ -152,10 +151,10 @@ func (s *Server) respond(conn net.Conn) {
 	rawurl = rawurl[:len(rawurl)-1]
 	// Ensure URL is valid
 	if len(rawurl) > 1024 {
-		rw.WriteHeader(StatusBadRequest, "Requested URL exceeds 1024 bytes")
+		rw.WriteHeader(StatusBadRequest, "Bad request")
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
 		// Note that we return an error status if User is specified in the URL
-		rw.WriteHeader(StatusBadRequest, "Requested URL is invalid")
+		rw.WriteHeader(StatusBadRequest, "Bad request")
 	} else {
 		// Gather information about the request
 		req := &Request{
@@ -175,32 +174,46 @@ type Handler interface {
 	Serve(*ResponseWriter, *Request)
 }
 
+// NotFound replies to the request with a NotFound status code.
+func NotFound(rw *ResponseWriter, req *Request) {
+	rw.WriteHeader(StatusNotFound, "Not found")
+}
+
 // NotFoundHandler returns a simple handler that responds to each request with
 // the status code NotFound.
-func NotFound() Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		rw.WriteHeader(StatusNotFound, "Not found")
-	})
+func NotFoundHandler() Handler {
+	return HandlerFunc(NotFound)
 }
 
-// Redirect returns a simple handler that responds to each request with
+// Redirect replies to the request with a redirect to the given url.
+// If permanent is true, Redirect will respond with a permanent redirect.
+func Redirect(rw *ResponseWriter, req *Request, url string, permanent bool) {
+	if permanent {
+		rw.WriteHeader(StatusRedirectPermanent, url)
+	} else {
+		rw.WriteHeader(StatusRedirect, url)
+	}
+}
+
+// RedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
 // If permanent is true, the handler will respond with a permanent redirect.
-func Redirect(url string, permanent bool) Handler {
+func RedirectHandler(url string, permanent bool) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		if permanent {
-			rw.WriteHeader(StatusRedirectPermanent, url)
-		} else {
-			rw.WriteHeader(StatusRedirect, url)
-		}
+		Redirect(rw, req, url, permanent)
 	})
 }
 
-// Input returns a simple handler that responds to each request with
+// Input responds to the request with a request for input using the given prompt.
+func Input(rw *ResponseWriter, req *Request, prompt string) {
+	rw.WriteHeader(StatusInput, prompt)
+}
+
+// InputHandler returns a simple handler that responds to each request with
 // a request for input.
-func Input(prompt string) Handler {
+func InputHandler(prompt string) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		rw.WriteHeader(StatusInput, prompt)
+		Input(rw, req, prompt)
 	})
 }
 
@@ -251,7 +264,7 @@ func (m *ServeMux) HandleFunc(pattern string, handlerFunc func(*ResponseWriter, 
 func (m *ServeMux) Serve(rw *ResponseWriter, req *Request) {
 	h := m.match(req.URL)
 	if h == nil {
-		rw.WriteHeader(StatusNotFound, "Not found")
+		NotFound(rw, req)
 		return
 	}
 	h.Serve(rw, req)
@@ -305,16 +318,14 @@ type fsHandler struct {
 }
 
 func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
+	// Reject requests with '..' in them
 	if containsDotDot(req.URL.Path) {
-		// Reject requests with '..' in them
-		rw.WriteHeader(StatusBadRequest, "Invalid URL path")
+		NotFound(rw, req)
 		return
 	}
-
-	// FIXME: Don't serve paths with .. in them
 	f, err := fsys.Open(req.URL.Path)
 	if err != nil {
-		rw.WriteHeader(StatusNotFound, "Not found")
+		NotFound(rw, req)
 		return
 	}
 	// TODO: detect mimetype
