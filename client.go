@@ -208,6 +208,12 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			if req.Certificate != nil {
 				return req.Certificate, nil
 			}
+			// If we have already stored the certificate, return it
+			if c.CertificateStore != nil {
+				if cert, ok := c.CertificateStore[req.Hostname()]; ok {
+					return cert, nil
+				}
+			}
 			return &tls.Certificate{}, nil
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
@@ -261,6 +267,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	// Resend the request with a certificate if the server responded
 	// with CertificateRequired
 	if resp.Status == StatusCertificateRequired {
+		log.Print("Client certificate required")
 		// Check to see if a certificate was already provided to prevent an infinite loop
 		if req.Certificate != nil {
 			return resp, nil
