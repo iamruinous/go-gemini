@@ -284,6 +284,10 @@ func (m *ServeMux) Handle(pattern string, handler Handler) {
 	if err != nil {
 		panic(err)
 	}
+	// Trim trailing slash from URL path
+	if len(url.Path) != 0 && url.Path[len(url.Path)-1] == '/' {
+		url.Path = url.Path[:len(url.Path)-1]
+	}
 	e := muxEntry{
 		url,
 		handler,
