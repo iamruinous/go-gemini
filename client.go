@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Client errors.
@@ -218,6 +219,10 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			if err != nil {
 				return err
 			}
+			// Validate the certificate
+			if !validCertificate(cert) {
+				return ErrInvalidCertificate
+			}
 			// Check that the certificate is valid for the hostname
 			// Use our own implementation of verifyHostname
 			if err := verifyHostname(cert, req.Hostname()); err != nil {
@@ -256,6 +261,20 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	// Store connection information
 	resp.TLS = conn.ConnectionState()
 	return resp, nil
+}
+
+// validCertificate determines whether cert is a valid certificate
+func validCertificate(cert *x509.Certificate) bool {
+	// Check notBefore and notAfter
+	now := time.Now()
+	if cert.NotBefore.After(now) {
+		return false
+	}
+	if cert.NotAfter.Before(now) {
+		return false
+	}
+	// No need to check hash algorithms, hopefully tls has checked for us already
+	return true
 }
 
 // hostname extracts the host name from a valid host or host:port
