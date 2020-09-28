@@ -17,11 +17,6 @@ import (
 // CertificateStore maps hostnames to certificates.
 type CertificateStore map[string]*tls.Certificate
 
-// NewCertificateStore creates and returns a new certificate store.
-func NewCertificateStore() CertificateStore {
-	return map[string]*tls.Certificate{}
-}
-
 // NewCertificate creates and returns a new parsed certificate.
 func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {
 	crt, key, err := NewRawCertificate(host, duration)

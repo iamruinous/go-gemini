@@ -89,7 +89,7 @@ The default client handles this for you. Other clients must specify the fields
 
 ```go
 // Initialize the certificate store.
-client.CertificateStore = gmi.NewCertificateStore()
+client.CertificateStore = gmi.CertificateStore{}
 // GetCertificate is called when a server requests a certificate.
 // The returned certificate, if not nil, will be used when resending the request.
 client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.Certificate {

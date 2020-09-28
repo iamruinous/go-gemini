@@ -47,7 +47,7 @@ func init() {
 		return err
 	}
 
-	client.CertificateStore = gmi.NewCertificateStore()
+	client.CertificateStore = gmi.CertificateStore{}
 	client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
 		if cert, ok := store[hostname]; ok {
