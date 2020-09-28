@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/url"
 	"strconv"
