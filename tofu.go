@@ -22,7 +22,7 @@ type KnownHosts struct {
 }
 
 // Load loads the known hosts from the default known hosts path, which is
-// `$XDG_DATA_HOME/gemini/known_hosts`.
+// $XDG_DATA_HOME/gemini/known_hosts.
 // It creates the path and any of its parent directories if they do not exist.
 // KnownHosts will append to the file whenever a certificate is added.
 func (k *KnownHosts) Load() error {
