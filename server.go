@@ -311,8 +311,8 @@ func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
 	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
-// WithCertificate responds with CertificateRequired if the client did not
-// provide a certificate, and calls f with the first ceritificate if they did.
+// WithCertificate either responds with CertificateRequired if the client did
+// not provide a certificate, or calls f with the first ceritificate provided.
 func WithCertificate(rw *ResponseWriter, req *Request, f func(*x509.Certificate)) {
 	if len(req.TLS.PeerCertificates) == 0 {
 		CertificateRequired(rw, req)

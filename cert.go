@@ -98,10 +98,11 @@ func NewRawCertificate(host string, duration time.Duration) (crt, key []byte, er
 	return
 }
 
-// WriteCertificate writes the provided certificate and private key to name.crt + name.key
-func WriteCertificate(name string, crt, key []byte) error {
+// WriteCertificate writes the provided certificate and private key
+// to path.crt and path.key respectively.
+func WriteCertificate(path string, crt, key []byte) error {
 	// Write the certificate
-	crtPath := name + ".crt"
+	crtPath := path + ".crt"
 	crtOut, err := os.OpenFile(crtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func WriteCertificate(name string, crt, key []byte) error {
 	}
 
 	// Write the private key
-	keyPath := name + ".key"
+	keyPath := path + ".key"
 	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
