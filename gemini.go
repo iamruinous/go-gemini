@@ -10,7 +10,7 @@ const (
 	StatusInput                     = 10
 	StatusSensitiveInput            = 11
 	StatusSuccess                   = 20
-	StatusRedirectTemporary         = 30
+	StatusRedirect                  = 30
 	StatusRedirectPermanent         = 31
 	StatusTemporaryFailure          = 40
 	StatusServerUnavailable         = 41

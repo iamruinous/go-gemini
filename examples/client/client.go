@@ -77,9 +77,8 @@ func sendRequest(req *gemini.Request) error {
 	case gemini.StatusClassClientCertificateRequired:
 		fmt.Println("Generating client certificate for", req.Hostname())
 		return nil // TODO: Generate and store client certificate
-	default:
-		return fmt.Errorf("Protocol error: Server sent an invalid response")
 	}
+	panic("unreachable")
 }
 
 type trust int

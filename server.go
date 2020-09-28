@@ -175,6 +175,35 @@ type Handler interface {
 	Serve(*ResponseWriter, *Request)
 }
 
+// NotFoundHandler returns a simple handler that responds to each request with
+// the status code NotFound.
+func NotFound() Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		rw.WriteHeader(StatusNotFound, "Not found")
+	})
+}
+
+// Redirect returns a simple handler that responds to each request with
+// a redirect to the given URL.
+// If permanent is true, the handler will respond with a permanent redirect.
+func Redirect(url string, permanent bool) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		if permanent {
+			rw.WriteHeader(StatusRedirectPermanent, url)
+		} else {
+			rw.WriteHeader(StatusRedirect, url)
+		}
+	})
+}
+
+// Input returns a simple handler that responds to each request with
+// a request for input.
+func Input(prompt string) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		rw.WriteHeader(StatusInput, prompt)
+	})
+}
+
 // ServeMux is a Gemini request multiplexer.
 // It matches the URL of each incoming request against a list of registered
 // patterns and calls the handler for the pattern that most closesly matches
