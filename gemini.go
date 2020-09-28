@@ -1,3 +1,4 @@
+// Package gmi implements the Gemini protocol
 package gmi
 
 import (
