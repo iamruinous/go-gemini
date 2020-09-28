@@ -56,6 +56,7 @@ func init() {
 			return cert
 		}
 		// Otherwise, generate a certificate
+		fmt.Println("Generating client certificate for", hostname)
 		duration := time.Hour
 		cert, err := gmi.NewCertificate(hostname, duration)
 		if err != nil {
@@ -107,8 +108,10 @@ func sendRequest(req *gmi.Request) error {
 	case gmi.StatusClassPermanentFailure:
 		return fmt.Errorf("Permanent failure: %s", resp.Meta)
 	case gmi.StatusClassCertificateRequired:
-		fmt.Println("Generating client certificate for", req.Hostname())
-		return nil // TODO: Generate and store client certificate
+		// Note that this should not happen unless the server responds with
+		// CertificateRequired even after we send a certificate.
+		// CertificateNotAuthorized and CertificateNotValid are handled here.
+		return fmt.Errorf("Certificate required: %s", resp.Meta)
 	}
 	panic("unreachable")
 }
