@@ -414,11 +414,6 @@ func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {
 	f(rw, req)
 }
 
-// ServeDir serves files from a directory.
-type ServeDir struct {
-	path string // path to the directory
-}
-
 // FileServer takes a filesystem and returns a handler which uses that filesystem.
 // The returned Handler rejects requests containing '..' in them.
 func FileServer(fsys FS) Handler {
