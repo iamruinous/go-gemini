@@ -3,6 +3,7 @@ package gmi
 import (
 	"bufio"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"log"
@@ -286,6 +287,26 @@ func Gone(rw *ResponseWriter, req *Request) {
 // the status code Gone.
 func GoneHandler() Handler {
 	return HandlerFunc(Gone)
+}
+
+// WithCertificate responds with CertificateRequired if the client did not
+// provide a certificate, and calls f with the first ceritificate if they did.
+func WithCertificate(rw *ResponseWriter, req *Request, f func(*x509.Certificate)) {
+	if len(req.TLS.PeerCertificates) == 0 {
+		CertificateRequired(rw, req)
+		return
+	}
+	cert := req.TLS.PeerCertificates[0]
+	f(cert)
+}
+
+// CertificateHandler returns a simple handler that requests a certificate from
+// clients if they did not provide one, and calls f with the first certificate
+// if they did.
+func CertificateHandler(f func(*x509.Certificate)) Handler {
+	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
+		WithCertificate(rw, req, f)
+	})
 }
 
 // ServeMux is a Gemini request multiplexer.
