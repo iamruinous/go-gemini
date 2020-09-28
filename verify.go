@@ -2,7 +2,7 @@
 // Modified to allow Common Names in the short term, until new certificates
 // can be issued with SANs.
 //
-// Also includes the splitHostPort function from net/url package.
+// Also includes the splitHostPort function from the net/url package.
 
 // Copyright 2011 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
