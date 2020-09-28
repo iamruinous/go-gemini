@@ -46,11 +46,11 @@ func main() {
 
 	handler := &gmi.ServeMux{}
 	handler.HandleFunc("/", welcome)
-	handler.HandleFunc("/login/", login)
-	handler.HandleFunc("/login/password/", loginPassword)
-	handler.HandleFunc("/profile/", profile)
-	handler.HandleFunc("/admin/", admin)
-	handler.HandleFunc("/logout/", logout)
+	handler.HandleFunc("/login", login)
+	handler.HandleFunc("/login/password", loginPassword)
+	handler.HandleFunc("/profile", profile)
+	handler.HandleFunc("/admin", admin)
+	handler.HandleFunc("/logout", logout)
 
 	server := &gmi.Server{
 		Certificate: cert,
