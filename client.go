@@ -276,6 +276,10 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		if req.Certificate != nil {
 			return resp, nil
 		}
+		// Create the certificate store if it does not exist
+		if c.CertificateStore == nil {
+			c.CertificateStore = CertificateStore{}
+		}
 		if c.GetCertificate != nil {
 			if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {
 				req.Certificate = cert

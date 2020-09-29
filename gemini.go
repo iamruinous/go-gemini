@@ -76,7 +76,6 @@ func init() {
 var setupDefaultClientOnce sync.Once
 
 func setupDefaultClient() {
-	DefaultClient.CertificateStore = CertificateStore{}
 	DefaultClient.KnownHosts.Load()
 }
 
