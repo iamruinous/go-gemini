@@ -114,6 +114,7 @@ func (t Text) String() string {
 	var b strings.Builder
 	for _, l := range t {
 		b.WriteString(l.String())
+		b.WriteByte('\n')
 	}
 	return b.String()
 }
