@@ -384,11 +384,12 @@ type File interface {
 type Dir string
 
 func (d Dir) Open(name string) (File, error) {
-	path := path.Join(string(d), name)
-	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	p := path.Join(string(d), name)
+	f, err := os.OpenFile(p, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
+
 	if stat, err := f.Stat(); err == nil {
 		if !stat.Mode().IsRegular() {
 			return nil, ErrNotAFile
@@ -569,8 +570,6 @@ func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
 // to the canonical path. If the host contains a port, it is ignored
 // when matching handlers.
 //
-// The path and host are used unchanged for CONNECT requests.
-//
 // Handler also returns the registered pattern that matches the
 // request or, in the case of internally-generated redirects,
 // the pattern that will match after following the redirect.
@@ -605,7 +604,7 @@ func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
 }
 
 // handler is the main implementation of Handler.
-// The path is known to be in canonical form, except for CONNECT methods.
+// The path is known to be in canonical form.
 func (mux *ServeMux) handler(host, path string) (h Handler, pattern string) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
