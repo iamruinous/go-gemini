@@ -78,10 +78,15 @@ func Parse(r io.Reader) Text {
 			line = line[2:]
 			line = strings.TrimLeft(line, spacetab)
 			split := strings.IndexAny(line, spacetab)
-			url := line[:split]
-			name := line[split:]
-			name = strings.TrimLeft(name, spacetab)
-			t = append(t, LineLink{url, name})
+			if split == -1 {
+				// line is a URL
+				t = append(t, LineLink{URL: line})
+			} else {
+				url := line[:split]
+				name := line[split:]
+				name = strings.TrimLeft(name, spacetab)
+				t = append(t, LineLink{url, name})
+			}
 		} else if strings.HasPrefix(line, "*") {
 			line = line[1:]
 			line = strings.TrimLeft(line, spacetab)
