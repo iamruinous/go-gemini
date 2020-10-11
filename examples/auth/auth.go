@@ -54,8 +54,8 @@ func main() {
 
 	server := &gmi.Server{
 		Certificate: cert,
-		Handler:     handler,
 	}
+	server.Handle("localhost", handler)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)

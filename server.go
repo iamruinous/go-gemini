@@ -34,9 +34,29 @@ type Server struct {
 	// Using a self-signed certificate is recommended.
 	Certificate tls.Certificate
 
-	// Handler specifies the Handler for requests.
-	// If Handler is not set, the server will error.
-	Handler Handler
+	// registered handlers
+	handlers []handlerEntry
+}
+
+// Handle registers a handler for the given host.
+// A default scheme of gemini:// is assumed.
+func (s *Server) Handle(host string, h Handler) {
+	s.HandleScheme("gemini", host, h)
+}
+
+// HandleScheme registers a handler for the given scheme and host.
+func (s *Server) HandleScheme(scheme string, host string, h Handler) {
+	s.handlers = append(s.handlers, handlerEntry{
+		scheme,
+		host,
+		h,
+	})
+}
+
+type handlerEntry struct {
+	scheme string
+	host   string
+	h      Handler
 }
 
 // ListenAndServe listens for requests at the server's configured address.
@@ -189,10 +209,23 @@ func (s *Server) respond(conn net.Conn) {
 			RemoteAddr: conn.RemoteAddr(),
 			TLS:        conn.(*tls.Conn).ConnectionState(),
 		}
-		s.Handler.Serve(rw, req)
+		s.handler(req).Serve(rw, req)
 	}
 	rw.w.Flush()
 	conn.Close()
+}
+
+func (s *Server) handler(req *Request) Handler {
+	for _, e := range s.handlers {
+		if req.URL.Scheme != e.scheme {
+			continue
+		}
+		// Allow host or bare hostname
+		if req.URL.Host == e.host || req.Hostname() == e.host {
+			return e.h
+		}
+	}
+	return NotFoundHandler()
 }
 
 // A Handler responds to a Gemini request.
@@ -444,20 +477,13 @@ func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 // to redirect a request for "/images" to "/images/", unless "/images" has
 // been registered separately.
 //
-// Patterns may optionally begin with a host name, restricting matches to
-// URLs on that host only. Host-specific patterns take precedence over
-// general patterns, so that a handler might register for the two patterns
-// "/codesearch" and "codesearch.google.com/" without also taking over
-// requests for "http://www.google.com/".
-//
 // ServeMux also takes care of sanitizing the URL request path and the Host
 // header, stripping the port number and redirecting any request containing . or
 // .. elements or repeated slashes to an equivalent, cleaner URL.
 type ServeMux struct {
-	mu    sync.RWMutex
-	m     map[string]muxEntry
-	es    []muxEntry // slice of entries sorted from longest to shortest.
-	hosts bool       // whether any patterns contain hostnames
+	mu sync.RWMutex
+	m  map[string]muxEntry
+	es []muxEntry // slice of entries sorted from longest to shortest.
 }
 
 type muxEntry struct {
@@ -526,9 +552,9 @@ func (mux *ServeMux) match(path string) (h Handler, pattern string) {
 // This occurs when a handler for path + "/" was already registered, but
 // not for path itself. If the path needs appending to, it creates a new
 // URL, setting the path to u.Path + "/" and returning true to indicate so.
-func (mux *ServeMux) redirectToPathSlash(host, path string, u *url.URL) (*url.URL, bool) {
+func (mux *ServeMux) redirectToPathSlash(path string, u *url.URL) (*url.URL, bool) {
 	mux.mu.RLock()
-	shouldRedirect := mux.shouldRedirectRLocked(host, path)
+	shouldRedirect := mux.shouldRedirectRLocked(path)
 	mux.mu.RUnlock()
 	if !shouldRedirect {
 		return u, false
@@ -541,31 +567,25 @@ func (mux *ServeMux) redirectToPathSlash(host, path string, u *url.URL) (*url.UR
 // shouldRedirectRLocked reports whether the given path and host should be redirected to
 // path+"/". This should happen if a handler is registered for path+"/" but
 // not path -- see comments at ServeMux.
-func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
-	p := []string{path, host + path}
-
-	for _, c := range p {
-		if _, exist := mux.m[c]; exist {
-			return false
-		}
+func (mux *ServeMux) shouldRedirectRLocked(path string) bool {
+	if _, exist := mux.m[path]; exist {
+		return false
 	}
 
 	n := len(path)
 	if n == 0 {
 		return false
 	}
-	for _, c := range p {
-		if _, exist := mux.m[c+"/"]; exist {
-			return path[n-1] != '/'
-		}
+	if _, exist := mux.m[path+"/"]; exist {
+		return path[n-1] != '/'
 	}
 
 	return false
 }
 
-// Handler returns the handler to use for the given request,
-// consulting r.Method, r.Host, and r.URL.Path. It always returns
-// a non-nil handler. If the path is not in its canonical form, the
+// Handler returns the handler to use for the given request.
+// It consults r.URL.Path. It always returns a non-nil handler.
+// If the path is not in its canonical form, the
 // handler will be an internally-generated handler that redirects
 // to the canonical path. If the host contains a port, it is ignored
 // when matching handlers.
@@ -575,47 +595,33 @@ func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
 // the pattern that will match after following the redirect.
 //
 // If there is no registered handler that applies to the request,
-// Handler returns a ``page not found'' handler and an empty pattern.
+// Handler returns a "not found" handler and an empty pattern.
 func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
-	// Refuse requests for non-gemini schemes.
-	if r.URL.Scheme != "gemini" {
-		return NotFoundHandler(), ""
-	}
-
-	// All other requests have any port stripped and path cleaned
-	// before passing to mux.handler.
-	host := stripHostPort(r.Host)
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
-	if u, ok := mux.redirectToPathSlash(host, path, r.URL); ok {
+	if u, ok := mux.redirectToPathSlash(path, r.URL); ok {
 		return RedirectHandler(u.String()), u.Path
 	}
 
 	if path != r.URL.Path {
-		_, pattern = mux.handler(host, path)
+		_, pattern = mux.handler(path)
 		url := *r.URL
 		url.Path = path
 		return RedirectHandler(url.String()), pattern
 	}
 
-	return mux.handler(host, r.URL.Path)
+	return mux.handler(r.URL.Path)
 }
 
 // handler is the main implementation of Handler.
 // The path is known to be in canonical form.
-func (mux *ServeMux) handler(host, path string) (h Handler, pattern string) {
+func (mux *ServeMux) handler(path string) (h Handler, pattern string) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
-	// Host-specific pattern takes precedence over generic ones
-	if mux.hosts {
-		h, pattern = mux.match(host + path)
-	}
-	if h == nil {
-		h, pattern = mux.match(path)
-	}
+	h, pattern = mux.match(path)
 	if h == nil {
 		h, pattern = NotFoundHandler(), ""
 	}
@@ -652,10 +658,6 @@ func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	mux.m[pattern] = e
 	if pattern[len(pattern)-1] == '/' {
 		mux.es = appendSorted(mux.es, e)
-	}
-
-	if pattern[0] != '/' {
-		mux.hosts = true
 	}
 }
 
