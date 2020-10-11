@@ -45,7 +45,7 @@ The way this is implemented in this package is like so:
 
 ## Trust On First Use
 
-`go-gemini` makes it easy to implement Trust On First Use in your clients.
+`gmi` makes it easy to implement Trust On First Use in your clients.
 
 The default client loads known hosts from `$XDG_DATA_HOME/gemini/known_hosts`.
 If that is all you need, you can simply use the top-level `Send` function:
