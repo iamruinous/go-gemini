@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -48,9 +49,13 @@ type Request struct {
 }
 
 // Hostname returns the request host without the port.
+// It assumes that r.Host contains a valid host:port.
 func (r *Request) Hostname() string {
-	host, _ := splitHostPort(r.Host)
-	return host
+	colon := strings.LastIndexByte(r.Host, ':')
+	if colon != -1 {
+		return r.Host[:colon]
+	}
+	return r.Host
 }
 
 // NewRequest returns a new request. The host is inferred from the provided URL.
@@ -60,9 +65,8 @@ func NewRequest(rawurl string) (*Request, error) {
 		return nil, err
 	}
 
-	host := u.Host
-
 	// If there is no port, use the default port of 1965
+	host := u.Host
 	if u.Port() == "" {
 		host += ":1965"
 	}
@@ -287,7 +291,6 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			}
 		}
 	}
-
 	return resp, nil
 }
 

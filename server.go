@@ -5,11 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"net/url"
-	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -21,7 +19,6 @@ import (
 // Server errors.
 var (
 	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow for body")
-	ErrNotAFile       = errors.New("gemini: not a file")
 )
 
 // Server is a Gemini server.
@@ -31,7 +28,7 @@ type Server struct {
 	Addr string
 
 	// Certificate provides a TLS certificate for use by the server.
-	// Using a self-signed certificate is recommended.
+	// A self-signed certificate is recommended.
 	Certificate tls.Certificate
 
 	// registered handlers
@@ -40,16 +37,23 @@ type Server struct {
 
 // Handle registers a handler for the given host.
 // A default scheme of gemini:// is assumed.
-func (s *Server) Handle(host string, h Handler) {
-	s.HandleScheme("gemini", host, h)
+func (s *Server) Handle(host string, handler Handler) {
+	if host == "" {
+		panic("gmi: invalid host")
+	}
+	if handler == nil {
+		panic("gmi: nil handler")
+	}
+
+	s.HandleScheme("gemini", host, handler)
 }
 
 // HandleScheme registers a handler for the given scheme and host.
-func (s *Server) HandleScheme(scheme string, host string, h Handler) {
+func (s *Server) HandleScheme(scheme string, host string, handler Handler) {
 	s.handlers = append(s.handlers, handlerEntry{
 		scheme,
 		host,
-		h,
+		handler,
 	})
 }
 
@@ -372,84 +376,7 @@ func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {
 	f(rw, req)
 }
 
-// FileServer takes a filesystem and returns a handler which uses that filesystem.
-// The returned Handler rejects requests containing '..' in them.
-func FileServer(fsys FS) Handler {
-	return fsHandler{
-		fsys,
-	}
-}
-
-type fsHandler struct {
-	FS
-}
-
-func (fsys fsHandler) Serve(rw *ResponseWriter, req *Request) {
-	// Reject requests with '..' in them
-	if containsDotDot(req.URL.Path) {
-		NotFound(rw, req)
-		return
-	}
-	f, err := fsys.Open(req.URL.Path)
-	if err != nil {
-		NotFound(rw, req)
-		return
-	}
-	// TODO: detect mimetype
-	rw.SetMimetype("text/gemini")
-	// Copy file to response writer
-	io.Copy(rw, f)
-}
-
-// TODO: replace with fs.FS when available
-type FS interface {
-	Open(name string) (File, error)
-}
-
-// TODO: replace with fs.File when available
-type File interface {
-	Stat() (os.FileInfo, error)
-	Read([]byte) (int, error)
-	Close() error
-}
-
-// Dir implements FS using the native filesystem restricted to a specific directory.
-type Dir string
-
-func (d Dir) Open(name string) (File, error) {
-	p := path.Join(string(d), name)
-	f, err := os.OpenFile(p, os.O_RDONLY, 0644)
-	if err != nil {
-		return nil, err
-	}
-
-	if stat, err := f.Stat(); err == nil {
-		if !stat.Mode().IsRegular() {
-			return nil, ErrNotAFile
-		}
-	}
-	return f, nil
-}
-
 // The following code is modified from the net/http package.
-
-// Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-func containsDotDot(v string) bool {
-	if !strings.Contains(v, "..") {
-		return false
-	}
-	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
-		if ent == ".." {
-			return true
-		}
-	}
-	return false
-}
-
-func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
 // ServeMux is a Gemini request multiplexer.
 // It matches the URL of each incoming request against a list of registered
@@ -477,9 +404,9 @@ func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 // to redirect a request for "/images" to "/images/", unless "/images" has
 // been registered separately.
 //
-// ServeMux also takes care of sanitizing the URL request path and the Host
-// header, stripping the port number and redirecting any request containing . or
-// .. elements or repeated slashes to an equivalent, cleaner URL.
+// ServeMux also takes care of sanitizing the URL request path and
+// redirecting any request containing . or .. elements or repeated slashes
+// to an equivalent, cleaner URL.
 type ServeMux struct {
 	mu sync.RWMutex
 	m  map[string]muxEntry
@@ -490,9 +417,6 @@ type muxEntry struct {
 	h       Handler
 	pattern string
 }
-
-// NewServeMux allocates and returns a new ServeMux.
-func NewServeMux() *ServeMux { return new(ServeMux) }
 
 // cleanPath returns the canonical path for p, eliminating . and .. elements.
 func cleanPath(p string) string {
@@ -514,19 +438,6 @@ func cleanPath(p string) string {
 		}
 	}
 	return np
-}
-
-// stripHostPort returns h without any trailing ":<port>".
-func stripHostPort(h string) string {
-	// If no port on host, return unchanged
-	if strings.IndexByte(h, ':') == -1 {
-		return h
-	}
-	host, _, err := net.SplitHostPort(h)
-	if err != nil {
-		return h // on error, return unchanged
-	}
-	return host
 }
 
 // Find a handler on a handler map given a path string.
@@ -671,7 +582,7 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	}
 	// we now know that i points at where we want to insert
 	es = append(es, muxEntry{}) // try to grow the slice in place, any entry works.
-	copy(es[i+1:], es[i:])      // Move shorter entries down
+	copy(es[i+1:], es[i:])      // move shorter entries down
 	es[i] = e
 	return es
 }
