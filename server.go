@@ -308,7 +308,6 @@ func PermanentRedirect(rw *ResponseWriter, req *Request, url string) {
 
 // PermanentRedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
-// If permanent is true, the handler will respond with a permanent redirect.
 func PermanentRedirectHandler(url string) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
 		PermanentRedirect(rw, req, url)
@@ -369,7 +368,7 @@ func CertificateHandler(f func(*x509.Certificate)) Handler {
 	})
 }
 
-// A wrapper around a bare function that implements Handler.
+// HandlerFunc is a wrapper around a bare function that implements Handler.
 type HandlerFunc func(*ResponseWriter, *Request)
 
 func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {

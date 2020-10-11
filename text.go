@@ -114,7 +114,7 @@ func Parse(r io.Reader) Text {
 	return t
 }
 
-// String writes the Gemini text response to a string, and returns it.
+// String writes the Gemini text response to a string and returns it.
 func (t Text) String() string {
 	var b strings.Builder
 	for _, l := range t {
