@@ -11,4 +11,4 @@ It aims to provide an API similar to that of `net/http` to make it easy to devel
 There are a few examples provided in the `examples` directory.
 To run the examples:
 
-	go run ./examples/server.go
+	go run examples/server.go
