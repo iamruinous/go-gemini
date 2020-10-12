@@ -3,9 +3,17 @@ package gmi
 import (
 	"errors"
 	"io"
+	"mime"
 	"os"
 	"path"
+	"path/filepath"
 )
+
+func init() {
+	// Add Gemini mime types
+	mime.AddExtensionType(".gmi", "text/gemini")
+	mime.AddExtensionType(".gemini", "text/gemini")
+}
 
 // FileServer errors.
 var (
@@ -29,8 +37,10 @@ func (fsh fsHandler) Serve(rw *ResponseWriter, req *Request) {
 		NotFound(rw, req)
 		return
 	}
-	// TODO: detect mimetype
-	rw.SetMimetype("text/gemini")
+	// Detect mimetype
+	ext := filepath.Ext(path)
+	mimetype := mime.TypeByExtension(ext)
+	rw.SetMimetype(mimetype)
 	// Copy file to response writer
 	io.Copy(rw, f)
 }
