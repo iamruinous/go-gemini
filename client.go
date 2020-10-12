@@ -218,10 +218,8 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				return req.Certificate, nil
 			}
 			// If we have already stored the certificate, return it
-			if c.CertificateStore != nil {
-				if cert, ok := c.CertificateStore[req.Hostname()]; ok {
-					return cert, nil
-				}
+			if cert, err := c.CertificateStore.Lookup(req.Hostname()); err == nil {
+				return cert, nil
 			}
 			return &tls.Certificate{}, nil
 		},
@@ -279,10 +277,6 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		// Check to see if a certificate was already provided to prevent an infinite loop
 		if req.Certificate != nil {
 			return resp, nil
-		}
-		// Create the certificate store if it does not exist
-		if c.CertificateStore == nil {
-			c.CertificateStore = CertificateStore{}
 		}
 		if c.GetCertificate != nil {
 			if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {

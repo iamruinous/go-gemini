@@ -23,9 +23,8 @@ func main() {
 	mux := &gmi.ServeMux{}
 	mux.Handle("/", gmi.FileServer(gmi.Dir("/var/www")))
 
-	server := gmi.Server{
-		Certificate: cert,
-	}
+	server := gmi.Server{}
+	server.CertificateStore.Add("localhost", cert)
 	server.Handle("localhost", mux)
 	server.ListenAndServe()
 }

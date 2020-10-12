@@ -15,7 +15,40 @@ import (
 )
 
 // CertificateStore maps hostnames to certificates.
-type CertificateStore map[string]*tls.Certificate
+type CertificateStore struct {
+	store map[string]tls.Certificate
+}
+
+// Add adds a certificate for the given hostname to the store.
+func (c *CertificateStore) Add(hostname string, cert tls.Certificate) {
+	if c.store == nil {
+		c.store = map[string]tls.Certificate{}
+	}
+	c.store[hostname] = cert
+}
+
+// Lookup returns the certificate for the given hostname.
+func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
+	cert, ok := c.store[hostname]
+	if !ok {
+		return nil, ErrUnknownCertificate
+	}
+	// TODO: Ensure that the certificate is not expired
+	// if expired {
+	// 	return nil, ErrInvalidCertificate
+	// }
+	return &cert, nil
+}
+
+// Load loads certificates from the given path.
+// The path should lead to a directory containing certificates and private keys
+// in the form hostname.crt and hostname.key.
+// For example, the hostname "localhost" would have the corresponding files
+// localhost.crt (certificate) and localhost.key (private key).
+func (c *CertificateStore) Load(path string) error {
+	// TODO: Implement this
+	return nil
+}
 
 // NewCertificate creates and returns a new parsed certificate.
 func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {

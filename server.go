@@ -27,9 +27,13 @@ type Server struct {
 	// If Addr is empty, the server will listen on the address ":1965".
 	Addr string
 
-	// Certificate provides a TLS certificate for use by the server.
-	// A self-signed certificate is recommended.
-	Certificate tls.Certificate
+	// CertificateStore contains the certificates used by the server.
+	CertificateStore CertificateStore
+
+	// GetCertificate, if not nil, will be called to retrieve the certificate
+	// to use for a given hostname.
+	// If the certificate is nil, the connection will be aborted.
+	GetCertificate func(hostname string) *tls.Certificate
 
 	// registered handlers
 	handlers []handlerEntry
@@ -44,7 +48,6 @@ func (s *Server) Handle(host string, handler Handler) {
 	if handler == nil {
 		panic("gmi: nil handler")
 	}
-
 	s.HandleScheme("gemini", host, handler)
 }
 
@@ -79,8 +82,13 @@ func (s *Server) ListenAndServe() error {
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS12,
-		Certificates:       []tls.Certificate{s.Certificate},
-		ClientAuth:         tls.RequestClientCert,
+		GetCertificate: func(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			if s.GetCertificate != nil {
+				return s.GetCertificate(h.ServerName), nil
+			}
+			return s.CertificateStore.Lookup(h.ServerName)
+		},
+		ClientAuth: tls.RequestClientCert,
 	}
 	tlsListener := tls.NewListener(ln, config)
 	return s.Serve(tlsListener)

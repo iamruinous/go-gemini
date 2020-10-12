@@ -52,9 +52,8 @@ func main() {
 	handler.HandleFunc("/admin", admin)
 	handler.HandleFunc("/logout", logout)
 
-	server := &gmi.Server{
-		Certificate: cert,
-	}
+	server := &gmi.Server{}
+	server.CertificateStore.Add("localhost", cert)
 	server.Handle("localhost", handler)
 
 	if err := server.ListenAndServe(); err != nil {
