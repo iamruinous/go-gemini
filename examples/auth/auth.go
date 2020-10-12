@@ -3,7 +3,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"log"
@@ -34,16 +33,6 @@ var (
 )
 
 func main() {
-	// Configure a certificate.
-	// To generate a TLS key pair, run:
-	//
-	//     go run -tags=example ../cert
-	//
-	cert, err := tls.LoadX509KeyPair("examples/server/localhost.crt", "examples/server/localhost.key")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	handler := &gmi.ServeMux{}
 	handler.HandleFunc("/", welcome)
 	handler.HandleFunc("/login", login)
@@ -53,7 +42,9 @@ func main() {
 	handler.HandleFunc("/logout", logout)
 
 	server := &gmi.Server{}
-	server.CertificateStore.Add("localhost", cert)
+	if err := server.CertificateStore.Load("/var/lib/gemini/certs"); err != nil {
+		log.Fatal(err)
+	}
 	server.Handle("localhost", handler)
 
 	if err := server.ListenAndServe(); err != nil {

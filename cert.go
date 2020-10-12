@@ -60,7 +60,7 @@ func (c *CertificateStore) Load(path string) error {
 		if err != nil {
 			continue
 		}
-		hostname := filepath.Base(crtPath)
+		hostname := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
 		c.store[hostname] = cert
 	}
 	return nil
