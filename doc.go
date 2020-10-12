@@ -56,7 +56,6 @@ Server is a Gemini server.
 
 Servers must be configured with certificates:
 
-	var server gmi.Server
 	server.CertificateStore.Load("/var/lib/gemini/certs")
 
 Servers can accept requests for multiple hosts and schemes:
