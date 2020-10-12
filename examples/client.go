@@ -20,7 +20,7 @@ var (
 
 func init() {
 	// Initialize the client
-	client.KnownHosts.Load() // Load known hosts
+	client.KnownHosts.LoadDefault() // Load known hosts
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gmi.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
 		if err != nil {

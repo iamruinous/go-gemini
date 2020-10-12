@@ -1,7 +1,7 @@
 /*
 Package gmi implements the Gemini protocol.
 
-Send makes a Gemini request:
+Send makes a Gemini request with the default client:
 
 	req := gmi.NewRequest("gemini://example.com")
 	resp, err := gmi.Send(req)
@@ -10,18 +10,19 @@ Send makes a Gemini request:
 	}
 	// ...
 
-For control over client behavior, create a Client:
+For control over client behavior, create a custom Client:
 
 	var client gmi.Client
-	err := client.Send(req)
+	resp, err := client.Send(req)
 	if err != nil {
 		// handle error
 	}
+	// ...
 
 The default client loads known hosts from "$XDG_DATA_HOME/gemini/known_hosts".
 Custom clients can load their own list of known hosts:
 
-	err := client.KnownHosts.LoadFrom("path/to/my/known_hosts")
+	err := client.KnownHosts.Load("path/to/my/known_hosts")
 	if err != nil {
 		// handle error
 	}
@@ -56,7 +57,10 @@ Server is a Gemini server.
 
 Servers must be configured with certificates:
 
-	server.CertificateStore.Load("/var/lib/gemini/certs")
+	err := server.CertificateStore.Load("/var/lib/gemini/certs")
+	if err != nil {
+		// handle error
+	}
 
 Servers can accept requests for multiple hosts and schemes:
 

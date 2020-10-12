@@ -21,22 +21,22 @@ type KnownHosts struct {
 	file  *os.File
 }
 
-// Load loads the known hosts from the default known hosts path, which is
+// LoadDefault loads the known hosts from the default known hosts path, which is
 // $XDG_DATA_HOME/gemini/known_hosts.
 // It creates the path and any of its parent directories if they do not exist.
 // KnownHosts will append to the file whenever a certificate is added.
-func (k *KnownHosts) Load() error {
+func (k *KnownHosts) LoadDefault() error {
 	path, err := defaultKnownHostsPath()
 	if err != nil {
 		return err
 	}
-	return k.LoadFrom(path)
+	return k.Load(path)
 }
 
-// LoadFrom loads the known hosts from the provided path.
+// Load loads the known hosts from the provided path.
 // It creates the path and any of its parent directories if they do not exist.
 // KnownHosts will append to the file whenever a certificate is added.
-func (k *KnownHosts) LoadFrom(path string) error {
+func (k *KnownHosts) Load(path string) error {
 	if dir := filepath.Dir(path); dir != "." {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
