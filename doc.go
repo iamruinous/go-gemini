@@ -4,10 +4,11 @@ Package gmi implements the Gemini protocol.
 Send makes a Gemini request:
 
 	req := gmi.NewRequest("gemini://example.com")
-	err := gmi.Send(req)
+	resp, err := gmi.Send(req)
 	if err != nil {
 		// handle error
 	}
+	// ...
 
 For control over client behavior, create a Client:
 
@@ -31,7 +32,7 @@ Clients can control when to trust certificates with TrustCertificate:
 		return knownHosts.Lookup(hostname, cert)
 	}
 
-If a server responds with StatusCertificateRequired, the default client will generate a certificate and resend the request with it. Custom clients can specify GetCertificate:
+If a server responds with StatusCertificateRequired, the default client will generate a certificate and resend the request with it. Custom clients can do so in GetCertificate:
 
 	client.GetCertificate = func(hostname string, store *gmi.CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
