@@ -36,28 +36,40 @@ type Server struct {
 	GetCertificate func(hostname string) *tls.Certificate
 
 	// registered handlers
-	handlers []handlerEntry
+	handlers map[handlerKey]Handler
 }
 
-// Handle registers a handler for the given host.
+type handlerKey struct {
+	Scheme string
+	Host   string
+}
+
+// Handle registers a handler for the given hostname.
 // A default scheme of gemini:// is assumed.
-func (s *Server) Handle(host string, handler Handler) {
-	if host == "" {
-		panic("gmi: invalid host")
+func (s *Server) Handle(hostname string, handler Handler) {
+	if hostname == "" {
+		panic("gmi: invalid hostname")
 	}
 	if handler == nil {
 		panic("gmi: nil handler")
 	}
-	s.HandleScheme("gemini", host, handler)
+	if s.handlers == nil {
+		s.handlers = map[handlerKey]Handler{}
+	}
+	s.HandleScheme("gemini", hostname, handler)
 }
 
-// HandleScheme registers a handler for the given scheme and host.
-func (s *Server) HandleScheme(scheme string, host string, handler Handler) {
-	s.handlers = append(s.handlers, handlerEntry{
-		scheme,
-		host,
-		handler,
-	})
+func (s *Server) HandleFunc(hostname string, handler func(*ResponseWriter, *Request)) {
+	s.Handle(hostname, HandlerFunc(handler))
+}
+
+// HandleScheme registers a handler for the given scheme and hostname.
+func (s *Server) HandleScheme(scheme string, hostname string, handler Handler) {
+	s.handlers[handlerKey{scheme, hostname}] = handler
+}
+
+func (s *Server) HandleSchemeFunc(scheme string, hostname string, handler func(*ResponseWriter, *Request)) {
+	s.HandleScheme(scheme, hostname, HandlerFunc(handler))
 }
 
 type handlerEntry struct {
@@ -228,14 +240,8 @@ func (s *Server) respond(conn net.Conn) {
 }
 
 func (s *Server) handler(req *Request) Handler {
-	for _, e := range s.handlers {
-		if req.URL.Scheme != e.scheme {
-			continue
-		}
-		// Allow host or bare hostname
-		if req.URL.Host == e.host || req.Hostname() == e.host {
-			return e.h
-		}
+	if h, ok := s.handlers[handlerKey{req.URL.Scheme, req.Hostname()}]; ok {
+		return h
 	}
 	return NotFoundHandler()
 }
