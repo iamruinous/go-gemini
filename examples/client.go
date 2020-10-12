@@ -1,4 +1,4 @@
-// +build example
+// +build ignore
 
 package main
 
@@ -46,7 +46,7 @@ func init() {
 		}
 		return err
 	}
-	client.GetCertificate = func(hostname string, store gmi.CertificateStore) *tls.Certificate {
+	client.GetCertificate = func(hostname string, store *gmi.CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
 		if cert, err := store.Lookup(hostname); err == nil {
 			return cert

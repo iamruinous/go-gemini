@@ -198,7 +198,7 @@ type Client struct {
 	// The returned certificate will be used when sending the request again.
 	// If the certificate is nil, the request will not be sent again and
 	// the response will be returned.
-	GetCertificate func(hostname string, store CertificateStore) *tls.Certificate
+	GetCertificate func(hostname string, store *CertificateStore) *tls.Certificate
 
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
@@ -279,7 +279,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			return resp, nil
 		}
 		if c.GetCertificate != nil {
-			if cert := c.GetCertificate(req.Hostname(), c.CertificateStore); cert != nil {
+			if cert := c.GetCertificate(req.Hostname(), &c.CertificateStore); cert != nil {
 				req.Certificate = cert
 				return c.Send(req)
 			}

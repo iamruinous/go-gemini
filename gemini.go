@@ -1,4 +1,3 @@
-// Package gmi implements the Gemini protocol
 package gmi
 
 import (
@@ -56,7 +55,7 @@ func init() {
 		setupDefaultClientOnce.Do(setupDefaultClient)
 		return knownHosts.Lookup(hostname, cert)
 	}
-	DefaultClient.GetCertificate = func(hostname string, store CertificateStore) *tls.Certificate {
+	DefaultClient.GetCertificate = func(hostname string, store *CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
 		if cert, err := store.Lookup(hostname); err == nil {
 			return cert
