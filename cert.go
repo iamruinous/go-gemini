@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -33,10 +34,10 @@ func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 	if !ok {
 		return nil, ErrUnknownCertificate
 	}
-	// TODO: Ensure that the certificate is not expired
-	// if expired {
-	// 	return nil, ErrInvalidCertificate
-	// }
+	// Ensure that the certificate is not expired
+	if cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
+		return &cert, ErrInvalidCertificate
+	}
 	return &cert, nil
 }
 
@@ -46,7 +47,22 @@ func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 // For example, the hostname "localhost" would have the corresponding files
 // localhost.crt (certificate) and localhost.key (private key).
 func (c *CertificateStore) Load(path string) error {
-	// TODO: Implement this
+	if c.store == nil {
+		c.store = map[string]tls.Certificate{}
+	}
+	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
+	if err != nil {
+		return err
+	}
+	for _, crtPath := range matches {
+		keyPath := strings.TrimSuffix(crtPath, ".crt") + ".key"
+		cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
+		if err != nil {
+			continue
+		}
+		hostname := filepath.Base(crtPath)
+		c.store[hostname] = cert
+	}
 	return nil
 }
 
@@ -131,9 +147,9 @@ func NewRawCertificate(host string, duration time.Duration) (crt, key []byte, er
 	return
 }
 
-// WriteCertificate writes the provided certificate and private key
+// WriteX509KeyPair writes the provided certificate and private key
 // to path.crt and path.key respectively.
-func WriteCertificate(path string, crt, key []byte) error {
+func WriteX509KeyPair(path string, crt, key []byte) error {
 	// Write the certificate
 	crtPath := path + ".crt"
 	crtOut, err := os.OpenFile(crtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)

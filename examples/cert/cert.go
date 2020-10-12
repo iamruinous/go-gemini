@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := gmi.WriteCertificate(host, crt, key); err != nil {
+	if err := gmi.WriteX509KeyPair(host, crt, key); err != nil {
 		log.Fatal(err)
 	}
 }
