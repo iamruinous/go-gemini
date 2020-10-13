@@ -308,7 +308,6 @@ func Redirect(rw *ResponseWriter, req *Request, url string) {
 
 // RedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
-// If permanent is true, the handler will respond with a permanent redirect.
 func RedirectHandler(url string) Handler {
 	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
 		Redirect(rw, req, url)
