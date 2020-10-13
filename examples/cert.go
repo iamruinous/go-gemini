@@ -3,6 +3,10 @@
 package main
 
 import (
+	"bytes"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"log"
 	"os"
 	"time"
@@ -13,19 +17,27 @@ import (
 func main() {
 	host := "localhost"
 	duration := 365 * 24 * time.Hour
-	crt, key, err := gmi.NewRawCertificate(host, duration)
+	cert, err := gmi.NewCertificate(host, duration)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if err := writeX509KeyPair(host, crt, key); err != nil {
+	if err := writeCertificate(host, cert); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// writeX509KeyPair writes the provided certificate and private key
+// writeCertificate writes the provided certificate and private key
 // to path.crt and path.key respectively.
-func writeX509KeyPair(path string, crt, key []byte) error {
+func writeCertificate(path string, cert tls.Certificate) error {
+	crt, err := marshalX509Certificate(cert.Leaf.Raw)
+	if err != nil {
+		return err
+	}
+	key, err := marshalPrivateKey(cert.PrivateKey)
+	if err != nil {
+		return err
+	}
+
 	// Write the certificate
 	crtPath := path + ".crt"
 	crtOut, err := os.OpenFile(crtPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -46,4 +58,26 @@ func writeX509KeyPair(path string, crt, key []byte) error {
 		return err
 	}
 	return nil
+}
+
+// marshalX509Certificate returns a PEM-encoded version of the given raw certificate.
+func marshalX509Certificate(cert []byte) ([]byte, error) {
+	var b bytes.Buffer
+	if err := pem.Encode(&b, &pem.Block{Type: "CERTIFICATE", Bytes: cert}); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// marshalPrivateKey returns PEM encoded versions of the given certificate and private key.
+func marshalPrivateKey(priv interface{}) ([]byte, error) {
+	var b bytes.Buffer
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return nil, err
+	}
+	if err := pem.Encode(&b, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }

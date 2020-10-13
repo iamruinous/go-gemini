@@ -1,12 +1,11 @@
 package gmi
 
 import (
-	"bytes"
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
 	"math/big"
 	"net"
 	"path/filepath"
@@ -73,36 +72,38 @@ func (c *CertificateStore) Load(path string) error {
 
 // NewCertificate creates and returns a new parsed certificate.
 func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {
-	crt, key, err := NewRawCertificate(host, duration)
+	crt, priv, err := newX509KeyPair(host, duration)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	return tls.X509KeyPair(crt, key)
+	var cert tls.Certificate
+	cert.Leaf = crt
+	cert.Certificate = append(cert.Certificate, crt.Raw)
+	cert.PrivateKey = priv
+	return cert, nil
 }
 
-// NewRawCertificate creates and returns a raw certificate for the given host.
-// It generates a self-signed TLS certificate and a ED25519 private key.
-func NewRawCertificate(host string, duration time.Duration) (crt, key []byte, err error) {
-	// Generate a ED25519 private key
+// newX509KeyPair creates and returns a new certificate and private key.
+func newX509KeyPair(host string, duration time.Duration) (*x509.Certificate, crypto.PrivateKey, error) {
+	// Generate an ED25519 private key
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
-	public := priv.Public().(ed25519.PublicKey)
+	public := priv.Public()
 
 	// ED25519 keys should have the DigitalSignature KeyUsage bits set
 	// in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
 
-	notBefore := time.Now()
-	notAfter := notBefore.Add(duration)
-
-	// Generate the serial number
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	notBefore := time.Now()
+	notAfter := notBefore.Add(duration)
 
 	template := x509.Certificate{
 		SerialNumber:          serialNumber,
@@ -122,32 +123,13 @@ func NewRawCertificate(host string, duration time.Duration) (crt, key []byte, er
 		}
 	}
 
-	// Create the certificate
-	cert, err := x509.CreateCertificate(rand.Reader, &template, &template, public, priv)
+	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, public, priv)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Encode the certificate
-	var b bytes.Buffer
-	if err := pem.Encode(&b, &pem.Block{Type: "CERTIFICATE", Bytes: cert}); err != nil {
-		return nil, nil, err
-	}
-	crt = b.Bytes()
-
-	// Encode the key
-	b = bytes.Buffer{}
+	cert, err := x509.ParseCertificate(crt)
 	if err != nil {
 		return nil, nil, err
 	}
-	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := pem.Encode(&b, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return nil, nil, err
-	}
-	key = b.Bytes()
-
-	return
+	return cert, priv, nil
 }
