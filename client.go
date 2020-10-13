@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -48,14 +47,13 @@ type Request struct {
 	TLS tls.ConnectionState
 }
 
-// Hostname returns the request host without the port.
-// It assumes that r.Host contains a valid host:port.
-func (r *Request) Hostname() string {
-	colon := strings.LastIndexByte(r.Host, ':')
-	if colon != -1 {
-		return r.Host[:colon]
+// hostname returns the host without the port.
+func hostname(host string) string {
+	hostname, _, err := net.SplitHostPort(host)
+	if err != nil {
+		return host
 	}
-	return r.Host
+	return hostname
 }
 
 // NewRequest returns a new request. The host is inferred from the provided URL.
@@ -218,7 +216,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 				return req.Certificate, nil
 			}
 			// If we have already stored the certificate, return it
-			if cert, err := c.CertificateStore.Lookup(req.Hostname()); err == nil {
+			if cert, err := c.CertificateStore.Lookup(hostname(req.Host)); err == nil {
 				return cert, nil
 			}
 			return &tls.Certificate{}, nil
@@ -235,15 +233,15 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			}
 			// Check that the certificate is valid for the hostname
 			// Use our own implementation of verifyHostname
-			if err := verifyHostname(cert, req.Hostname()); err != nil {
+			if err := verifyHostname(cert, hostname(req.Host)); err != nil {
 				return err
 			}
 			// Check that the client trusts the certificate
 			if c.TrustCertificate == nil {
-				if err := c.KnownHosts.Lookup(req.Hostname(), cert); err != nil {
+				if err := c.KnownHosts.Lookup(hostname(req.Host), cert); err != nil {
 					return err
 				}
-			} else if err := c.TrustCertificate(req.Hostname(), cert, &c.KnownHosts); err != nil {
+			} else if err := c.TrustCertificate(hostname(req.Host), cert, &c.KnownHosts); err != nil {
 				return err
 			}
 			return nil
@@ -279,7 +277,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			return resp, nil
 		}
 		if c.GetCertificate != nil {
-			if cert := c.GetCertificate(req.Hostname(), &c.CertificateStore); cert != nil {
+			if cert := c.GetCertificate(hostname(req.Host), &c.CertificateStore); cert != nil {
 				req.Certificate = cert
 				return c.Send(req)
 			}

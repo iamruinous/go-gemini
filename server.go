@@ -240,7 +240,7 @@ func (s *Server) respond(conn net.Conn) {
 }
 
 func (s *Server) handler(req *Request) Handler {
-	if h, ok := s.handlers[handlerKey{req.URL.Scheme, req.Hostname()}]; ok {
+	if h, ok := s.handlers[handlerKey{req.URL.Scheme, req.URL.Hostname()}]; ok {
 		return h
 	}
 	return NotFoundHandler()
