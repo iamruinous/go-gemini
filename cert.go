@@ -22,9 +22,17 @@ type CertificateStore struct {
 }
 
 // Add adds a certificate for the given hostname to the store.
+// It tries to parse the certificate if it is not already parsed.
 func (c *CertificateStore) Add(hostname string, cert tls.Certificate) {
 	if c.store == nil {
 		c.store = map[string]tls.Certificate{}
+	}
+	// Parse certificate if not already parsed
+	if cert.Leaf == nil {
+		parsed, err := x509.ParseCertificate(cert.Certificate[0])
+		if err == nil {
+			cert.Leaf = parsed
+		}
 	}
 	c.store[hostname] = cert
 }
@@ -48,9 +56,6 @@ func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 // For example, the hostname "localhost" would have the corresponding files
 // localhost.crt (certificate) and localhost.key (private key).
 func (c *CertificateStore) Load(path string) error {
-	if c.store == nil {
-		c.store = map[string]tls.Certificate{}
-	}
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
 		return err
@@ -62,7 +67,7 @@ func (c *CertificateStore) Load(path string) error {
 			continue
 		}
 		hostname := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
-		c.store[hostname] = cert
+		c.Add(hostname, cert)
 	}
 	return nil
 }

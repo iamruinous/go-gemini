@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -92,6 +93,7 @@ func (k *KnownHosts) Lookup(hostname string, cert *x509.Certificate) error {
 			// Certificate is expired
 			continue
 		}
+		log.Print(k.hosts[i].Expires, now)
 		if k.hosts[i].Fingerprint == fingerprint {
 			// Fingerprint matches
 			return nil

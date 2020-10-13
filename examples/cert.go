@@ -12,7 +12,7 @@ import (
 func main() {
 	host := "localhost"
 
-	duration := 365 * 24 * time.Hour
+	duration := 2 * time.Minute
 	crt, key, err := gmi.NewRawCertificate(host, duration)
 	if err != nil {
 		log.Fatal(err)

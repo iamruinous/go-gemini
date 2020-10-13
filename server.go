@@ -33,7 +33,7 @@ type Server struct {
 	// GetCertificate, if not nil, will be called to retrieve the certificate
 	// to use for a given hostname.
 	// If the certificate is nil, the connection will be aborted.
-	GetCertificate func(hostname string) *tls.Certificate
+	GetCertificate func(hostname string, store *CertificateStore) *tls.Certificate
 
 	// registered handlers
 	handlers map[handlerKey]Handler
@@ -96,7 +96,7 @@ func (s *Server) ListenAndServe() error {
 		MinVersion:         tls.VersionTLS12,
 		GetCertificate: func(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			if s.GetCertificate != nil {
-				return s.GetCertificate(h.ServerName), nil
+				return s.GetCertificate(h.ServerName, &s.CertificateStore), nil
 			}
 			return s.CertificateStore.Lookup(h.ServerName)
 		},
