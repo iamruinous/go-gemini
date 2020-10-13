@@ -19,7 +19,7 @@ func main() {
 		cert, err := store.Lookup(hostname)
 		if err != nil {
 			switch err {
-			case gmi.ErrInvalidCertificate:
+			case gmi.ErrCertificateExpired:
 				log.Print("Old certificate expired, creating new one")
 				// Generate a new certificate if the old one is expired.
 				crt, key, err := gmi.NewRawCertificate(hostname, time.Minute)

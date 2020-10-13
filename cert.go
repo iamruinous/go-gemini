@@ -41,11 +41,11 @@ func (c *CertificateStore) Add(hostname string, cert tls.Certificate) {
 func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 	cert, ok := c.store[hostname]
 	if !ok {
-		return nil, ErrUnknownCertificate
+		return nil, ErrCertificateUnknown
 	}
 	// Ensure that the certificate is not expired
 	if cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
-		return &cert, ErrInvalidCertificate
+		return &cert, ErrCertificateExpired
 	}
 	return &cert, nil
 }

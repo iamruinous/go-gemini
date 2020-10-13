@@ -18,7 +18,8 @@ import (
 
 // Server errors.
 var (
-	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow for body")
+	ErrBodyNotAllowed     = errors.New("gemini: response status code does not allow for body")
+	ErrCertificateExpired = errors.New("gemini: certificate expired")
 )
 
 // Server is a Gemini server.
@@ -92,15 +93,14 @@ func (s *Server) ListenAndServe() error {
 	defer ln.Close()
 
 	config := &tls.Config{
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS12,
+		ClientAuth: tls.RequestClientCert,
+		MinVersion: tls.VersionTLS12,
 		GetCertificate: func(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			if s.GetCertificate != nil {
 				return s.GetCertificate(h.ServerName, &s.CertificateStore), nil
 			}
 			return s.CertificateStore.Lookup(h.ServerName)
 		},
-		ClientAuth: tls.RequestClientCert,
 	}
 	tlsListener := tls.NewListener(ln, config)
 	return s.Serve(tlsListener)

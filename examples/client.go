@@ -29,7 +29,7 @@ func init() {
 				// Alert the user that the certificate is not trusted
 				fmt.Printf("Warning: Certificate for %s is not trusted!\n", hostname)
 				fmt.Println("This could indicate a Man-in-the-Middle attack.")
-			case gmi.ErrUnknownCertificate:
+			case gmi.ErrCertificateUnknown:
 				// Prompt the user to trust the certificate
 				trust := trustCertificate(cert)
 				switch trust {

@@ -10,36 +10,21 @@ package gmi
 
 import (
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"net"
 	"strings"
 	"unicode/utf8"
 )
 
-var (
-	oidExtensionSubjectAltName = []int{2, 5, 29, 17}
-)
+var oidExtensionSubjectAltName = []int{2, 5, 29, 17}
 
-// oidNotInExtensions reports whether an extension with the given oid exists in
-// extensions.
-func oidInExtensions(oid asn1.ObjectIdentifier, extensions []pkix.Extension) bool {
-	for _, e := range extensions {
-		if e.Id.Equal(oid) {
+func hasSANExtension(c *x509.Certificate) bool {
+	for _, e := range c.Extensions {
+		if e.Id.Equal(oidExtensionSubjectAltName) {
 			return true
 		}
 	}
 	return false
 }
-
-func hasSANExtension(c *x509.Certificate) bool {
-	return oidInExtensions(oidExtensionSubjectAltName, c.Extensions)
-}
-
-// ignoreCN disables interpreting Common Name as a hostname. See issue 24151.
-// NOTE: This is set to false so that certificates with common names will still
-// be supported.
-var ignoreCN = false
 
 func validHostnamePattern(host string) bool { return validHostname(host, true) }
 func validHostnameInput(host string) bool   { return validHostname(host, false) }
@@ -100,7 +85,7 @@ func validHostname(host string, isPattern bool) bool {
 // constraints if there is no risk the CN would be matched as a hostname.
 // See NameConstraintsWithoutSANs and issue 24151.
 func commonNameAsHostname(c *x509.Certificate) bool {
-	return !ignoreCN && !hasSANExtension(c) && validHostnamePattern(c.Subject.CommonName)
+	return !hasSANExtension(c) && validHostnamePattern(c.Subject.CommonName)
 }
 
 func matchExactly(hostA, hostB string) bool {

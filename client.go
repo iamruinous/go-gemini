@@ -9,15 +9,13 @@ import (
 	"net"
 	"net/url"
 	"strconv"
-	"time"
 )
 
 // Client errors.
 var (
 	ErrInvalidURL            = errors.New("gemini: invalid URL")
 	ErrInvalidResponse       = errors.New("gemini: invalid response")
-	ErrInvalidCertificate    = errors.New("gemini: invalid certificate")
-	ErrUnknownCertificate    = errors.New("gemini: unknown certificate")
+	ErrCertificateUnknown    = errors.New("gemini: unknown certificate")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
 )
 
@@ -221,18 +219,9 @@ func (c *Client) Send(req *Request) (*Response, error) {
 			}
 			return &tls.Certificate{}, nil
 		},
-		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			// Parse the certificate
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return err
-			}
-			// Validate the certificate
-			if !validCertificate(cert) {
-				return ErrInvalidCertificate
-			}
-			// Check that the certificate is valid for the hostname
-			// Use our own implementation of verifyHostname
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			cert := cs.PeerCertificates[0]
+			// Verify the hostname
 			if err := verifyHostname(cert, hostname(req.Host)); err != nil {
 				return err
 			}
@@ -284,18 +273,4 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		}
 	}
 	return resp, nil
-}
-
-// validCertificate determines whether cert is a valid certificate
-func validCertificate(cert *x509.Certificate) bool {
-	// Check notBefore and notAfter
-	now := time.Now()
-	if cert.NotBefore.After(now) {
-		return false
-	}
-	if cert.NotAfter.Before(now) {
-		return false
-	}
-	// No need to check hash algorithms, hopefully tls has checked for us already
-	return true
 }
