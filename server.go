@@ -132,7 +132,7 @@ func (s *Server) Serve(l net.Listener) error {
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
 type ResponseWriter struct {
-	w           *bufio.Writer
+	b           *bufio.Writer
 	bodyAllowed bool
 	wroteHeader bool
 	mimetype    string
@@ -140,7 +140,7 @@ type ResponseWriter struct {
 
 func newResponseWriter(conn net.Conn) *ResponseWriter {
 	return &ResponseWriter{
-		w: bufio.NewWriter(conn),
+		b: bufio.NewWriter(conn),
 	}
 }
 
@@ -151,28 +151,28 @@ func newResponseWriter(conn net.Conn) *ResponseWriter {
 // For successful responses, Meta should contain the mimetype of the response.
 // For failure responses, Meta should contain a short description of the failure.
 // Meta should not be longer than 1024 bytes.
-func (r *ResponseWriter) WriteHeader(status int, meta string) {
-	if r.wroteHeader {
+func (w *ResponseWriter) WriteHeader(status int, meta string) {
+	if w.wroteHeader {
 		return
 	}
-	r.w.WriteString(strconv.Itoa(status))
-	r.w.WriteByte(' ')
-	r.w.WriteString(meta)
-	r.w.Write(crlf)
+	w.b.WriteString(strconv.Itoa(status))
+	w.b.WriteByte(' ')
+	w.b.WriteString(meta)
+	w.b.Write(crlf)
 
 	// Only allow body to be written on successful status codes.
 	if status/10 == StatusClassSuccess {
-		r.bodyAllowed = true
+		w.bodyAllowed = true
 	}
-	r.wroteHeader = true
+	w.wroteHeader = true
 }
 
 // SetMimetype sets the mimetype that will be written for a successful response.
 // The provided mimetype will only be used if Write is called without calling
 // WriteHeader.
 // If the mimetype is not set, it will default to "text/gemini".
-func (r *ResponseWriter) SetMimetype(mimetype string) {
-	r.mimetype = mimetype
+func (w *ResponseWriter) SetMimetype(mimetype string) {
+	w.mimetype = mimetype
 }
 
 // Write writes the response body.
@@ -182,18 +182,18 @@ func (r *ResponseWriter) SetMimetype(mimetype string) {
 // If WriteHeader has not yet been called, Write calls
 // WriteHeader(StatusSuccess, mimetype) where mimetype is the mimetype set in
 // SetMimetype. If no mimetype is set, a default of "text/gemini" will be used.
-func (r *ResponseWriter) Write(b []byte) (int, error) {
-	if !r.wroteHeader {
-		mimetype := r.mimetype
+func (w *ResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		mimetype := w.mimetype
 		if mimetype == "" {
 			mimetype = "text/gemini"
 		}
-		r.WriteHeader(StatusSuccess, mimetype)
+		w.WriteHeader(StatusSuccess, mimetype)
 	}
-	if !r.bodyAllowed {
+	if !w.bodyAllowed {
 		return 0, ErrBodyNotAllowed
 	}
-	return r.w.Write(b)
+	return w.b.Write(b)
 }
 
 // respond responds to a connection.
@@ -228,7 +228,7 @@ func (s *Server) respond(conn net.Conn) {
 		}
 		s.handler(req).Serve(w, req)
 	}
-	w.w.Flush()
+	w.b.Flush()
 	conn.Close()
 }
 
