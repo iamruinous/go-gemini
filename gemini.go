@@ -3,6 +3,7 @@ package gmi
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"sync"
 	"time"
 )
@@ -39,10 +40,21 @@ const (
 	StatusClassCertificateRequired = 6
 )
 
+// Errors.
+var (
+	ErrInvalidURL            = errors.New("gmi: invalid URL")
+	ErrInvalidResponse       = errors.New("gmi: invalid response")
+	ErrCertificateUnknown    = errors.New("gmi: unknown certificate")
+	ErrCertificateExpired    = errors.New("gmi: certificate expired")
+	ErrCertificateNotTrusted = errors.New("gmi: certificate is not trusted")
+	ErrNotAFile              = errors.New("gmi: not a file")
+	ErrBodyNotAllowed        = errors.New("gmi: response status code does not allow for body")
+)
+
 // DefaultClient is the default client. It is used by Send.
 //
 // On the first request, DefaultClient will load the default list of known hosts.
-var DefaultClient = &Client{}
+var DefaultClient Client
 
 var (
 	crlf = []byte("\r\n")

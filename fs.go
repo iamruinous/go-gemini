@@ -1,7 +1,6 @@
 package gmi
 
 import (
-	"errors"
 	"io"
 	"mime"
 	"os"
@@ -14,11 +13,6 @@ func init() {
 	mime.AddExtensionType(".gmi", "text/gemini")
 	mime.AddExtensionType(".gemini", "text/gemini")
 }
-
-// FileServer errors.
-var (
-	ErrNotAFile = errors.New("gemini: not a file")
-)
 
 // FileServer takes a filesystem and returns a Handler which uses that filesystem.
 // The returned Handler sanitizes paths before handling them.

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"log"
 	"net"
 	"net/url"
@@ -14,12 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
-
-// Server errors.
-var (
-	ErrBodyNotAllowed     = errors.New("gemini: response status code does not allow for body")
-	ErrCertificateExpired = errors.New("gemini: certificate expired")
 )
 
 // Server is a Gemini server.

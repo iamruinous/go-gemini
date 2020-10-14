@@ -4,19 +4,10 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"io/ioutil"
 	"net"
 	"net/url"
 	"strconv"
-)
-
-// Client errors.
-var (
-	ErrInvalidURL            = errors.New("gemini: invalid URL")
-	ErrInvalidResponse       = errors.New("gemini: invalid response")
-	ErrCertificateUnknown    = errors.New("gemini: unknown certificate")
-	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
 )
 
 // Request represents a Gemini request.
