@@ -31,7 +31,7 @@ type Request struct {
 	RemoteAddr net.Addr
 
 	// TLS allows servers and other software to record information about the TLS
-	// connection on which the request was recieved.
+	// connection on which the request was received.
 	// This field is ignored by the client.
 	TLS tls.ConnectionState
 }
