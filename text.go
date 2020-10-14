@@ -10,6 +10,7 @@ import (
 // Line represents a line of a Gemini text response.
 type Line interface {
 	String() string
+	line() // private function to prevent other packages from implementing Line
 }
 
 // A link line.
@@ -17,14 +18,30 @@ type LineLink struct {
 	URL  string
 	Name string
 }
-type LinePreformattingToggle string // A preformatting toggle line.
-type LinePreformattedText string    // A preformatted text line.
-type LineHeading1 string            // A first-level heading line.
-type LineHeading2 string            // A second-level heading line.
-type LineHeading3 string            // A third-level heading line.
-type LineListItem string            // An unordered list item line.
-type LineQuote string               // A quote line.
-type LineText string                // A text line.
+
+// A preformatting toggle line.
+type LinePreformattingToggle string
+
+// A preformatted text line.
+type LinePreformattedText string
+
+// A first-level heading line.
+type LineHeading1 string
+
+// A second-level heading line.
+type LineHeading2 string
+
+// A third-level heading line.
+type LineHeading3 string
+
+// An unordered list item line.
+type LineListItem string
+
+// A quote line.
+type LineQuote string
+
+// A text line.
+type LineText string
 
 func (l LineLink) String() string {
 	if l.Name != "" {
@@ -56,6 +73,16 @@ func (l LineQuote) String() string {
 func (l LineText) String() string {
 	return string(l)
 }
+
+func (l LineLink) line()                {}
+func (l LinePreformattingToggle) line() {}
+func (l LinePreformattedText) line()    {}
+func (l LineHeading1) line()            {}
+func (l LineHeading2) line()            {}
+func (l LineHeading3) line()            {}
+func (l LineListItem) line()            {}
+func (l LineQuote) line()               {}
+func (l LineText) line()                {}
 
 // Text represents a Gemini text response.
 type Text []Line
