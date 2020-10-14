@@ -383,6 +383,10 @@ func (f HandlerFunc) Serve(w *ResponseWriter, r *Request) {
 
 // The following code is modified from the net/http package.
 
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // ServeMux is a Gemini request multiplexer.
 // It matches the URL of each incoming request against a list of registered
 // patterns and calls the handler for the pattern that
