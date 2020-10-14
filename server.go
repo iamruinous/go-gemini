@@ -199,7 +199,7 @@ func (r *ResponseWriter) Write(b []byte) (int, error) {
 // respond responds to a connection.
 func (s *Server) respond(conn net.Conn) {
 	r := bufio.NewReader(conn)
-	rw := newResponseWriter(conn)
+	w := newResponseWriter(conn)
 	// Read requested URL
 	rawurl, err := r.ReadString('\r')
 	if err != nil {
@@ -209,16 +209,16 @@ func (s *Server) respond(conn net.Conn) {
 	if b, err := r.ReadByte(); err != nil {
 		return
 	} else if b != '\n' {
-		rw.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteHeader(StatusBadRequest, "Bad request")
 	}
 	// Trim carriage return
 	rawurl = rawurl[:len(rawurl)-1]
 	// Ensure URL is valid
 	if len(rawurl) > 1024 {
-		rw.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteHeader(StatusBadRequest, "Bad request")
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
 		// Note that we return an error status if User is specified in the URL
-		rw.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteHeader(StatusBadRequest, "Bad request")
 	} else {
 		// Gather information about the request
 		req := &Request{
@@ -226,14 +226,14 @@ func (s *Server) respond(conn net.Conn) {
 			RemoteAddr: conn.RemoteAddr(),
 			TLS:        conn.(*tls.Conn).ConnectionState(),
 		}
-		s.handler(req).Serve(rw, req)
+		s.handler(req).Serve(w, req)
 	}
-	rw.w.Flush()
+	w.w.Flush()
 	conn.Close()
 }
 
-func (s *Server) handler(req *Request) Handler {
-	if h, ok := s.handlers[handlerKey{req.URL.Scheme, req.URL.Hostname()}]; ok {
+func (s *Server) handler(r *Request) Handler {
+	if h, ok := s.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
 	return NotFoundHandler()
@@ -246,24 +246,24 @@ type Handler interface {
 }
 
 // Input responds to the request with a request for input using the given prompt.
-func Input(rw *ResponseWriter, req *Request, prompt string) {
-	rw.WriteHeader(StatusInput, prompt)
+func Input(w *ResponseWriter, r *Request, prompt string) {
+	w.WriteHeader(StatusInput, prompt)
 }
 
 // InputHandler returns a simple handler that responds to each request with
 // a request for input.
 func InputHandler(prompt string) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		Input(rw, req, prompt)
+	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+		Input(w, r, prompt)
 	})
 }
 
 // WithInput either responds to the request with StatusInput if no input
 // is provided, or calls f with the input when provided.
-func WithInput(rw *ResponseWriter, req *Request, prompt string, f func(string)) {
-	input := req.URL.RawQuery
+func WithInput(w *ResponseWriter, r *Request, prompt string, f func(string)) {
+	input := r.URL.RawQuery
 	if input == "" {
-		Input(rw, req, prompt)
+		Input(w, r, prompt)
 		return
 	}
 	f(input)
@@ -271,58 +271,58 @@ func WithInput(rw *ResponseWriter, req *Request, prompt string, f func(string)) 
 
 // Sensitive responds to the request with a request for sensitive input
 // using the given prompt.
-func SensitiveInput(rw *ResponseWriter, req *Request, prompt string) {
-	rw.WriteHeader(StatusSensitiveInput, prompt)
+func SensitiveInput(w *ResponseWriter, r *Request, prompt string) {
+	w.WriteHeader(StatusSensitiveInput, prompt)
 }
 
 // SensitiveInputHandler returns a simpler handler that responds to each request
 // with a request for sensitive input.
 func SensitiveInputHandler(prompt string) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		SensitiveInput(rw, req, prompt)
+	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+		SensitiveInput(w, r, prompt)
 	})
 }
 
 // WithSensitiveInput either responds to the request with StatusSensitiveInput
 // if no input is provided, or calls f with the input when provided.
-func WithSensitiveInput(rw *ResponseWriter, req *Request, prompt string, f func(string)) {
-	input := req.URL.RawQuery
+func WithSensitiveInput(w *ResponseWriter, r *Request, prompt string, f func(string)) {
+	input := r.URL.RawQuery
 	if input == "" {
-		SensitiveInput(rw, req, prompt)
+		SensitiveInput(w, r, prompt)
 		return
 	}
 	f(input)
 }
 
 // Redirect replies to the request with a redirect to the given URL.
-func Redirect(rw *ResponseWriter, req *Request, url string) {
-	rw.WriteHeader(StatusRedirect, url)
+func Redirect(w *ResponseWriter, r *Request, url string) {
+	w.WriteHeader(StatusRedirect, url)
 }
 
 // RedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
 func RedirectHandler(url string) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		Redirect(rw, req, url)
+	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+		Redirect(w, r, url)
 	})
 }
 
 // PermanentRedirect replies to the request with a permanent redirect to the given URL.
-func PermanentRedirect(rw *ResponseWriter, req *Request, url string) {
-	rw.WriteHeader(StatusRedirectPermanent, url)
+func PermanentRedirect(w *ResponseWriter, r *Request, url string) {
+	w.WriteHeader(StatusRedirectPermanent, url)
 }
 
 // PermanentRedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
 func PermanentRedirectHandler(url string) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		PermanentRedirect(rw, req, url)
+	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+		PermanentRedirect(w, r, url)
 	})
 }
 
 // NotFound replies to the request with the NotFound status code.
-func NotFound(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusNotFound, "Not found")
+func NotFound(w *ResponseWriter, r *Request) {
+	w.WriteHeader(StatusNotFound, "Not found")
 }
 
 // NotFoundHandler returns a simple handler that responds to each request with
@@ -332,8 +332,8 @@ func NotFoundHandler() Handler {
 }
 
 // Gone replies to the request with the Gone status code.
-func Gone(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusGone, "Gone")
+func Gone(w *ResponseWriter, r *Request) {
+	w.WriteHeader(StatusGone, "Gone")
 }
 
 // GoneHandler returns a simple handler that responds to each request with
@@ -344,24 +344,24 @@ func GoneHandler() Handler {
 
 // CertificateRequired responds to the request with the CertificateRequired
 // status code.
-func CertificateRequired(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusCertificateRequired, "Certificate required")
+func CertificateRequired(w *ResponseWriter, r *Request) {
+	w.WriteHeader(StatusCertificateRequired, "Certificate required")
 }
 
 // CertificateNotAuthorized responds to the request with
 // the CertificateNotAuthorized status code.
-func CertificateNotAuthorized(rw *ResponseWriter, req *Request) {
-	rw.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
+func CertificateNotAuthorized(w *ResponseWriter, r *Request) {
+	w.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
 // WithCertificate either responds with CertificateRequired if the client did
 // not provide a certificate, or calls f with the first ceritificate provided.
-func WithCertificate(rw *ResponseWriter, req *Request, f func(*x509.Certificate)) {
-	if len(req.TLS.PeerCertificates) == 0 {
-		CertificateRequired(rw, req)
+func WithCertificate(w *ResponseWriter, r *Request, f func(*x509.Certificate)) {
+	if len(r.TLS.PeerCertificates) == 0 {
+		CertificateRequired(w, r)
 		return
 	}
-	cert := req.TLS.PeerCertificates[0]
+	cert := r.TLS.PeerCertificates[0]
 	f(cert)
 }
 
@@ -369,16 +369,16 @@ func WithCertificate(rw *ResponseWriter, req *Request, f func(*x509.Certificate)
 // clients if they did not provide one, and calls f with the first certificate
 // if they did.
 func CertificateHandler(f func(*x509.Certificate)) Handler {
-	return HandlerFunc(func(rw *ResponseWriter, req *Request) {
-		WithCertificate(rw, req, f)
+	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+		WithCertificate(w, r, f)
 	})
 }
 
 // HandlerFunc is a wrapper around a bare function that implements Handler.
 type HandlerFunc func(*ResponseWriter, *Request)
 
-func (f HandlerFunc) Serve(rw *ResponseWriter, req *Request) {
-	f(rw, req)
+func (f HandlerFunc) Serve(w *ResponseWriter, r *Request) {
+	f(w, r)
 }
 
 // The following code is modified from the net/http package.

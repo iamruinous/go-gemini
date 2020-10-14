@@ -64,14 +64,14 @@ Servers must be configured with certificates:
 
 Servers can accept requests for multiple hosts and schemes:
 
-	server.HandleFunc("example.com", func(rw *gmi.ResponseWriter, req *gmi.Request) {
-		fmt.Fprint(rw, "Welcome to example.com")
+	server.HandleFunc("example.com", func(w *gmi.ResponseWriter, r *gmi.Request) {
+		fmt.Fprint(w, "Welcome to example.com")
 	})
-	server.HandleFunc("example.org", func(rw *gmi.ResponseWriter, req *gmi.Request) {
-		fmt.Fprint(rw, "Welcome to example.org")
+	server.HandleFunc("example.org", func(w *gmi.ResponseWriter, r *gmi.Request) {
+		fmt.Fprint(w, "Welcome to example.org")
 	})
-	server.HandleSchemeFunc("http", "example.net", func(rw *gmi.ResponseWriter, req *gmi.Request) {
-		fmt.Fprint(rw, "Proxied content from example.net")
+	server.HandleSchemeFunc("http", "example.net", func(w *gmi.ResponseWriter, r *gmi.Request) {
+		fmt.Fprint(w, "Proxied content from example.net")
 	})
 
 To start the server, call ListenAndServe:

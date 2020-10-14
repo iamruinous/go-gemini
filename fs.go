@@ -24,19 +24,19 @@ type fsHandler struct {
 	FS
 }
 
-func (fsh fsHandler) Serve(rw *ResponseWriter, req *Request) {
-	path := path.Clean(req.URL.Path)
+func (fsh fsHandler) Serve(w *ResponseWriter, r *Request) {
+	path := path.Clean(r.URL.Path)
 	f, err := fsh.Open(path)
 	if err != nil {
-		NotFound(rw, req)
+		NotFound(w, r)
 		return
 	}
 	// Detect mimetype
 	ext := filepath.Ext(path)
 	mimetype := mime.TypeByExtension(ext)
-	rw.SetMimetype(mimetype)
+	w.SetMimetype(mimetype)
 	// Copy file to response writer
-	io.Copy(rw, f)
+	io.Copy(w, f)
 }
 
 // TODO: replace with io/fs.FS when available

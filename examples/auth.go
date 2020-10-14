@@ -58,75 +58,75 @@ func getSession(crt *x509.Certificate) (*session, bool) {
 	return session, ok
 }
 
-func welcome(rw *gmi.ResponseWriter, req *gmi.Request) {
-	rw.Write([]byte("Welcome to this example.\n=> /login Login\n"))
+func welcome(w *gmi.ResponseWriter, r *gmi.Request) {
+	w.Write([]byte("Welcome to this example.\n=> /login Login\n"))
 }
 
-func login(rw *gmi.ResponseWriter, req *gmi.Request) {
-	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
-		gmi.WithInput(rw, req, "Username", func(username string) {
+func login(w *gmi.ResponseWriter, r *gmi.Request) {
+	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
+		gmi.WithInput(w, r, "Username", func(username string) {
 			fingerprint := gmi.Fingerprint(cert)
 			sessions[fingerprint] = &session{
 				username: username,
 			}
-			gmi.Redirect(rw, req, "/login/password")
+			gmi.Redirect(w, r, "/login/password")
 		})
 	})
 }
 
-func loginPassword(rw *gmi.ResponseWriter, req *gmi.Request) {
-	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
+	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
 		session, ok := getSession(cert)
 		if !ok {
-			gmi.CertificateNotAuthorized(rw, req)
+			gmi.CertificateNotAuthorized(w, r)
 			return
 		}
 
-		gmi.WithSensitiveInput(rw, req, "Password", func(password string) {
+		gmi.WithSensitiveInput(w, r, "Password", func(password string) {
 			expected := logins[session.username].password
 			if password == expected {
 				session.authorized = true
-				gmi.Redirect(rw, req, "/profile")
+				gmi.Redirect(w, r, "/profile")
 			} else {
-				gmi.SensitiveInput(rw, req, "Wrong password. Try again")
+				gmi.SensitiveInput(w, r, "Wrong password. Try again")
 			}
 		})
 	})
 }
 
-func logout(rw *gmi.ResponseWriter, req *gmi.Request) {
-	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+func logout(w *gmi.ResponseWriter, r *gmi.Request) {
+	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
 		fingerprint := gmi.Fingerprint(cert)
 		delete(sessions, fingerprint)
 	})
-	rw.Write([]byte("Successfully logged out.\n"))
+	w.Write([]byte("Successfully logged out.\n"))
 }
 
-func profile(rw *gmi.ResponseWriter, req *gmi.Request) {
-	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+func profile(w *gmi.ResponseWriter, r *gmi.Request) {
+	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
 		session, ok := getSession(cert)
 		if !ok {
-			gmi.CertificateNotAuthorized(rw, req)
+			gmi.CertificateNotAuthorized(w, r)
 			return
 		}
 		user := logins[session.username]
 		profile := fmt.Sprintf("Username: %s\nAdmin: %t\n=> /logout Logout", session.username, user.admin)
-		rw.Write([]byte(profile))
+		w.Write([]byte(profile))
 	})
 }
 
-func admin(rw *gmi.ResponseWriter, req *gmi.Request) {
-	gmi.WithCertificate(rw, req, func(cert *x509.Certificate) {
+func admin(w *gmi.ResponseWriter, r *gmi.Request) {
+	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
 		session, ok := getSession(cert)
 		if !ok {
-			gmi.CertificateNotAuthorized(rw, req)
+			gmi.CertificateNotAuthorized(w, r)
 			return
 		}
 		user := logins[session.username]
 		if !user.admin {
-			gmi.CertificateNotAuthorized(rw, req)
+			gmi.CertificateNotAuthorized(w, r)
 			return
 		}
-		rw.Write([]byte("Welcome to the admin portal.\n"))
+		w.Write([]byte("Welcome to the admin portal.\n"))
 	})
 }
