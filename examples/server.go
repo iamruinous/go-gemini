@@ -24,8 +24,11 @@ func main() {
 		if err != nil {
 			switch err {
 			case gmi.ErrCertificateExpired:
+				// Generate a new certificate if the current one is expired.
 				log.Print("Old certificate expired, creating new one")
-				// Generate a new certificate if the old one is expired.
+				fallthrough
+			case gmi.ErrCertificateUnknown:
+				// Generate a certificate if one does not exist.
 				cert, err := gmi.NewCertificate(hostname, time.Minute)
 				if err != nil {
 					// Failed to generate new certificate, abort
