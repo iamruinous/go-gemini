@@ -34,15 +34,18 @@ type Server struct {
 }
 
 type handlerKey struct {
-	Scheme string
-	Host   string
+	scheme   string
+	hostname string
+	wildcard bool
 }
 
-// Handle registers a handler for the given hostname.
-// A default scheme of gemini:// is assumed.
-func (s *Server) Handle(hostname string, handler Handler) {
-	if hostname == "" {
-		panic("gmi: invalid hostname")
+// Handle registers a handler for the given pattern.
+// Patterns must be in the form of scheme://hostname (e.g. gemini://example.com).
+// If no scheme is specified, a default scheme of gemini:// is assumed.
+// Wildcard patterns are supported (e.g. *.example.com).
+func (s *Server) Handle(pattern string, handler Handler) {
+	if pattern == "" {
+		panic("gmi: invalid pattern")
 	}
 	if handler == nil {
 		panic("gmi: nil handler")
@@ -50,20 +53,29 @@ func (s *Server) Handle(hostname string, handler Handler) {
 	if s.handlers == nil {
 		s.handlers = map[handlerKey]Handler{}
 	}
-	s.HandleScheme("gemini", hostname, handler)
+
+	split := strings.SplitN(pattern, "://", 2)
+	var key handlerKey
+	if len(split) == 2 {
+		key.scheme = split[0]
+		key.hostname = split[1]
+	} else {
+		key.scheme = "gemini"
+		key.hostname = split[0]
+	}
+	split = strings.SplitN(key.hostname, ".", 2)
+	if len(split) == 2 {
+		if split[0] == "*" {
+			key.hostname = split[1]
+			key.wildcard = true
+		}
+	}
+
+	s.handlers[key] = handler
 }
 
-func (s *Server) HandleFunc(hostname string, handler func(*ResponseWriter, *Request)) {
-	s.Handle(hostname, HandlerFunc(handler))
-}
-
-// HandleScheme registers a handler for the given scheme and hostname.
-func (s *Server) HandleScheme(scheme string, hostname string, handler Handler) {
-	s.handlers[handlerKey{scheme, hostname}] = handler
-}
-
-func (s *Server) HandleSchemeFunc(scheme string, hostname string, handler func(*ResponseWriter, *Request)) {
-	s.HandleScheme(scheme, hostname, HandlerFunc(handler))
+func (s *Server) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
+	s.Handle(pattern, HandlerFunc(handler))
 }
 
 type handlerEntry struct {
@@ -233,8 +245,14 @@ func (s *Server) respond(conn net.Conn) {
 }
 
 func (s *Server) handler(r *Request) Handler {
-	if h, ok := s.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
+	if h, ok := s.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname(), false}]; ok {
 		return h
+	}
+	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
+	if len(wildcard) == 2 {
+		if h, ok := s.handlers[handlerKey{r.URL.Scheme, wildcard[1], true}]; ok {
+			return h
+		}
 	}
 	return NotFoundHandler()
 }
