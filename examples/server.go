@@ -49,7 +49,7 @@ func main() {
 	var mux gmi.ServeMux
 	mux.Handle("/", gmi.FileServer(gmi.Dir("/var/www")))
 
-	server.Handle("localhost", &mux)
+	server.Register("localhost", &mux)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

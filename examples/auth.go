@@ -45,7 +45,7 @@ func main() {
 	if err := server.CertificateStore.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
-	server.Handle("localhost", handler)
+	server.Register("localhost", handler)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)

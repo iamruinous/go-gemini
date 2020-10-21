@@ -29,33 +29,33 @@ type Server struct {
 	// If the certificate is nil, the connection will be aborted.
 	GetCertificate func(hostname string, store *CertificateStore) *tls.Certificate
 
-	// registered handlers
-	handlers map[handlerKey]Handler
+	// registered responders
+	responders map[responderKey]Responder
 }
 
-type handlerKey struct {
+type responderKey struct {
 	scheme   string
 	hostname string
 	wildcard bool
 }
 
-// Handle registers a handler for the given pattern.
+// Register registers a responder for the given pattern.
 // Patterns must be in the form of scheme://hostname (e.g. gemini://example.com).
 // If no scheme is specified, a default scheme of gemini:// is assumed.
 // Wildcard patterns are supported (e.g. *.example.com).
-func (s *Server) Handle(pattern string, handler Handler) {
+func (s *Server) Register(pattern string, responder Responder) {
 	if pattern == "" {
 		panic("gmi: invalid pattern")
 	}
-	if handler == nil {
-		panic("gmi: nil handler")
+	if responder == nil {
+		panic("gmi: nil responder")
 	}
-	if s.handlers == nil {
-		s.handlers = map[handlerKey]Handler{}
+	if s.responders == nil {
+		s.responders = map[responderKey]Responder{}
 	}
 
 	split := strings.SplitN(pattern, "://", 2)
-	var key handlerKey
+	var key responderKey
 	if len(split) == 2 {
 		key.scheme = split[0]
 		key.hostname = split[1]
@@ -69,18 +69,12 @@ func (s *Server) Handle(pattern string, handler Handler) {
 		key.wildcard = true
 	}
 
-	s.handlers[key] = handler
+	s.responders[key] = responder
 }
 
-// HandleFunc registers a handler function for the given pattern.
-func (s *Server) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
-	s.Handle(pattern, HandlerFunc(handler))
-}
-
-type handlerEntry struct {
-	scheme string
-	host   string
-	h      Handler
+// RegisterFunc registers a responder function for the given pattern.
+func (s *Server) RegisterFunc(pattern string, responder func(*ResponseWriter, *Request)) {
+	s.Register(pattern, ResponderFunc(responder))
 }
 
 // ListenAndServe listens for requests at the server's configured address.
@@ -127,7 +121,7 @@ func (s *Server) Serve(l net.Listener) error {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				log.Printf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
+				log.Printf("gmi: Accept error: %v; retrying in %v", err, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -139,6 +133,58 @@ func (s *Server) Serve(l net.Listener) error {
 		tempDelay = 0
 		go s.respond(rw)
 	}
+}
+
+// respond responds to a connection.
+func (s *Server) respond(conn net.Conn) {
+	r := bufio.NewReader(conn)
+	w := newResponseWriter(conn)
+	// Read requested URL
+	rawurl, err := r.ReadString('\r')
+	if err != nil {
+		return
+	}
+	// Read terminating line feed
+	if b, err := r.ReadByte(); err != nil {
+		return
+	} else if b != '\n' {
+		w.WriteHeader(StatusBadRequest, "Bad request")
+	}
+	// Trim carriage return
+	rawurl = rawurl[:len(rawurl)-1]
+	// Ensure URL is valid
+	if len(rawurl) > 1024 {
+		w.WriteHeader(StatusBadRequest, "Bad request")
+	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
+		// Note that we return an error status if User is specified in the URL
+		w.WriteHeader(StatusBadRequest, "Bad request")
+	} else {
+		// If no scheme is specified, assume a default scheme of gemini://
+		if url.Scheme == "" {
+			url.Scheme = "gemini"
+		}
+		req := &Request{
+			URL:        url,
+			RemoteAddr: conn.RemoteAddr(),
+			TLS:        conn.(*tls.Conn).ConnectionState(),
+		}
+		s.responder(req).Respond(w, req)
+	}
+	w.b.Flush()
+	conn.Close()
+}
+
+func (s *Server) responder(r *Request) Responder {
+	if h, ok := s.responders[responderKey{r.URL.Scheme, r.URL.Hostname(), false}]; ok {
+		return h
+	}
+	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
+	if len(wildcard) == 2 {
+		if h, ok := s.responders[responderKey{r.URL.Scheme, wildcard[1], true}]; ok {
+			return h
+		}
+	}
+	return NotFoundHandler()
 }
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
@@ -207,62 +253,10 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-// respond responds to a connection.
-func (s *Server) respond(conn net.Conn) {
-	r := bufio.NewReader(conn)
-	w := newResponseWriter(conn)
-	// Read requested URL
-	rawurl, err := r.ReadString('\r')
-	if err != nil {
-		return
-	}
-	// Read terminating line feed
-	if b, err := r.ReadByte(); err != nil {
-		return
-	} else if b != '\n' {
-		w.WriteHeader(StatusBadRequest, "Bad request")
-	}
-	// Trim carriage return
-	rawurl = rawurl[:len(rawurl)-1]
-	// Ensure URL is valid
-	if len(rawurl) > 1024 {
-		w.WriteHeader(StatusBadRequest, "Bad request")
-	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
-		// Note that we return an error status if User is specified in the URL
-		w.WriteHeader(StatusBadRequest, "Bad request")
-	} else {
-		// If no scheme is specified, assume a default scheme of gemini://
-		if url.Scheme == "" {
-			url.Scheme = "gemini"
-		}
-		req := &Request{
-			URL:        url,
-			RemoteAddr: conn.RemoteAddr(),
-			TLS:        conn.(*tls.Conn).ConnectionState(),
-		}
-		s.handler(req).Serve(w, req)
-	}
-	w.b.Flush()
-	conn.Close()
-}
-
-func (s *Server) handler(r *Request) Handler {
-	if h, ok := s.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname(), false}]; ok {
-		return h
-	}
-	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
-	if len(wildcard) == 2 {
-		if h, ok := s.handlers[handlerKey{r.URL.Scheme, wildcard[1], true}]; ok {
-			return h
-		}
-	}
-	return NotFoundHandler()
-}
-
-// A Handler responds to a Gemini request.
-type Handler interface {
-	// Serve accepts a Request and constructs a Response.
-	Serve(*ResponseWriter, *Request)
+// A Responder responds to a Gemini request.
+type Responder interface {
+	// Respond accepts a Request and constructs a Response.
+	Respond(*ResponseWriter, *Request)
 }
 
 // Input responds to the request with a request for input using the given prompt.
@@ -272,8 +266,8 @@ func Input(w *ResponseWriter, r *Request, prompt string) {
 
 // InputHandler returns a simple handler that responds to each request with
 // a request for input.
-func InputHandler(prompt string) Handler {
-	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+func InputHandler(prompt string) Responder {
+	return ResponderFunc(func(w *ResponseWriter, r *Request) {
 		Input(w, r, prompt)
 	})
 }
@@ -297,8 +291,8 @@ func SensitiveInput(w *ResponseWriter, r *Request, prompt string) {
 
 // SensitiveInputHandler returns a simpler handler that responds to each request
 // with a request for sensitive input.
-func SensitiveInputHandler(prompt string) Handler {
-	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+func SensitiveInputHandler(prompt string) Responder {
+	return ResponderFunc(func(w *ResponseWriter, r *Request) {
 		SensitiveInput(w, r, prompt)
 	})
 }
@@ -321,8 +315,8 @@ func Redirect(w *ResponseWriter, r *Request, url string) {
 
 // RedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
-func RedirectHandler(url string) Handler {
-	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+func RedirectHandler(url string) Responder {
+	return ResponderFunc(func(w *ResponseWriter, r *Request) {
 		Redirect(w, r, url)
 	})
 }
@@ -334,8 +328,8 @@ func PermanentRedirect(w *ResponseWriter, r *Request, url string) {
 
 // PermanentRedirectHandler returns a simple handler that responds to each request with
 // a redirect to the given URL.
-func PermanentRedirectHandler(url string) Handler {
-	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+func PermanentRedirectHandler(url string) Responder {
+	return ResponderFunc(func(w *ResponseWriter, r *Request) {
 		PermanentRedirect(w, r, url)
 	})
 }
@@ -347,8 +341,8 @@ func NotFound(w *ResponseWriter, r *Request) {
 
 // NotFoundHandler returns a simple handler that responds to each request with
 // the status code NotFound.
-func NotFoundHandler() Handler {
-	return HandlerFunc(NotFound)
+func NotFoundHandler() Responder {
+	return ResponderFunc(NotFound)
 }
 
 // Gone replies to the request with the Gone status code.
@@ -358,8 +352,8 @@ func Gone(w *ResponseWriter, r *Request) {
 
 // GoneHandler returns a simple handler that responds to each request with
 // the status code Gone.
-func GoneHandler() Handler {
-	return HandlerFunc(Gone)
+func GoneHandler() Responder {
+	return ResponderFunc(Gone)
 }
 
 // CertificateRequired responds to the request with the CertificateRequired
@@ -388,16 +382,16 @@ func WithCertificate(w *ResponseWriter, r *Request, f func(*x509.Certificate)) {
 // CertificateHandler returns a simple handler that requests a certificate from
 // clients if they did not provide one, and calls f with the first certificate
 // if they did.
-func CertificateHandler(f func(*x509.Certificate)) Handler {
-	return HandlerFunc(func(w *ResponseWriter, r *Request) {
+func CertificateHandler(f func(*x509.Certificate)) Responder {
+	return ResponderFunc(func(w *ResponseWriter, r *Request) {
 		WithCertificate(w, r, f)
 	})
 }
 
-// HandlerFunc is a wrapper around a bare function that implements Handler.
-type HandlerFunc func(*ResponseWriter, *Request)
+// ResponderFunc is a wrapper around a bare function that implements Handler.
+type ResponderFunc func(*ResponseWriter, *Request)
 
-func (f HandlerFunc) Serve(w *ResponseWriter, r *Request) {
+func (f ResponderFunc) Respond(w *ResponseWriter, r *Request) {
 	f(w, r)
 }
 
@@ -443,7 +437,7 @@ type ServeMux struct {
 }
 
 type muxEntry struct {
-	h       Handler
+	h       Responder
 	pattern string
 }
 
@@ -471,7 +465,7 @@ func cleanPath(p string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
-func (mux *ServeMux) match(path string) (h Handler, pattern string) {
+func (mux *ServeMux) match(path string) (h Responder, pattern string) {
 	// Check for exact match first.
 	v, ok := mux.m[path]
 	if ok {
@@ -536,7 +530,7 @@ func (mux *ServeMux) shouldRedirectRLocked(path string) bool {
 //
 // If there is no registered handler that applies to the request,
 // Handler returns a "not found" handler and an empty pattern.
-func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
+func (mux *ServeMux) Handler(r *Request) (h Responder, pattern string) {
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
@@ -557,7 +551,7 @@ func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
 
 // handler is the main implementation of Handler.
 // The path is known to be in canonical form.
-func (mux *ServeMux) handler(path string) (h Handler, pattern string) {
+func (mux *ServeMux) handler(path string) (h Responder, pattern string) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
@@ -568,16 +562,16 @@ func (mux *ServeMux) handler(path string) (h Handler, pattern string) {
 	return
 }
 
-// Serve dispatches the request to the handler whose
+// Respond dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) Serve(w *ResponseWriter, r *Request) {
+func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 	h, _ := mux.Handler(r)
-	h.Serve(w, r)
+	h.Respond(w, r)
 }
 
 // Handle registers the handler for the given pattern.
 // If a handler already exists for pattern, Handle panics.
-func (mux *ServeMux) Handle(pattern string, handler Handler) {
+func (mux *ServeMux) Handle(pattern string, handler Responder) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
@@ -621,5 +615,5 @@ func (mux *ServeMux) HandleFunc(pattern string, handler func(*ResponseWriter, *R
 	if handler == nil {
 		panic("gmi: nil handler")
 	}
-	mux.Handle(pattern, HandlerFunc(handler))
+	mux.Handle(pattern, ResponderFunc(handler))
 }

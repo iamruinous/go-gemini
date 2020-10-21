@@ -16,7 +16,7 @@ func init() {
 
 // FileServer takes a filesystem and returns a Handler which uses that filesystem.
 // The returned Handler sanitizes paths before handling them.
-func FileServer(fsys FS) Handler {
+func FileServer(fsys FS) Responder {
 	return fsHandler{fsys}
 }
 
@@ -24,7 +24,7 @@ type fsHandler struct {
 	FS
 }
 
-func (fsh fsHandler) Serve(w *ResponseWriter, r *Request) {
+func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	path := path.Clean(r.URL.Path)
 	f, err := fsh.Open(path)
 	if err != nil {
