@@ -184,7 +184,7 @@ func (s *Server) responder(r *Request) Responder {
 			return h
 		}
 	}
-	return NotFoundResponder()
+	return ResponderFunc(NotFound)
 }
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
@@ -259,53 +259,24 @@ type Responder interface {
 	Respond(*ResponseWriter, *Request)
 }
 
-// Input responds to the request with a request for input using the given prompt.
-func Input(w *ResponseWriter, r *Request, prompt string) {
+// Input returns the request query.
+// If no input is provided, it responds with StatusInput.
+func Input(w *ResponseWriter, r *Request, prompt string) (string, bool) {
+	if r.URL.ForceQuery || r.URL.RawQuery != "" {
+		return r.URL.RawQuery, true
+	}
 	w.WriteHeader(StatusInput, prompt)
+	return "", false
 }
 
-// InputHandler returns a simple handler that responds to each request with
-// a request for input.
-func InputHandler(prompt string) Responder {
-	return ResponderFunc(func(w *ResponseWriter, r *Request) {
-		Input(w, r, prompt)
-	})
-}
-
-// WithInput either responds to the request with StatusInput if no input
-// is provided, or calls f with the input when provided.
-func WithInput(w *ResponseWriter, r *Request, prompt string, f func(string)) {
-	input := r.URL.RawQuery
-	if input == "" {
-		Input(w, r, prompt)
-		return
+// SensitiveInput returns the request query.
+// If no input is provided, it responds with StatusSensitiveInput.
+func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool) {
+	if r.URL.ForceQuery || r.URL.RawQuery != "" {
+		return r.URL.RawQuery, true
 	}
-	f(input)
-}
-
-// Sensitive responds to the request with a request for sensitive input
-// using the given prompt.
-func SensitiveInput(w *ResponseWriter, r *Request, prompt string) {
-	w.WriteHeader(StatusSensitiveInput, prompt)
-}
-
-// SensitiveInputHandler returns a simpler handler that responds to each request
-// with a request for sensitive input.
-func SensitiveInputHandler(prompt string) Responder {
-	return ResponderFunc(func(w *ResponseWriter, r *Request) {
-		SensitiveInput(w, r, prompt)
-	})
-}
-
-// WithSensitiveInput either responds to the request with StatusSensitiveInput
-// if no input is provided, or calls f with the input when provided.
-func WithSensitiveInput(w *ResponseWriter, r *Request, prompt string, f func(string)) {
-	input := r.URL.RawQuery
-	if input == "" {
-		SensitiveInput(w, r, prompt)
-		return
-	}
-	f(input)
+	w.WriteHeader(StatusInput, prompt)
+	return "", false
 }
 
 // Redirect replies to the request with a redirect to the given URL.
@@ -321,12 +292,6 @@ func PermanentRedirect(w *ResponseWriter, r *Request, url string) {
 // NotFound replies to the request with the NotFound status code.
 func NotFound(w *ResponseWriter, r *Request) {
 	w.WriteHeader(StatusNotFound, "Not found")
-}
-
-// NotFoundResponder returns a simple responder that responds to each request with
-// the status code NotFound.
-func NotFoundResponder() Responder {
-	return ResponderFunc(NotFound)
 }
 
 // Gone replies to the request with the Gone status code.

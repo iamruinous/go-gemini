@@ -64,13 +64,15 @@ func welcome(w *gmi.ResponseWriter, r *gmi.Request) {
 
 func login(w *gmi.ResponseWriter, r *gmi.Request) {
 	gmi.WithCertificate(w, r, func(cert *x509.Certificate) {
-		gmi.WithInput(w, r, "Username", func(username string) {
-			fingerprint := gmi.Fingerprint(cert)
-			sessions[fingerprint] = &session{
-				username: username,
-			}
-			gmi.Redirect(w, r, "/login/password")
-		})
+		username, ok := gmi.Input(w, r, "Username")
+		if !ok {
+			return
+		}
+		fingerprint := gmi.Fingerprint(cert)
+		sessions[fingerprint] = &session{
+			username: username,
+		}
+		gmi.Redirect(w, r, "/login/password")
 	})
 }
 
@@ -82,15 +84,17 @@ func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
 			return
 		}
 
-		gmi.WithSensitiveInput(w, r, "Password", func(password string) {
-			expected := logins[session.username].password
-			if password == expected {
-				session.authorized = true
-				gmi.Redirect(w, r, "/profile")
-			} else {
-				gmi.SensitiveInput(w, r, "Wrong password. Try again")
-			}
-		})
+		password, ok := gmi.Input(w, r, "Password")
+		if !ok {
+			return
+		}
+		expected := logins[session.username].password
+		if password == expected {
+			session.authorized = true
+			gmi.Redirect(w, r, "/profile")
+		} else {
+			gmi.SensitiveInput(w, r, "Wrong password. Try again")
+		}
 	})
 }
 
