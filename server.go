@@ -184,7 +184,7 @@ func (s *Server) responder(r *Request) Responder {
 			return h
 		}
 	}
-	return NotFoundHandler()
+	return NotFoundResponder()
 }
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
@@ -313,25 +313,9 @@ func Redirect(w *ResponseWriter, r *Request, url string) {
 	w.WriteHeader(StatusRedirect, url)
 }
 
-// RedirectHandler returns a simple handler that responds to each request with
-// a redirect to the given URL.
-func RedirectHandler(url string) Responder {
-	return ResponderFunc(func(w *ResponseWriter, r *Request) {
-		Redirect(w, r, url)
-	})
-}
-
 // PermanentRedirect replies to the request with a permanent redirect to the given URL.
 func PermanentRedirect(w *ResponseWriter, r *Request, url string) {
 	w.WriteHeader(StatusRedirectPermanent, url)
-}
-
-// PermanentRedirectHandler returns a simple handler that responds to each request with
-// a redirect to the given URL.
-func PermanentRedirectHandler(url string) Responder {
-	return ResponderFunc(func(w *ResponseWriter, r *Request) {
-		PermanentRedirect(w, r, url)
-	})
 }
 
 // NotFound replies to the request with the NotFound status code.
@@ -339,21 +323,15 @@ func NotFound(w *ResponseWriter, r *Request) {
 	w.WriteHeader(StatusNotFound, "Not found")
 }
 
-// NotFoundHandler returns a simple handler that responds to each request with
+// NotFoundResponder returns a simple responder that responds to each request with
 // the status code NotFound.
-func NotFoundHandler() Responder {
+func NotFoundResponder() Responder {
 	return ResponderFunc(NotFound)
 }
 
 // Gone replies to the request with the Gone status code.
 func Gone(w *ResponseWriter, r *Request) {
 	w.WriteHeader(StatusGone, "Gone")
-}
-
-// GoneHandler returns a simple handler that responds to each request with
-// the status code Gone.
-func GoneHandler() Responder {
-	return ResponderFunc(Gone)
 }
 
 // CertificateRequired responds to the request with the CertificateRequired
@@ -377,15 +355,6 @@ func WithCertificate(w *ResponseWriter, r *Request, f func(*x509.Certificate)) {
 	}
 	cert := r.TLS.PeerCertificates[0]
 	f(cert)
-}
-
-// CertificateHandler returns a simple handler that requests a certificate from
-// clients if they did not provide one, and calls f with the first certificate
-// if they did.
-func CertificateHandler(f func(*x509.Certificate)) Responder {
-	return ResponderFunc(func(w *ResponseWriter, r *Request) {
-		WithCertificate(w, r, f)
-	})
 }
 
 // ResponderFunc is a wrapper around a bare function that implements Handler.
@@ -437,7 +406,7 @@ type ServeMux struct {
 }
 
 type muxEntry struct {
-	h       Responder
+	r       Responder
 	pattern string
 }
 
@@ -465,21 +434,21 @@ func cleanPath(p string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
-func (mux *ServeMux) match(path string) (h Responder, pattern string) {
+func (mux *ServeMux) match(path string) Responder {
 	// Check for exact match first.
 	v, ok := mux.m[path]
 	if ok {
-		return v.h, v.pattern
+		return v.r
 	}
 
 	// Check for longest valid match.  mux.es contains all patterns
 	// that end in / sorted from longest to shortest.
 	for _, e := range mux.es {
 		if strings.HasPrefix(path, e.pattern) {
-			return e.h, e.pattern
+			return e.r
 		}
 	}
-	return nil, ""
+	return nil
 }
 
 // redirectToPathSlash determines if the given path needs appending "/" to it.
@@ -517,69 +486,47 @@ func (mux *ServeMux) shouldRedirectRLocked(path string) bool {
 	return false
 }
 
-// Handler returns the handler to use for the given request.
-// It consults r.URL.Path. It always returns a non-nil handler.
-// If the path is not in its canonical form, the
-// handler will be an internally-generated handler that redirects
-// to the canonical path. If the host contains a port, it is ignored
-// when matching handlers.
-//
-// Handler also returns the registered pattern that matches the
-// request or, in the case of internally-generated redirects,
-// the pattern that will match after following the redirect.
-//
-// If there is no registered handler that applies to the request,
-// Handler returns a "not found" handler and an empty pattern.
-func (mux *ServeMux) Handler(r *Request) (h Responder, pattern string) {
+// Respond dispatches the request to the responder whose
+// pattern most closely matches the request URL.
+func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
 	if u, ok := mux.redirectToPathSlash(path, r.URL); ok {
-		return RedirectHandler(u.String()), u.Path
+		Redirect(w, r, u.String())
+		return
 	}
 
 	if path != r.URL.Path {
-		_, pattern = mux.handler(path)
-		url := *r.URL
-		url.Path = path
-		return RedirectHandler(url.String()), pattern
+		u := *r.URL
+		u.Path = path
+		Redirect(w, r, u.String())
+		return
 	}
 
-	return mux.handler(r.URL.Path)
-}
-
-// handler is the main implementation of Handler.
-// The path is known to be in canonical form.
-func (mux *ServeMux) handler(path string) (h Responder, pattern string) {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
-	h, pattern = mux.match(path)
-	if h == nil {
-		h, pattern = NotFoundHandler(), ""
+	resp := mux.match(path)
+	if resp == nil {
+		NotFound(w, r)
+		return
 	}
-	return
+	resp.Respond(w, r)
 }
 
-// Respond dispatches the request to the handler whose
-// pattern most closely matches the request URL.
-func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
-	h, _ := mux.Handler(r)
-	h.Respond(w, r)
-}
-
-// Handle registers the handler for the given pattern.
-// If a handler already exists for pattern, Handle panics.
-func (mux *ServeMux) Handle(pattern string, handler Responder) {
+// Handle registers the responder for the given pattern.
+// If a responder already exists for pattern, Handle panics.
+func (mux *ServeMux) Handle(pattern string, responder Responder) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
 	if pattern == "" {
 		panic("gmi: invalid pattern")
 	}
-	if handler == nil {
-		panic("gmi: nil handler")
+	if responder == nil {
+		panic("gmi: nil responder")
 	}
 	if _, exist := mux.m[pattern]; exist {
 		panic("gmi: multiple registrations for " + pattern)
@@ -588,7 +535,7 @@ func (mux *ServeMux) Handle(pattern string, handler Responder) {
 	if mux.m == nil {
 		mux.m = make(map[string]muxEntry)
 	}
-	e := muxEntry{h: handler, pattern: pattern}
+	e := muxEntry{responder, pattern}
 	mux.m[pattern] = e
 	if pattern[len(pattern)-1] == '/' {
 		mux.es = appendSorted(mux.es, e)
@@ -610,10 +557,10 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	return es
 }
 
-// HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
-	if handler == nil {
-		panic("gmi: nil handler")
+// HandleFunc registers the responder function for the given pattern.
+func (mux *ServeMux) HandleFunc(pattern string, responder func(*ResponseWriter, *Request)) {
+	if responder == nil {
+		panic("gmi: nil responder")
 	}
-	mux.Handle(pattern, ResponderFunc(handler))
+	mux.Handle(pattern, ResponderFunc(responder))
 }

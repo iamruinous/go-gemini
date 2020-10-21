@@ -64,13 +64,13 @@ Servers must be configured with certificates:
 
 Servers can accept requests for multiple hosts and schemes:
 
-	server.HandleFunc("example.com", func(w *gmi.ResponseWriter, r *gmi.Request) {
+	server.RegisterFunc("example.com", func(w *gmi.ResponseWriter, r *gmi.Request) {
 		fmt.Fprint(w, "Welcome to example.com")
 	})
-	server.HandleFunc("example.org", func(w *gmi.ResponseWriter, r *gmi.Request) {
+	server.RegisterFunc("example.org", func(w *gmi.ResponseWriter, r *gmi.Request) {
 		fmt.Fprint(w, "Welcome to example.org")
 	})
-	server.HandleFunc("http://example.net", func(w *gmi.ResponseWriter, r *gmi.Request) {
+	server.RegisterFunc("http://example.net", func(w *gmi.ResponseWriter, r *gmi.Request) {
 		fmt.Fprint(w, "Proxied content from http://example.net")
 	})
 
