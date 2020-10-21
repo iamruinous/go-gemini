@@ -232,7 +232,10 @@ func (s *Server) respond(conn net.Conn) {
 		// Note that we return an error status if User is specified in the URL
 		w.WriteHeader(StatusBadRequest, "Bad request")
 	} else {
-		// Gather information about the request
+		// If no scheme is specified, assume a default scheme of gemini://
+		if url.Scheme == "" {
+			url.Scheme = "gemini"
+		}
 		req := &Request{
 			URL:        url,
 			RemoteAddr: conn.RemoteAddr(),
