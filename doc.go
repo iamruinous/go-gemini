@@ -70,8 +70,8 @@ Servers can accept requests for multiple hosts and schemes:
 	server.HandleFunc("example.org", func(w *gmi.ResponseWriter, r *gmi.Request) {
 		fmt.Fprint(w, "Welcome to example.org")
 	})
-	server.HandleSchemeFunc("http", "example.net", func(w *gmi.ResponseWriter, r *gmi.Request) {
-		fmt.Fprint(w, "Proxied content from example.net")
+	server.HandleFunc("http://example.net", func(w *gmi.ResponseWriter, r *gmi.Request) {
+		fmt.Fprint(w, "Proxied content from http://example.net")
 	})
 
 To start the server, call ListenAndServe:
