@@ -64,16 +64,15 @@ func (s *Server) Handle(pattern string, handler Handler) {
 		key.hostname = split[0]
 	}
 	split = strings.SplitN(key.hostname, ".", 2)
-	if len(split) == 2 {
-		if split[0] == "*" {
-			key.hostname = split[1]
-			key.wildcard = true
-		}
+	if len(split) == 2 && split[0] == "*" {
+		key.hostname = split[1]
+		key.wildcard = true
 	}
 
 	s.handlers[key] = handler
 }
 
+// HandleFunc registers a handler function for the given pattern.
 func (s *Server) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
 	s.Handle(pattern, HandlerFunc(handler))
 }
