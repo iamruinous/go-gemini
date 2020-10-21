@@ -84,7 +84,7 @@ func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
 			return
 		}
 
-		password, ok := gmi.Input(w, r, "Password")
+		password, ok := gmi.SensitiveInput(w, r, "Password")
 		if !ok {
 			return
 		}
