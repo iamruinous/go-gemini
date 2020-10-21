@@ -311,15 +311,14 @@ func CertificateNotAuthorized(w *ResponseWriter, r *Request) {
 	w.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
-// WithCertificate either responds with CertificateRequired if the client did
-// not provide a certificate, or calls f with the first ceritificate provided.
-func WithCertificate(w *ResponseWriter, r *Request, f func(*x509.Certificate)) {
+// Certificate returns the request certificate. If one is not provided,
+// it returns nil and responds with StatusCertificateRequired.
+func Certificate(w *ResponseWriter, r *Request) (*x509.Certificate, bool) {
 	if len(r.TLS.PeerCertificates) == 0 {
 		CertificateRequired(w, r)
-		return
+		return nil, false
 	}
-	cert := r.TLS.PeerCertificates[0]
-	f(cert)
+	return r.TLS.PeerCertificates[0], true
 }
 
 // ResponderFunc is a wrapper around a bare function that implements Handler.
