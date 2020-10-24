@@ -6,6 +6,10 @@ Package gemini implements the [Gemini protocol](https://gemini.circumlunar.space
 
 It aims to provide an API similar to that of net/http to make it easy to develop Gemini clients and servers.
 
+## Usage
+
+	import "git.sr.ht/~adnano/go-gemini"
+
 ## Examples
 
 There are a few examples provided in the `examples` directory.
