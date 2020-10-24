@@ -1,4 +1,4 @@
-package gmi
+package gemini
 
 import (
 	"bufio"
@@ -45,10 +45,10 @@ type responderKey struct {
 // Wildcard patterns are supported (e.g. *.example.com).
 func (s *Server) Register(pattern string, responder Responder) {
 	if pattern == "" {
-		panic("gmi: invalid pattern")
+		panic("gemini: invalid pattern")
 	}
 	if responder == nil {
-		panic("gmi: nil responder")
+		panic("gemini: nil responder")
 	}
 	if s.responders == nil {
 		s.responders = map[responderKey]Responder{}
@@ -121,7 +121,7 @@ func (s *Server) Serve(l net.Listener) error {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				log.Printf("gmi: Accept error: %v; retrying in %v", err, tempDelay)
+				log.Printf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -275,7 +275,7 @@ func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool)
 	if r.URL.ForceQuery || r.URL.RawQuery != "" {
 		return r.URL.RawQuery, true
 	}
-	w.WriteHeader(StatusInput, prompt)
+	w.WriteHeader(StatusSensitiveInput, prompt)
 	return "", false
 }
 
@@ -487,13 +487,13 @@ func (mux *ServeMux) Handle(pattern string, responder Responder) {
 	defer mux.mu.Unlock()
 
 	if pattern == "" {
-		panic("gmi: invalid pattern")
+		panic("gemini: invalid pattern")
 	}
 	if responder == nil {
-		panic("gmi: nil responder")
+		panic("gemini: nil responder")
 	}
 	if _, exist := mux.m[pattern]; exist {
-		panic("gmi: multiple registrations for " + pattern)
+		panic("gemini: multiple registrations for " + pattern)
 	}
 
 	if mux.m == nil {
@@ -524,7 +524,7 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 // HandleFunc registers the responder function for the given pattern.
 func (mux *ServeMux) HandleFunc(pattern string, responder func(*ResponseWriter, *Request)) {
 	if responder == nil {
-		panic("gmi: nil responder")
+		panic("gemini: nil responder")
 	}
 	mux.Handle(pattern, ResponderFunc(responder))
 }

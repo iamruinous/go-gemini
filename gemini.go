@@ -1,4 +1,4 @@
-package gmi
+package gemini
 
 import (
 	"crypto/tls"
@@ -42,13 +42,13 @@ const (
 
 // Errors.
 var (
-	ErrInvalidURL            = errors.New("gmi: invalid URL")
-	ErrInvalidResponse       = errors.New("gmi: invalid response")
-	ErrCertificateUnknown    = errors.New("gmi: unknown certificate")
-	ErrCertificateExpired    = errors.New("gmi: certificate expired")
-	ErrCertificateNotTrusted = errors.New("gmi: certificate is not trusted")
-	ErrNotAFile              = errors.New("gmi: not a file")
-	ErrBodyNotAllowed        = errors.New("gmi: response status code does not allow for body")
+	ErrInvalidURL            = errors.New("gemini: invalid URL")
+	ErrInvalidResponse       = errors.New("gemini: invalid response")
+	ErrCertificateUnknown    = errors.New("gemini: unknown certificate")
+	ErrCertificateExpired    = errors.New("gemini: certificate expired")
+	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
+	ErrNotAFile              = errors.New("gemini: not a file")
+	ErrBodyNotAllowed        = errors.New("gemini: response status code does not allow for body")
 )
 
 // DefaultClient is the default client. It is used by Send.

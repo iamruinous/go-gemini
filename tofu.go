@@ -1,4 +1,4 @@
-package gmi
+package gemini
 
 import (
 	"bufio"

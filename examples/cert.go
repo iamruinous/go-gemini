@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"git.sr.ht/~adnano/gmi"
+	gmi "git.sr.ht/~adnano/go-gemini"
 )
 
 func main() {
