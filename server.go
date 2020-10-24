@@ -321,7 +321,7 @@ func Certificate(w *ResponseWriter, r *Request) (*x509.Certificate, bool) {
 	return r.TLS.PeerCertificates[0], true
 }
 
-// ResponderFunc is a wrapper around a bare function that implements Handler.
+// ResponderFunc is a wrapper around a bare function that implements Responder.
 type ResponderFunc func(*ResponseWriter, *Request)
 
 func (f ResponderFunc) Respond(w *ResponseWriter, r *Request) {

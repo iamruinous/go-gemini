@@ -14,8 +14,8 @@ func init() {
 	mime.AddExtensionType(".gemini", "text/gemini")
 }
 
-// FileServer takes a filesystem and returns a Handler which uses that filesystem.
-// The returned Handler sanitizes paths before handling them.
+// FileServer takes a filesystem and returns a Responder which uses that filesystem.
+// The returned Responder sanitizes paths before handling them.
 func FileServer(fsys FS) Responder {
 	return fsHandler{fsys}
 }
