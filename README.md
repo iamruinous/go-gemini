@@ -12,7 +12,13 @@ It aims to provide an API similar to that of net/http to make it easy to develop
 
 ## Examples
 
-There are a few examples provided in the `examples` directory.
-To run the examples:
+There are a few examples provided in the examples directory.
+To run an example:
 
 	go run examples/server.go
+
+## Contributing
+
+Send patches and questions to [~adnano/go-gemini-devel](https://lists.sr.ht/~adnano/go-gemini-devel).
+
+Subscribe to release announcements on [~adnano/go-gemini-announce](https://lists.sr.ht/~adnano/go-gemini-announce).
