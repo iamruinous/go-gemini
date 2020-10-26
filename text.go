@@ -3,7 +3,6 @@ package gemini
 import (
 	"bufio"
 	"fmt"
-	"html"
 	"io"
 	"strings"
 )
@@ -148,73 +147,6 @@ func (t Text) String() string {
 	for _, l := range t {
 		b.WriteString(l.String())
 		b.WriteByte('\n')
-	}
-	return b.String()
-}
-
-// HTML returns the Gemini text response as HTML.
-func (t Text) HTML() string {
-	var b strings.Builder
-	var pre bool
-	var list bool
-	for _, l := range t {
-		if _, ok := l.(LineListItem); ok {
-			if !list {
-				list = true
-				fmt.Fprint(&b, "<ul>\n")
-			}
-		} else if list {
-			list = false
-			fmt.Fprint(&b, "</ul>\n")
-		}
-		switch l.(type) {
-		case LineLink:
-			link := l.(LineLink)
-			url := html.EscapeString(link.URL)
-			name := html.EscapeString(link.Name)
-			if name == "" {
-				name = url
-			}
-			fmt.Fprintf(&b, "<p><a href='%s'>%s</a></p>\n", url, name)
-		case LinePreformattingToggle:
-			pre = !pre
-			if pre {
-				fmt.Fprint(&b, "<pre>\n")
-			} else {
-				fmt.Fprint(&b, "</pre>\n")
-			}
-		case LinePreformattedText:
-			text := string(l.(LinePreformattedText))
-			fmt.Fprintf(&b, "%s\n", html.EscapeString(text))
-		case LineHeading1:
-			text := string(l.(LineHeading1))
-			fmt.Fprintf(&b, "<h1>%s</h1>\n", html.EscapeString(text))
-		case LineHeading2:
-			text := string(l.(LineHeading2))
-			fmt.Fprintf(&b, "<h2>%s</h2>\n", html.EscapeString(text))
-		case LineHeading3:
-			text := string(l.(LineHeading3))
-			fmt.Fprintf(&b, "<h3>%s</h3>\n", html.EscapeString(text))
-		case LineListItem:
-			text := string(l.(LineListItem))
-			fmt.Fprintf(&b, "<li>%s</li>\n", html.EscapeString(text))
-		case LineQuote:
-			text := string(l.(LineQuote))
-			fmt.Fprintf(&b, "<blockquote>%s</blockquote>\n", html.EscapeString(text))
-		case LineText:
-			text := string(l.(LineText))
-			if text == "" {
-				fmt.Fprint(&b, "<br>\n")
-			} else {
-				fmt.Fprintf(&b, "<p>%s</p>\n", html.EscapeString(text))
-			}
-		}
-	}
-	if pre {
-		fmt.Fprint(&b, "</pre>\n")
-	}
-	if list {
-		fmt.Fprint(&b, "</ul>\n")
 	}
 	return b.String()
 }
