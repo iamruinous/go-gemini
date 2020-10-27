@@ -42,22 +42,27 @@ func hostname(host string) string {
 	return hostname
 }
 
-// NewRequest returns a new request. The host is inferred from the provided URL.
+// NewRequest returns a new request. The host is inferred from the URL.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, err
 	}
+	return NewRequestFromURL(u)
+}
 
+// NewRequestFromURL returns a new request for the given URL.
+// The host is inferred from the URL.
+func NewRequestFromURL(url *url.URL) (*Request, error) {
 	// If there is no port, use the default port of 1965
-	host := u.Host
-	if u.Port() == "" {
+	host := url.Host
+	if url.Port() == "" {
 		host += ":1965"
 	}
 
 	return &Request{
 		Host: host,
-		URL:  u,
+		URL:  url,
 	}, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -76,21 +77,23 @@ func sendRequest(req *gmi.Request) error {
 	case gmi.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
 		scanner.Scan()
-		req.URL.RawQuery = scanner.Text()
+		req.URL.RawQuery = url.QueryEscape(scanner.Text())
 		return sendRequest(req)
 	case gmi.StatusClassSuccess:
 		fmt.Print(string(resp.Body))
 		return nil
 	case gmi.StatusClassRedirect:
 		fmt.Println("Redirecting to", resp.Meta)
-		// Make the request to the same host
-		red, err := gmi.NewRequestTo(resp.Meta, req.Host)
+		target, err := url.Parse(resp.Meta)
 		if err != nil {
 			return err
 		}
-		// Handle relative redirects
-		red.URL = req.URL.ResolveReference(red.URL)
-		return sendRequest(red)
+		// TODO: Prompt the user if the redirect is to another domain.
+		redirect, err := gmi.NewRequestFromURL(req.URL.ResolveReference(target))
+		if err != nil {
+			return err
+		}
+		return sendRequest(redirect)
 	case gmi.StatusClassTemporaryFailure:
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
 	case gmi.StatusClassPermanentFailure:
