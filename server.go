@@ -168,7 +168,12 @@ func (s *Server) respond(conn net.Conn) {
 			RemoteAddr: conn.RemoteAddr(),
 			TLS:        conn.(*tls.Conn).ConnectionState(),
 		}
-		s.responder(req).Respond(w, req)
+		resp := s.responder(req)
+		if resp != nil {
+			resp.Respond(w, req)
+		} else {
+			w.WriteStatus(StatusNotFound)
+		}
 	}
 	w.b.Flush()
 	conn.Close()
@@ -184,7 +189,7 @@ func (s *Server) responder(r *Request) Responder {
 			return h
 		}
 	}
-	return ResponderFunc(NotFound)
+	return nil
 }
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
@@ -208,20 +213,25 @@ func newResponseWriter(conn net.Conn) *ResponseWriter {
 // For successful responses, Meta should contain the mimetype of the response.
 // For failure responses, Meta should contain a short description of the failure.
 // Meta should not be longer than 1024 bytes.
-func (w *ResponseWriter) WriteHeader(status int, meta string) {
+func (w *ResponseWriter) WriteHeader(status Status, meta string) {
 	if w.wroteHeader {
 		return
 	}
-	w.b.WriteString(strconv.Itoa(status))
+	w.b.WriteString(strconv.Itoa(int(status)))
 	w.b.WriteByte(' ')
 	w.b.WriteString(meta)
 	w.b.Write(crlf)
 
 	// Only allow body to be written on successful status codes.
-	if status/10 == StatusClassSuccess {
+	if status.Class() == StatusClassSuccess {
 		w.bodyAllowed = true
 	}
 	w.wroteHeader = true
+}
+
+// WriteStatus writes the response header with the given status code.
+func (w *ResponseWriter) WriteStatus(status Status) {
+	w.WriteHeader(status, status.Message())
 }
 
 // SetMimetype sets the mimetype that will be written for a successful response.
@@ -280,42 +290,20 @@ func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool)
 }
 
 // Redirect replies to the request with a redirect to the given URL.
-func Redirect(w *ResponseWriter, r *Request, url string) {
+func Redirect(w *ResponseWriter, url string) {
 	w.WriteHeader(StatusRedirect, url)
 }
 
 // PermanentRedirect replies to the request with a permanent redirect to the given URL.
-func PermanentRedirect(w *ResponseWriter, r *Request, url string) {
+func PermanentRedirect(w *ResponseWriter, url string) {
 	w.WriteHeader(StatusRedirectPermanent, url)
-}
-
-// NotFound replies to the request with the NotFound status code.
-func NotFound(w *ResponseWriter, r *Request) {
-	w.WriteHeader(StatusNotFound, "Not found")
-}
-
-// Gone replies to the request with the Gone status code.
-func Gone(w *ResponseWriter, r *Request) {
-	w.WriteHeader(StatusGone, "Gone")
-}
-
-// CertificateRequired responds to the request with the CertificateRequired
-// status code.
-func CertificateRequired(w *ResponseWriter, r *Request) {
-	w.WriteHeader(StatusCertificateRequired, "Certificate required")
-}
-
-// CertificateNotAuthorized responds to the request with
-// the CertificateNotAuthorized status code.
-func CertificateNotAuthorized(w *ResponseWriter, r *Request) {
-	w.WriteHeader(StatusCertificateNotAuthorized, "Certificate not authorized")
 }
 
 // Certificate returns the request certificate. If one is not provided,
 // it returns nil and responds with StatusCertificateRequired.
 func Certificate(w *ResponseWriter, r *Request) (*x509.Certificate, bool) {
 	if len(r.TLS.PeerCertificates) == 0 {
-		CertificateRequired(w, r)
+		w.WriteStatus(StatusCertificateRequired)
 		return nil, false
 	}
 	return r.TLS.PeerCertificates[0], true
@@ -458,14 +446,14 @@ func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
 	if u, ok := mux.redirectToPathSlash(path, r.URL); ok {
-		Redirect(w, r, u.String())
+		Redirect(w, u.String())
 		return
 	}
 
 	if path != r.URL.Path {
 		u := *r.URL
 		u.Path = path
-		Redirect(w, r, u.String())
+		Redirect(w, u.String())
 		return
 	}
 
@@ -474,7 +462,7 @@ func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 
 	resp := mux.match(path)
 	if resp == nil {
-		NotFound(w, r)
+		w.WriteStatus(StatusNotFound)
 		return
 	}
 	resp.Respond(w, r)

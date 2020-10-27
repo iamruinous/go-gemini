@@ -28,7 +28,7 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	path := path.Clean(r.URL.Path)
 	f, err := fsh.Open(path)
 	if err != nil {
-		NotFound(w, r)
+		w.WriteStatus(StatusNotFound)
 		return
 	}
 	// Detect mimetype

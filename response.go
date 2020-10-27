@@ -10,7 +10,7 @@ import (
 // Response is a Gemini response.
 type Response struct {
 	// Status represents the response status.
-	Status int
+	Status Status
 
 	// Meta contains more information related to the response status.
 	// For successful responses, Meta should contain the mimetype of the response.
@@ -37,11 +37,11 @@ func (resp *Response) read(r *bufio.Reader) error {
 	if err != nil {
 		return err
 	}
-	resp.Status = status
+	resp.Status = Status(status)
 
 	// Disregard invalid status codes
 	const minStatus, maxStatus = 1, 6
-	statusClass := status / 10
+	statusClass := resp.Status.Class()
 	if statusClass < minStatus || statusClass > maxStatus {
 		return ErrInvalidResponse
 	}
@@ -74,7 +74,7 @@ func (resp *Response) read(r *bufio.Reader) error {
 	}
 
 	// Read response body
-	if status/10 == StatusClassSuccess {
+	if resp.Status.Class() == StatusClassSuccess {
 		var err error
 		resp.Body, err = ioutil.ReadAll(r)
 		if err != nil {
