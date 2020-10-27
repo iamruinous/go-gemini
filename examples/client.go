@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"time"
@@ -80,7 +81,12 @@ func sendRequest(req *gmi.Request) error {
 		req.URL.RawQuery = url.QueryEscape(scanner.Text())
 		return sendRequest(req)
 	case gmi.StatusClassSuccess:
-		fmt.Print(string(resp.Body))
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		fmt.Print(string(body))
 		return nil
 	case gmi.StatusClassRedirect:
 		fmt.Println("Redirecting to", resp.Meta)

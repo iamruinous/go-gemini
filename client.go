@@ -66,7 +66,6 @@ func (c *Client) Send(req *Request) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	// Write the request
 	w := bufio.NewWriter(conn)
@@ -77,8 +76,7 @@ func (c *Client) Send(req *Request) (*Response, error) {
 
 	// Read the response
 	resp := &Response{}
-	r := bufio.NewReader(conn)
-	if err := resp.read(r); err != nil {
+	if err := resp.read(conn); err != nil {
 		return nil, err
 	}
 	// Store connection information
