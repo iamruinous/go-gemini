@@ -58,6 +58,27 @@ type Dir string
 // If the file is a directory, it tries to open the index file in that directory.
 func (d Dir) Open(name string) (File, error) {
 	p := path.Join(string(d), name)
+	return openFile(p)
+}
+
+// ServeFile responds to the request with the contents of the named file
+// or directory.
+// TODO: Use io/fs.FS when available.
+func ServeFile(w *ResponseWriter, fs FS, name string) {
+	f, err := fs.Open(name)
+	if err != nil {
+		w.WriteStatus(StatusNotFound)
+		return
+	}
+	// Detect mimetype
+	ext := filepath.Ext(name)
+	mimetype := mime.TypeByExtension(ext)
+	w.SetMimetype(mimetype)
+	// Copy file to response writer
+	io.Copy(w, f)
+}
+
+func openFile(p string) (File, error) {
 	f, err := os.OpenFile(p, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
