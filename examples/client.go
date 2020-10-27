@@ -73,7 +73,7 @@ func sendRequest(req *gmi.Request) error {
 	}
 
 	// TODO: More fine-grained analysis of the status code.
-	switch resp.Status / 10 {
+	switch resp.Status.Class() {
 	case gmi.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
 		scanner.Scan()

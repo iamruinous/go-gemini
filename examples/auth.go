@@ -76,7 +76,7 @@ func login(w *gmi.ResponseWriter, r *gmi.Request) {
 	sessions[fingerprint] = &session{
 		username: username,
 	}
-	gmi.Redirect(w, r, "/login/password")
+	gmi.Redirect(w, "/login/password")
 }
 
 func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
@@ -86,7 +86,7 @@ func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		gmi.CertificateNotAuthorized(w, r)
+		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
 		return
 	}
 
@@ -97,7 +97,7 @@ func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
 	expected := logins[session.username].password
 	if password == expected {
 		session.authorized = true
-		gmi.Redirect(w, r, "/profile")
+		gmi.Redirect(w, "/profile")
 	} else {
 		gmi.SensitiveInput(w, r, "Wrong password. Try again")
 	}
@@ -120,7 +120,7 @@ func profile(w *gmi.ResponseWriter, r *gmi.Request) {
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		gmi.CertificateNotAuthorized(w, r)
+		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
 		return
 	}
 	user := logins[session.username]
@@ -136,12 +136,12 @@ func admin(w *gmi.ResponseWriter, r *gmi.Request) {
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		gmi.CertificateNotAuthorized(w, r)
+		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
 		return
 	}
 	user := logins[session.username]
 	if !user.admin {
-		gmi.CertificateNotAuthorized(w, r)
+		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
 		return
 	}
 	fmt.Fprintln(w, "Welcome to the admin portal.")
