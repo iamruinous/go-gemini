@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"net"
 )
 
 // Client represents a Gemini client.
@@ -28,8 +29,17 @@ type Client struct {
 	TrustCertificate func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error
 }
 
-// Send sends a Gemini request and returns a Gemini response.
-func (c *Client) Send(req *Request) (*Response, error) {
+// Get performs a Gemini request for the given url.
+func (c *Client) Get(url string) (*Response, error) {
+	req, err := NewRequest(url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
+}
+
+// Do performs a Gemini request and returns a Gemini response.
+func (c *Client) Do(req *Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
@@ -92,9 +102,18 @@ func (c *Client) Send(req *Request) (*Response, error) {
 		if c.GetCertificate != nil {
 			if cert := c.GetCertificate(hostname(req.Host), &c.CertificateStore); cert != nil {
 				req.Certificate = cert
-				return c.Send(req)
+				return c.Do(req)
 			}
 		}
 	}
 	return resp, nil
+}
+
+// hostname returns the host without the port.
+func hostname(host string) string {
+	hostname, _, err := net.SplitHostPort(host)
+	if err != nil {
+		return host
+	}
+	return hostname
 }

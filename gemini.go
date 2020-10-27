@@ -8,82 +8,7 @@ import (
 	"time"
 )
 
-// Status codes.
-type Status int
-
-const (
-	StatusInput                    Status = 10
-	StatusSensitiveInput           Status = 11
-	StatusSuccess                  Status = 20
-	StatusRedirect                 Status = 30
-	StatusRedirectPermanent        Status = 31
-	StatusTemporaryFailure         Status = 40
-	StatusServerUnavailable        Status = 41
-	StatusCGIError                 Status = 42
-	StatusProxyError               Status = 43
-	StatusSlowDown                 Status = 44
-	StatusPermanentFailure         Status = 50
-	StatusNotFound                 Status = 51
-	StatusGone                     Status = 52
-	StatusProxyRequestRefused      Status = 53
-	StatusBadRequest               Status = 59
-	StatusCertificateRequired      Status = 60
-	StatusCertificateNotAuthorized Status = 61
-	StatusCertificateNotValid      Status = 62
-)
-
-// Class returns the status class for this status code.
-func (s Status) Class() StatusClass {
-	return StatusClass(s / 10)
-}
-
-// StatusMessage returns the status message corresponding to the provided
-// status code.
-// StatusMessage returns an empty string for input, successs, and redirect
-// status codes.
-func (s Status) Message() string {
-	switch s {
-	case StatusTemporaryFailure:
-		return "TemporaryFailure"
-	case StatusServerUnavailable:
-		return "Server unavailable"
-	case StatusCGIError:
-		return "CGI error"
-	case StatusProxyError:
-		return "Proxy error"
-	case StatusSlowDown:
-		return "Slow down"
-	case StatusPermanentFailure:
-		return "PermanentFailure"
-	case StatusNotFound:
-		return "Not found"
-	case StatusGone:
-		return "Gone"
-	case StatusProxyRequestRefused:
-		return "Proxy request refused"
-	case StatusBadRequest:
-		return "Bad request"
-	case StatusCertificateRequired:
-		return "Certificate required"
-	case StatusCertificateNotAuthorized:
-		return "Certificate not authorized"
-	case StatusCertificateNotValid:
-		return "Certificate not valid"
-	}
-	return ""
-}
-
-// Status code categories.
-type StatusClass int
-
-const (
-	StatusClassInput               StatusClass = 1
-	StatusClassSuccess             StatusClass = 2
-	StatusClassRedirect            StatusClass = 3
-	StatusClassTemporaryFailure    StatusClass = 4
-	StatusClassPermanentFailure    StatusClass = 5
-	StatusClassCertificateRequired StatusClass = 6
-)
+var crlf = []byte("\r\n")
 
 // Errors.
 var (
@@ -96,48 +21,42 @@ var (
 	ErrBodyNotAllowed        = errors.New("gemini: response status code does not allow for body")
 )
 
-// DefaultClient is the default client. It is used by Send.
+// DefaultClient is the default client. It is used by Get and Do.
 //
-// On the first request, DefaultClient will load the default list of known hosts.
+// On the first request, DefaultClient loads the default list of known hosts.
 var DefaultClient Client
 
-var (
-	crlf = []byte("\r\n")
-)
+// Get performs a Gemini request for the given url.
+//
+// Get is a wrapper around DefaultClient.Get.
+func Get(url string) (*Response, error) {
+	return DefaultClient.Get(url)
+}
+
+// Do performs a Gemini request and returns a Gemini response.
+//
+// Do is a wrapper around DefaultClient.Do.
+func Do(req *Request) (*Response, error) {
+	return DefaultClient.Do(req)
+}
+
+var defaultClientOnce sync.Once
 
 func init() {
 	DefaultClient.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error {
-		// Load the hosts only once. This is so that the hosts don't have to be loaded
-		// for those using their own clients.
-		setupDefaultClientOnce.Do(setupDefaultClient)
+		defaultClientOnce.Do(func() { knownHosts.LoadDefault() })
 		return knownHosts.Lookup(hostname, cert)
 	}
 	DefaultClient.GetCertificate = func(hostname string, store *CertificateStore) *tls.Certificate {
-		// If the certificate is in the store, return it
 		if cert, err := store.Lookup(hostname); err == nil {
 			return cert
 		}
-		// Otherwise, generate a certificate
 		duration := time.Hour
 		cert, err := NewCertificate(hostname, duration)
 		if err != nil {
 			return nil
 		}
-		// Store and return the certificate
 		store.Add(hostname, cert)
 		return &cert
 	}
-}
-
-var setupDefaultClientOnce sync.Once
-
-func setupDefaultClient() {
-	DefaultClient.KnownHosts.LoadDefault()
-}
-
-// Send sends a Gemini request and returns a Gemini response.
-//
-// Send is a wrapper around DefaultClient.Send.
-func Send(req *Request) (*Response, error) {
-	return DefaultClient.Send(req)
 }

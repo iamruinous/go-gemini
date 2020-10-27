@@ -68,7 +68,7 @@ func init() {
 
 // sendRequest sends a request to the given URL.
 func sendRequest(req *gmi.Request) error {
-	resp, err := client.Send(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -149,19 +149,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	var host string
-	if len(os.Args) >= 3 {
-		host = os.Args[2]
-	}
-
 	url := os.Args[1]
-	var req *gmi.Request
-	var err error
-	if host != "" {
-		req, err = gmi.NewRequestTo(url, host)
-	} else {
-		req, err = gmi.NewRequest(url)
-	}
+	req, err := gmi.NewRequest(url)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

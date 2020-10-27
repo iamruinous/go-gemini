@@ -1,26 +1,34 @@
 /*
 Package gemini implements the Gemini protocol.
 
-Send makes a Gemini request with the default client:
+Get makes a Gemini request:
 
-	req := gemini.NewRequest("gemini://example.com")
-	resp, err := gemini.Send(req)
+	resp, err := gemini.Get("gemini://example.com")
 	if err != nil {
 		// handle error
 	}
 	// ...
 
-For control over client behavior, create a custom Client:
+The client must close the response body when finished with it:
+
+	resp, err := gemini.Get("gemini://example.com")
+	if err != nil {
+		// handle error
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	// ...
+
+For control over client behavior, create a Client:
 
 	var client gemini.Client
-	resp, err := client.Send(req)
+	resp, err := client.Get("gemini://example.com")
 	if err != nil {
 		// handle error
 	}
 	// ...
 
-The default client loads known hosts from "$XDG_DATA_HOME/gemini/known_hosts".
-Custom clients can load their own list of known hosts:
+Clients can load their own list of known hosts:
 
 	err := client.KnownHosts.Load("path/to/my/known_hosts")
 	if err != nil {
@@ -33,7 +41,7 @@ Clients can control when to trust certificates with TrustCertificate:
 		return knownHosts.Lookup(hostname, cert)
 	}
 
-If a server responds with StatusCertificateRequired, the default client will generate a certificate and resend the request with it. Custom clients can do so in GetCertificate:
+Clients can control what to do when a server requests a certificate:
 
 	client.GetCertificate = func(hostname string, store *gemini.CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it

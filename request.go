@@ -33,15 +33,6 @@ type Request struct {
 	TLS tls.ConnectionState
 }
 
-// hostname returns the host without the port.
-func hostname(host string) string {
-	hostname, _, err := net.SplitHostPort(host)
-	if err != nil {
-		return host
-	}
-	return hostname
-}
-
 // NewRequest returns a new request. The host is inferred from the URL.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
@@ -54,29 +45,13 @@ func NewRequest(rawurl string) (*Request, error) {
 // NewRequestFromURL returns a new request for the given URL.
 // The host is inferred from the URL.
 func NewRequestFromURL(url *url.URL) (*Request, error) {
-	// If there is no port, use the default port of 1965
 	host := url.Host
 	if url.Port() == "" {
 		host += ":1965"
 	}
-
 	return &Request{
-		Host: host,
 		URL:  url,
-	}, nil
-}
-
-// NewRequestTo returns a new request for the provided URL to the provided host.
-// The host must contain a port.
-func NewRequestTo(rawurl, host string) (*Request, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Request{
 		Host: host,
-		URL:  u,
 	}, nil
 }
 
