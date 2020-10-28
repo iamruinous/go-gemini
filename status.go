@@ -29,10 +29,8 @@ func (s Status) Class() StatusClass {
 	return StatusClass(s / 10)
 }
 
-// StatusMessage returns the status message corresponding to the provided
-// status code.
-// StatusMessage returns an empty string for input, successs, and redirect
-// status codes.
+// Message returns a status message corresponding to this status code.
+// It returns an empty string for input, successs, and redirect status codes.
 func (s Status) Message() string {
 	switch s {
 	case StatusTemporaryFailure:

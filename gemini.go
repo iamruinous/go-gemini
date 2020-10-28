@@ -18,6 +18,7 @@ var (
 	ErrCertificateExpired    = errors.New("gemini: certificate expired")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
 	ErrNotAFile              = errors.New("gemini: not a file")
+	ErrNotAGeminiURL         = errors.New("gemini: not a Gemini URL")
 	ErrBodyNotAllowed        = errors.New("gemini: response status code does not allow for body")
 )
 

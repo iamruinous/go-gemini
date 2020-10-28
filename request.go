@@ -45,6 +45,9 @@ func NewRequest(rawurl string) (*Request, error) {
 // NewRequestFromURL returns a new request for the given URL.
 // The host is inferred from the URL.
 func NewRequestFromURL(url *url.URL) (*Request, error) {
+	if url.Scheme != "" && url.Scheme != "gemini" {
+		return nil, ErrNotAGeminiURL
+	}
 	host := url.Host
 	if url.Port() == "" {
 		host += ":1965"
