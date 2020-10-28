@@ -24,6 +24,18 @@ const (
 	StatusCertificateNotValid      Status = 62
 )
 
+// Status code categories.
+type StatusClass int
+
+const (
+	StatusClassInput               StatusClass = 1
+	StatusClassSuccess             StatusClass = 2
+	StatusClassRedirect            StatusClass = 3
+	StatusClassTemporaryFailure    StatusClass = 4
+	StatusClassPermanentFailure    StatusClass = 5
+	StatusClassCertificateRequired StatusClass = 6
+)
+
 // Class returns the status class for this status code.
 func (s Status) Class() StatusClass {
 	return StatusClass(s / 10)
@@ -71,15 +83,3 @@ func (s Status) Message() string {
 	}
 	return ""
 }
-
-// Status code categories.
-type StatusClass int
-
-const (
-	StatusClassInput               StatusClass = 1
-	StatusClassSuccess             StatusClass = 2
-	StatusClassRedirect            StatusClass = 3
-	StatusClassTemporaryFailure    StatusClass = 4
-	StatusClassPermanentFailure    StatusClass = 5
-	StatusClassCertificateRequired StatusClass = 6
-)

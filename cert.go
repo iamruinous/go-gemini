@@ -20,9 +20,9 @@ type CertificateStore struct {
 	store map[string]tls.Certificate
 }
 
-// Add adds a certificate for the given hostname to the store.
+// Add adds a certificate for the given scope to the store.
 // It tries to parse the certificate if it is not already parsed.
-func (c *CertificateStore) Add(hostname string, cert tls.Certificate) {
+func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 	if c.store == nil {
 		c.store = map[string]tls.Certificate{}
 	}
@@ -33,7 +33,7 @@ func (c *CertificateStore) Add(hostname string, cert tls.Certificate) {
 			cert.Leaf = parsed
 		}
 	}
-	c.store[hostname] = cert
+	c.store[scope] = cert
 }
 
 // Lookup returns the certificate for the given hostname.
@@ -47,6 +47,22 @@ func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 		return &cert, ErrCertificateExpired
 	}
 	return &cert, nil
+}
+
+// lookup returns the certificate for the given hostname + path.
+func (c *CertificateStore) lookup(scope string) (*tls.Certificate, error) {
+	for {
+		cert, err := c.Lookup(scope)
+		switch err {
+		case ErrCertificateExpired, nil:
+			return cert, err
+		}
+		scope = path.Dir(scope)
+		if scope == "." {
+			break
+		}
+	}
+	return nil, ErrCertificateUnknown
 }
 
 // Load loads certificates from the given path.
@@ -71,36 +87,16 @@ func (c *CertificateStore) Load(path string) error {
 	return nil
 }
 
-type ClientCertificateStore struct {
-	CertificateStore
+// CertificateOptions configures how a certificate is created.
+type CertificateOptions struct {
+	IPAddresses []net.IP
+	DNSNames    []string
+	Duration    time.Duration
 }
 
-func (c *ClientCertificateStore) Lookup(hostname, urlPath string) (*tls.Certificate, error) {
-	urlPath = path.Clean(urlPath)
-	if urlPath == "." {
-		urlPath = "/"
-	}
-	if urlPath[0] != '/' {
-		urlPath = "/" + urlPath
-	}
-	for {
-		cert, err := c.CertificateStore.Lookup(hostname + urlPath)
-		switch err {
-		case ErrCertificateExpired, nil:
-			return cert, err
-		}
-		slash := urlPath == "/"
-		urlPath = path.Dir(urlPath)
-		if slash && urlPath == "/" {
-			break
-		}
-	}
-	return nil, ErrCertificateUnknown
-}
-
-// NewCertificate creates and returns a new parsed certificate.
-func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {
-	crt, priv, err := newX509KeyPair(host, duration)
+// CreateCertificate creates a new TLS certificate.
+func CreateCertificate(options CertificateOptions) (tls.Certificate, error) {
+	crt, priv, err := newX509KeyPair(options)
 	if err != nil {
 		return tls.Certificate{}, err
 	}
@@ -112,7 +108,7 @@ func NewCertificate(host string, duration time.Duration) (tls.Certificate, error
 }
 
 // newX509KeyPair creates and returns a new certificate and private key.
-func newX509KeyPair(host string, duration time.Duration) (*x509.Certificate, crypto.PrivateKey, error) {
+func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.PrivateKey, error) {
 	// Generate an ED25519 private key
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -131,7 +127,7 @@ func newX509KeyPair(host string, duration time.Duration) (*x509.Certificate, cry
 	}
 
 	notBefore := time.Now()
-	notAfter := notBefore.Add(duration)
+	notAfter := notBefore.Add(options.Duration)
 
 	template := x509.Certificate{
 		SerialNumber:          serialNumber,
@@ -140,17 +136,8 @@ func newX509KeyPair(host string, duration time.Duration) (*x509.Certificate, cry
 		KeyUsage:              keyUsage,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-	}
-
-	if host != "" {
-		hosts := strings.Split(host, ",")
-		for _, h := range hosts {
-			if ip := net.ParseIP(h); ip != nil {
-				template.IPAddresses = append(template.IPAddresses, ip)
-			} else {
-				template.DNSNames = append(template.DNSNames, h)
-			}
-		}
+		IPAddresses:           options.IPAddresses,
+		DNSNames:              options.DNSNames,
 	}
 
 	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, public, priv)

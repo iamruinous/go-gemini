@@ -51,16 +51,9 @@ func init() {
 		defaultClientOnce.Do(func() { knownHosts.LoadDefault() })
 		return knownHosts.Lookup(hostname, cert)
 	}
-	DefaultClient.GetCertificate = func(req *Request, store *ClientCertificateStore) *tls.Certificate {
-		if cert, err := store.Lookup(req.URL.Hostname(), req.URL.Path); err == nil {
-			return cert
-		}
-		duration := time.Hour
-		cert, err := NewCertificate("", duration)
-		if err != nil {
-			return nil
-		}
-		store.Add(req.URL.Hostname()+req.URL.Path, cert)
-		return &cert
+	DefaultClient.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
+		return CreateCertificate(CertificateOptions{
+			Duration: time.Hour,
+		})
 	}
 }

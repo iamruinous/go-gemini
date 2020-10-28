@@ -46,21 +46,11 @@ func init() {
 		}
 		return err
 	}
-	client.GetCertificate = func(req *gemini.Request, store *gemini.ClientCertificateStore) *tls.Certificate {
-		// If the certificate is in the store, return it
-		if cert, err := store.Lookup(req.URL.Hostname(), req.URL.Path); err == nil {
-			return cert
-		}
-		// Otherwise, generate a certificate
-		fmt.Println("Generating client certificate for", req.URL.Hostname()+req.URL.Path)
-		duration := time.Hour
-		cert, err := gemini.NewCertificate("", duration)
-		if err != nil {
-			return nil
-		}
-		// Store and return the certificate
-		store.Add(req.URL.Hostname()+req.URL.Path, cert)
-		return &cert
+	client.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
+		fmt.Println("Generating client certificate for", hostname, path)
+		return gemini.CreateCertificate(gemini.CertificateOptions{
+			Duration: time.Hour,
+		})
 	}
 	client.GetInput = func(prompt string, sensitive bool) (string, bool) {
 		fmt.Printf("%s: ", prompt)
@@ -69,8 +59,7 @@ func init() {
 	}
 }
 
-// sendRequest sends a request to the given URL.
-func sendRequest(req *gemini.Request) error {
+func doRequest(req *gemini.Request) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -131,7 +120,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := sendRequest(req); err != nil {
+	if err := doRequest(req); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

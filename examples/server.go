@@ -29,7 +29,10 @@ func main() {
 				fallthrough
 			case gmi.ErrCertificateUnknown:
 				// Generate a certificate if one does not exist.
-				cert, err := gmi.NewCertificate(hostname, time.Minute)
+				cert, err := gmi.CreateCertificate(gmi.CertificateOptions{
+					DNSNames: []string{hostname},
+					Duration: time.Hour,
+				})
 				if err != nil {
 					// Failed to generate new certificate, abort
 					return nil
