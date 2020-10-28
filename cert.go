@@ -77,6 +77,12 @@ type ClientCertificateStore struct {
 
 func (c *ClientCertificateStore) Lookup(hostname, urlPath string) (*tls.Certificate, error) {
 	urlPath = path.Clean(urlPath)
+	if urlPath == "." {
+		urlPath = "/"
+	}
+	if urlPath[0] != '/' {
+		urlPath = "/" + urlPath
+	}
 	for {
 		cert, err := c.CertificateStore.Lookup(hostname + urlPath)
 		switch err {

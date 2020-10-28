@@ -77,8 +77,8 @@ func sendRequest(req *gemini.Request) error {
 	}
 
 	if resp.Status.Class() == gemini.StatusClassSuccess {
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			return err
 		}
