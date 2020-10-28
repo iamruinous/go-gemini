@@ -156,6 +156,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		}
 	}
 
+	resp.Request = req
 	return resp, nil
 }
 
