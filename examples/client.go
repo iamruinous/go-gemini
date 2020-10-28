@@ -12,26 +12,25 @@ import (
 	"os"
 	"time"
 
-	gmi "git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 var (
 	scanner = bufio.NewScanner(os.Stdin)
-	client  = &gmi.Client{}
+	client  = &gemini.Client{}
 )
 
 func init() {
-	// Initialize the client
-	client.KnownHosts.LoadDefault() // Load known hosts
-	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gmi.KnownHosts) error {
+	client.KnownHosts.LoadDefault()
+	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
 		if err != nil {
 			switch err {
-			case gmi.ErrCertificateNotTrusted:
+			case gemini.ErrCertificateNotTrusted:
 				// Alert the user that the certificate is not trusted
 				fmt.Printf("Warning: Certificate for %s is not trusted!\n", hostname)
 				fmt.Println("This could indicate a Man-in-the-Middle attack.")
-			case gmi.ErrCertificateUnknown:
+			case gemini.ErrCertificateUnknown:
 				// Prompt the user to trust the certificate
 				trust := trustCertificate(cert)
 				switch trust {
@@ -48,7 +47,7 @@ func init() {
 		}
 		return err
 	}
-	client.GetCertificate = func(hostname string, store *gmi.CertificateStore) *tls.Certificate {
+	client.GetCertificate = func(hostname string, store *gemini.CertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
 		if cert, err := store.Lookup(hostname); err == nil {
 			return cert
@@ -56,7 +55,7 @@ func init() {
 		// Otherwise, generate a certificate
 		fmt.Println("Generating client certificate for", hostname)
 		duration := time.Hour
-		cert, err := gmi.NewCertificate(hostname, duration)
+		cert, err := gemini.NewCertificate(hostname, duration)
 		if err != nil {
 			return nil
 		}
@@ -67,20 +66,19 @@ func init() {
 }
 
 // sendRequest sends a request to the given URL.
-func sendRequest(req *gmi.Request) error {
+func sendRequest(req *gemini.Request) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 
-	// TODO: More fine-grained analysis of the status code.
 	switch resp.Status.Class() {
-	case gmi.StatusClassInput:
+	case gemini.StatusClassInput:
 		fmt.Printf("%s: ", resp.Meta)
 		scanner.Scan()
 		req.URL.RawQuery = url.QueryEscape(scanner.Text())
 		return sendRequest(req)
-	case gmi.StatusClassSuccess:
+	case gemini.StatusClassSuccess:
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -88,23 +86,14 @@ func sendRequest(req *gmi.Request) error {
 		}
 		fmt.Print(string(body))
 		return nil
-	case gmi.StatusClassRedirect:
-		fmt.Println("Redirecting to", resp.Meta)
-		target, err := url.Parse(resp.Meta)
-		if err != nil {
-			return err
-		}
-		// TODO: Prompt the user if the redirect is to another domain.
-		redirect, err := gmi.NewRequestFromURL(req.URL.ResolveReference(target))
-		if err != nil {
-			return err
-		}
-		return sendRequest(redirect)
-	case gmi.StatusClassTemporaryFailure:
+	case gemini.StatusClassRedirect:
+		// This should not happen unless CheckRedirect returns false.
+		return fmt.Errorf("Failed to redirect to %s", resp.Meta)
+	case gemini.StatusClassTemporaryFailure:
 		return fmt.Errorf("Temporary failure: %s", resp.Meta)
-	case gmi.StatusClassPermanentFailure:
+	case gemini.StatusClassPermanentFailure:
 		return fmt.Errorf("Permanent failure: %s", resp.Meta)
-	case gmi.StatusClassCertificateRequired:
+	case gemini.StatusClassCertificateRequired:
 		// Note that this should not happen unless the server responds with
 		// CertificateRequired even after we send a certificate.
 		// CertificateNotAuthorized and CertificateNotValid are handled here.
@@ -131,7 +120,7 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(cert *x509.Certificate) trust {
-	fmt.Printf(trustPrompt, gmi.Fingerprint(cert))
+	fmt.Printf(trustPrompt, gemini.Fingerprint(cert))
 	scanner.Scan()
 	switch scanner.Text() {
 	case "t":
@@ -150,7 +139,7 @@ func main() {
 	}
 
 	url := os.Args[1]
-	req, err := gmi.NewRequest(url)
+	req, err := gemini.NewRequest(url)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net"
+	"net/url"
 )
 
 // Client represents a Gemini client.
@@ -16,6 +17,12 @@ type Client struct {
 	// It is used to determine which certificate to use when the server requests
 	// a certificate.
 	CertificateStore CertificateStore
+
+	// CheckRedirect, if not nil, will be called to determine whether
+	// to follow a redirect.
+	// If CheckRedirect is nil, a default policy of no more than 5 consecutive
+	// redirects will be enforced.
+	CheckRedirect func(req *Request, via []*Request) error
 
 	// GetCertificate, if not nil, will be called when a server requests a certificate.
 	// The returned certificate will be used when sending the request again.
@@ -40,6 +47,10 @@ func (c *Client) Get(url string) (*Response, error) {
 
 // Do performs a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
+	return c.do(req, nil)
+}
+
+func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
@@ -105,6 +116,31 @@ func (c *Client) Do(req *Request) (*Response, error) {
 				return c.Do(req)
 			}
 		}
+	} else if resp.Status.Class() == StatusClassRedirect {
+		if via == nil {
+			via = []*Request{}
+		}
+		via = append(via, req)
+
+		target, err := url.Parse(resp.Meta)
+		if err != nil {
+			return resp, err
+		}
+		target = req.URL.ResolveReference(target)
+		redirect, err := NewRequestFromURL(target)
+		if err != nil {
+			return resp, err
+		}
+
+		if c.CheckRedirect != nil {
+			if err := c.CheckRedirect(redirect, via); err != nil {
+				return resp, err
+			}
+		} else if len(via) > 5 {
+			// Default policy of no more than 5 redirects
+			return resp, ErrTooManyRedirects
+		}
+		return c.do(redirect, via)
 	}
 	return resp, nil
 }
