@@ -42,7 +42,7 @@ type responderKey struct {
 // If no scheme is specified, a default scheme of gemini:// is assumed.
 //
 // Wildcard patterns are supported (e.g. *.example.com).
-// To register a certificate for a wildcard domain, call Certificates.Add:
+// To register a certificate for a wildcard hostname, call Certificates.Add:
 //
 //     var s gemini.Server
 //     s.Certificates.Add("*.example.com", cert)

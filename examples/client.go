@@ -109,15 +109,19 @@ func trustCertificate(cert *x509.Certificate) trust {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Printf("usage: %s gemini://...", os.Args[0])
+		fmt.Printf("usage: %s gemini://... [host]", os.Args[0])
 		os.Exit(1)
 	}
 
 	url := os.Args[1]
 	req, err := gemini.NewRequest(url)
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+	if len(os.Args) == 3 {
+		req.Host = os.Args[2]
 	}
 
 	if err := doRequest(req); err != nil {
