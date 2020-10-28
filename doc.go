@@ -43,7 +43,7 @@ Clients can control when to trust certificates with TrustCertificate:
 
 Clients can create client certificates upon the request of a server:
 
-	client.CreateCertificate = func(hostname, path string) *tls.Certificate {
+	client.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
 		return gemini.CreateCertificate(gemini.CertificateOptions{
 			Duration: time.Hour,
 		})
