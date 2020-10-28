@@ -5,7 +5,6 @@ import (
 	"mime"
 	"os"
 	"path"
-	"path/filepath"
 )
 
 func init() {
@@ -25,14 +24,14 @@ type fsHandler struct {
 }
 
 func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
-	path := path.Clean(r.URL.Path)
-	f, err := fsh.Open(path)
+	p := path.Clean(r.URL.Path)
+	f, err := fsh.Open(p)
 	if err != nil {
 		w.WriteStatus(StatusNotFound)
 		return
 	}
 	// Detect mimetype
-	ext := filepath.Ext(path)
+	ext := path.Ext(p)
 	mimetype := mime.TypeByExtension(ext)
 	w.SetMimetype(mimetype)
 	// Copy file to response writer
@@ -71,7 +70,7 @@ func ServeFile(w *ResponseWriter, fs FS, name string) {
 		return
 	}
 	// Detect mimetype
-	ext := filepath.Ext(name)
+	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
 	w.SetMimetype(mimetype)
 	// Copy file to response writer

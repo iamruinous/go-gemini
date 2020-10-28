@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha512"
 	"crypto/x509"
 	"fmt"
@@ -162,14 +161,14 @@ func appendKnownHost(w io.Writer, hostname string, c certInfo) (int, error) {
 // Fingerprint returns the SHA-512 fingerprint of the provided certificate.
 func Fingerprint(cert *x509.Certificate) string {
 	sum512 := sha512.Sum512(cert.Raw)
-	var buf bytes.Buffer
+	var b strings.Builder
 	for i, f := range sum512 {
 		if i > 0 {
-			fmt.Fprintf(&buf, ":")
+			b.WriteByte(':')
 		}
-		fmt.Fprintf(&buf, "%02X", f)
+		fmt.Fprintf(&b, "%02X", f)
 	}
-	return buf.String()
+	return b.String()
 }
 
 // defaultKnownHostsPath returns the default known_hosts path.
