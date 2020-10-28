@@ -36,9 +36,16 @@ type responderKey struct {
 }
 
 // Register registers a responder for the given pattern.
-// Patterns must be in the form of scheme://hostname (e.g. gemini://example.com).
+//
+// Patterns must be in the form of hostname or scheme://hostname
+// (e.g. gemini://example.com).
 // If no scheme is specified, a default scheme of gemini:// is assumed.
+//
 // Wildcard patterns are supported (e.g. *.example.com).
+// To register a certificate for a wildcard domain, call Certificates.Add:
+//
+//     var s gemini.Server
+//     s.Certificates.Add("*.example.com", cert)
 func (s *Server) Register(pattern string, responder Responder) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")

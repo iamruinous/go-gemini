@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"math/big"
 	"net"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -36,9 +35,9 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 	c.store[scope] = cert
 }
 
-// Lookup returns the certificate for the given hostname.
-func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
-	cert, ok := c.store[hostname]
+// Lookup returns the certificate for the given scope.
+func (c *CertificateStore) Lookup(scope string) (*tls.Certificate, error) {
+	cert, ok := c.store[scope]
 	if !ok {
 		return nil, ErrCertificateUnknown
 	}
@@ -49,25 +48,9 @@ func (c *CertificateStore) Lookup(hostname string) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
-// lookup returns the certificate for the given hostname + path.
-func (c *CertificateStore) lookup(scope string) (*tls.Certificate, error) {
-	for {
-		cert, err := c.Lookup(scope)
-		switch err {
-		case ErrCertificateExpired, nil:
-			return cert, err
-		}
-		scope = path.Dir(scope)
-		if scope == "." {
-			break
-		}
-	}
-	return nil, ErrCertificateUnknown
-}
-
 // Load loads certificates from the given path.
 // The path should lead to a directory containing certificates and private keys
-// in the form hostname.crt and hostname.key.
+// in the form scope.crt and scope.key.
 // For example, the hostname "localhost" would have the corresponding files
 // localhost.crt (certificate) and localhost.key (private key).
 func (c *CertificateStore) Load(path string) error {
@@ -81,8 +64,8 @@ func (c *CertificateStore) Load(path string) error {
 		if err != nil {
 			continue
 		}
-		hostname := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
-		c.Add(hostname, cert)
+		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
+		c.Add(scope, cert)
 	}
 	return nil
 }

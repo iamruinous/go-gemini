@@ -41,22 +41,12 @@ Clients can control when to trust certificates with TrustCertificate:
 		return knownHosts.Lookup(hostname, cert)
 	}
 
-Clients can control what to do when a server requests a certificate:
+Clients can create client certificates upon the request of a server:
 
-	client.GetCertificate = func(hostname string, store *gemini.CertificateStore) *tls.Certificate {
-		// If the certificate is in the store, return it
-		if cert, err := store.Lookup(hostname); err == nil {
-			return &cert
-		}
-		// Otherwise, generate a certificate
-		duration := time.Hour
-		cert, err := gemini.NewCertificate(hostname, duration)
-		if err != nil {
-			return nil
-		}
-		// Store and return the certificate
-		store.Add(hostname, cert)
-		return &cert
+	client.CreateCertificate = func(hostname, path string) *tls.Certificate {
+		return gemini.CreateCertificate(gemini.CertificateOptions{
+			Duration: time.Hour,
+		})
 	}
 
 Server is a Gemini server.
@@ -65,7 +55,7 @@ Server is a Gemini server.
 
 Servers must be configured with certificates:
 
-	err := server.CertificateStore.Load("/var/lib/gemini/certs")
+	err := server.Certificates.Load("/var/lib/gemini/certs")
 	if err != nil {
 		// handle error
 	}

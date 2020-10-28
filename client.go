@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"net"
 	"net/url"
+	"path"
 	"strings"
 )
 
@@ -153,12 +154,23 @@ func (c *Client) getClientCertificate(req *Request) (*tls.Certificate, error) {
 	if req.Certificate != nil {
 		return req.Certificate, nil
 	}
-	hostname, path := req.URL.Hostname(), strings.TrimSuffix(req.URL.Path, "/")
-	if cert, err := c.Certificates.lookup(hostname + path); err == nil {
-		// Remember the certificate used
-		req.Certificate = cert
-		return cert, nil
+
+	// Search recursively for the certificate
+	scope := req.URL.Hostname() + strings.TrimSuffix(req.URL.Path, "/")
+	for {
+		cert, err := c.Certificates.Lookup(scope)
+		if err == nil {
+			return cert, err
+		}
+		if err == ErrCertificateExpired {
+			break
+		}
+		scope = path.Dir(scope)
+		if scope == "." {
+			break
+		}
 	}
+
 	return &tls.Certificate{}, nil
 }
 
