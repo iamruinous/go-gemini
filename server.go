@@ -273,7 +273,8 @@ type Responder interface {
 // If no input is provided, it responds with StatusInput.
 func Input(w *ResponseWriter, r *Request, prompt string) (string, bool) {
 	if r.URL.ForceQuery || r.URL.RawQuery != "" {
-		return r.URL.RawQuery, true
+		query, err := url.QueryUnescape(r.URL.RawQuery)
+		return query, err == nil
 	}
 	w.WriteHeader(StatusInput, prompt)
 	return "", false
@@ -283,7 +284,8 @@ func Input(w *ResponseWriter, r *Request, prompt string) (string, bool) {
 // If no input is provided, it responds with StatusSensitiveInput.
 func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool) {
 	if r.URL.ForceQuery || r.URL.RawQuery != "" {
-		return r.URL.RawQuery, true
+		query, err := url.QueryUnescape(r.URL.RawQuery)
+		return query, err == nil
 	}
 	w.WriteHeader(StatusSensitiveInput, prompt)
 	return "", false

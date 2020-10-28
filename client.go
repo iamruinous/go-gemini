@@ -24,6 +24,10 @@ type Client struct {
 	// redirects will be enforced.
 	CheckRedirect func(req *Request, via []*Request) error
 
+	// GetInput, if not nil, will be called to retrieve input when the server
+	// requests it.
+	GetInput func(prompt string, sensitive bool) (string, bool)
+
 	// GetCertificate, if not nil, will be called when a server requests a certificate.
 	// The returned certificate will be used when sending the request again.
 	// If the certificate is nil, the request will not be sent again and
@@ -141,7 +145,17 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			return resp, ErrTooManyRedirects
 		}
 		return c.do(redirect, via)
+	} else if resp.Status.Class() == StatusClassInput {
+		if c.GetInput != nil {
+			input, ok := c.GetInput(resp.Meta, resp.Status == StatusSensitiveInput)
+			if ok {
+				req.URL.ForceQuery = true
+				req.URL.RawQuery = url.QueryEscape(input)
+				return c.do(req, via)
+			}
+		}
 	}
+
 	return resp, nil
 }
 

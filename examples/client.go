@@ -76,13 +76,7 @@ func sendRequest(req *gemini.Request) error {
 		return err
 	}
 
-	switch resp.Status.Class() {
-	case gemini.StatusClassInput:
-		fmt.Printf("%s: ", resp.Meta)
-		scanner.Scan()
-		req.URL.RawQuery = url.QueryEscape(scanner.Text())
-		return sendRequest(req)
-	case gemini.StatusClassSuccess:
+	if resp.Status.Class() == gemini.StatusClassSuccess {
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -90,20 +84,8 @@ func sendRequest(req *gemini.Request) error {
 		}
 		fmt.Print(string(body))
 		return nil
-	case gemini.StatusClassRedirect:
-		// This should not happen unless CheckRedirect returns false.
-		return fmt.Errorf("Failed to redirect to %s", resp.Meta)
-	case gemini.StatusClassTemporaryFailure:
-		return fmt.Errorf("Temporary failure: %s", resp.Meta)
-	case gemini.StatusClassPermanentFailure:
-		return fmt.Errorf("Permanent failure: %s", resp.Meta)
-	case gemini.StatusClassCertificateRequired:
-		// Note that this should not happen unless the server responds with
-		// CertificateRequired even after we send a certificate.
-		// CertificateNotAuthorized and CertificateNotValid are handled here.
-		return fmt.Errorf("Certificate required: %s", resp.Meta)
 	}
-	panic("unreachable")
+	return fmt.Errorf("request failed: %d %s: %s", resp.Status, resp.Status.Message(), resp.Meta)
 }
 
 type trust int

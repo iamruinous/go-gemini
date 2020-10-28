@@ -30,11 +30,20 @@ func (s Status) Class() StatusClass {
 }
 
 // Message returns a status message corresponding to this status code.
-// It returns an empty string for input, successs, and redirect status codes.
 func (s Status) Message() string {
 	switch s {
+	case StatusInput:
+		return "Input"
+	case StatusSensitiveInput:
+		return "Sensitive input"
+	case StatusSuccess:
+		return "Success"
+	case StatusRedirect:
+		return "Redirect"
+	case StatusRedirectPermanent:
+		return "Permanent redirect"
 	case StatusTemporaryFailure:
-		return "TemporaryFailure"
+		return "Temporary failure"
 	case StatusServerUnavailable:
 		return "Server unavailable"
 	case StatusCGIError:
@@ -44,7 +53,7 @@ func (s Status) Message() string {
 	case StatusSlowDown:
 		return "Slow down"
 	case StatusPermanentFailure:
-		return "PermanentFailure"
+		return "Permanent failure"
 	case StatusNotFound:
 		return "Not found"
 	case StatusGone:

@@ -11,13 +11,13 @@ import (
 	"os"
 	"time"
 
-	gmi "git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 func main() {
 	host := "localhost"
 	duration := 365 * 24 * time.Hour
-	cert, err := gmi.NewCertificate(host, duration)
+	cert, err := gemini.NewCertificate(host, duration)
 	if err != nil {
 		log.Fatal(err)
 	}

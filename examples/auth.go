@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 
-	gmi "git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini"
 )
 
 type user struct {
@@ -33,15 +33,14 @@ var (
 )
 
 func main() {
-	var mux gmi.ServeMux
-	mux.HandleFunc("/", welcome)
-	mux.HandleFunc("/login", login)
-	mux.HandleFunc("/login/password", loginPassword)
+	var mux gemini.ServeMux
+	mux.HandleFunc("/", login)
+	mux.HandleFunc("/password", loginPassword)
 	mux.HandleFunc("/profile", profile)
 	mux.HandleFunc("/admin", admin)
 	mux.HandleFunc("/logout", logout)
 
-	var server gmi.Server
+	var server gemini.Server
 	if err := server.CertificateStore.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
@@ -53,74 +52,69 @@ func main() {
 }
 
 func getSession(crt *x509.Certificate) (*session, bool) {
-	fingerprint := gmi.Fingerprint(crt)
+	fingerprint := gemini.Fingerprint(crt)
 	session, ok := sessions[fingerprint]
 	return session, ok
 }
 
-func welcome(w *gmi.ResponseWriter, r *gmi.Request) {
-	fmt.Fprintln(w, "Welcome to this example.")
-	fmt.Fprintln(w, "=> /login Login")
-}
-
-func login(w *gmi.ResponseWriter, r *gmi.Request) {
-	cert, ok := gmi.Certificate(w, r)
+func login(w *gemini.ResponseWriter, r *gemini.Request) {
+	cert, ok := gemini.Certificate(w, r)
 	if !ok {
 		return
 	}
-	username, ok := gmi.Input(w, r, "Username")
+	username, ok := gemini.Input(w, r, "Username")
 	if !ok {
 		return
 	}
-	fingerprint := gmi.Fingerprint(cert)
+	fingerprint := gemini.Fingerprint(cert)
 	sessions[fingerprint] = &session{
 		username: username,
 	}
-	gmi.Redirect(w, "/login/password")
+	gemini.Redirect(w, "/password")
 }
 
-func loginPassword(w *gmi.ResponseWriter, r *gmi.Request) {
-	cert, ok := gmi.Certificate(w, r)
+func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
+	cert, ok := gemini.Certificate(w, r)
 	if !ok {
 		return
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
+		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
 	}
 
-	password, ok := gmi.SensitiveInput(w, r, "Password")
+	password, ok := gemini.SensitiveInput(w, r, "Password")
 	if !ok {
 		return
 	}
 	expected := logins[session.username].password
 	if password == expected {
 		session.authorized = true
-		gmi.Redirect(w, "/profile")
+		gemini.Redirect(w, "/profile")
 	} else {
-		gmi.SensitiveInput(w, r, "Wrong password. Try again")
+		gemini.SensitiveInput(w, r, "Wrong password. Try again")
 	}
 }
 
-func logout(w *gmi.ResponseWriter, r *gmi.Request) {
-	cert, ok := gmi.Certificate(w, r)
+func logout(w *gemini.ResponseWriter, r *gemini.Request) {
+	cert, ok := gemini.Certificate(w, r)
 	if !ok {
 		return
 	}
-	fingerprint := gmi.Fingerprint(cert)
+	fingerprint := gemini.Fingerprint(cert)
 	delete(sessions, fingerprint)
 	fmt.Fprintln(w, "Successfully logged out.")
 }
 
-func profile(w *gmi.ResponseWriter, r *gmi.Request) {
-	cert, ok := gmi.Certificate(w, r)
+func profile(w *gemini.ResponseWriter, r *gemini.Request) {
+	cert, ok := gemini.Certificate(w, r)
 	if !ok {
 		return
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
+		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
 	}
 	user := logins[session.username]
@@ -129,19 +123,19 @@ func profile(w *gmi.ResponseWriter, r *gmi.Request) {
 	fmt.Fprintln(w, "=> /logout Logout")
 }
 
-func admin(w *gmi.ResponseWriter, r *gmi.Request) {
-	cert, ok := gmi.Certificate(w, r)
+func admin(w *gemini.ResponseWriter, r *gemini.Request) {
+	cert, ok := gemini.Certificate(w, r)
 	if !ok {
 		return
 	}
 	session, ok := getSession(cert)
 	if !ok {
-		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
+		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
 	}
 	user := logins[session.username]
 	if !user.admin {
-		w.WriteStatus(gmi.StatusCertificateNotAuthorized)
+		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
 	}
 	fmt.Fprintln(w, "Welcome to the admin portal.")
