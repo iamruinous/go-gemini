@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"math/big"
 	"net"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -70,6 +71,27 @@ func (c *CertificateStore) Load(path string) error {
 	return nil
 }
 
+type ClientCertificateStore struct {
+	CertificateStore
+}
+
+func (c *ClientCertificateStore) Lookup(hostname, urlPath string) (*tls.Certificate, error) {
+	urlPath = path.Clean(urlPath)
+	for {
+		cert, err := c.CertificateStore.Lookup(hostname + urlPath)
+		switch err {
+		case ErrCertificateExpired, nil:
+			return cert, err
+		}
+		slash := urlPath == "/"
+		urlPath = path.Dir(urlPath)
+		if slash && urlPath == "/" {
+			break
+		}
+	}
+	return nil, ErrCertificateUnknown
+}
+
 // NewCertificate creates and returns a new parsed certificate.
 func NewCertificate(host string, duration time.Duration) (tls.Certificate, error) {
 	crt, priv, err := newX509KeyPair(host, duration)
@@ -114,12 +136,14 @@ func newX509KeyPair(host string, duration time.Duration) (*x509.Certificate, cry
 		BasicConstraintsValid: true,
 	}
 
-	hosts := strings.Split(host, ",")
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
-		} else {
-			template.DNSNames = append(template.DNSNames, h)
+	if host != "" {
+		hosts := strings.Split(host, ",")
+		for _, h := range hosts {
+			if ip := net.ParseIP(h); ip != nil {
+				template.IPAddresses = append(template.IPAddresses, ip)
+			} else {
+				template.DNSNames = append(template.DNSNames, h)
+			}
 		}
 	}
 

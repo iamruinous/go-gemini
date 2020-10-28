@@ -16,7 +16,7 @@ type Client struct {
 	// CertificateStore maps hostnames to certificates.
 	// It is used to determine which certificate to use when the server requests
 	// a certificate.
-	CertificateStore CertificateStore
+	CertificateStore ClientCertificateStore
 
 	// CheckRedirect, if not nil, will be called to determine whether
 	// to follow a redirect.
@@ -28,7 +28,7 @@ type Client struct {
 	// The returned certificate will be used when sending the request again.
 	// If the certificate is nil, the request will not be sent again and
 	// the response will be returned.
-	GetCertificate func(hostname string, store *CertificateStore) *tls.Certificate
+	GetCertificate func(req *Request, store *ClientCertificateStore) *tls.Certificate
 
 	// TrustCertificate, if not nil, will be called to determine whether the
 	// client should trust the given certificate.
@@ -61,7 +61,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 				return req.Certificate, nil
 			}
 			// If we have already stored the certificate, return it
-			if cert, err := c.CertificateStore.Lookup(hostname(req.Host)); err == nil {
+			if cert, err := c.CertificateStore.Lookup(hostname(req.Host), req.URL.Path); err == nil {
 				return cert, nil
 			}
 			return &tls.Certificate{}, nil
@@ -111,7 +111,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			return resp, nil
 		}
 		if c.GetCertificate != nil {
-			if cert := c.GetCertificate(hostname(req.Host), &c.CertificateStore); cert != nil {
+			if cert := c.GetCertificate(req, &c.CertificateStore); cert != nil {
 				req.Certificate = cert
 				return c.Do(req)
 			}

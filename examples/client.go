@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"time"
 
@@ -47,21 +46,26 @@ func init() {
 		}
 		return err
 	}
-	client.GetCertificate = func(hostname string, store *gemini.CertificateStore) *tls.Certificate {
+	client.GetCertificate = func(req *gemini.Request, store *gemini.ClientCertificateStore) *tls.Certificate {
 		// If the certificate is in the store, return it
-		if cert, err := store.Lookup(hostname); err == nil {
+		if cert, err := store.Lookup(req.URL.Hostname(), req.URL.Path); err == nil {
 			return cert
 		}
 		// Otherwise, generate a certificate
-		fmt.Println("Generating client certificate for", hostname)
+		fmt.Println("Generating client certificate for", req.URL.Hostname()+req.URL.Path)
 		duration := time.Hour
-		cert, err := gemini.NewCertificate(hostname, duration)
+		cert, err := gemini.NewCertificate("", duration)
 		if err != nil {
 			return nil
 		}
 		// Store and return the certificate
-		store.Add(hostname, cert)
+		store.Add(req.URL.Hostname()+req.URL.Path, cert)
 		return &cert
+	}
+	client.GetInput = func(prompt string, sensitive bool) (string, bool) {
+		fmt.Printf("%s: ", prompt)
+		scanner.Scan()
+		return scanner.Text(), true
 	}
 }
 
