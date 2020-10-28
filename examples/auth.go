@@ -41,7 +41,7 @@ func main() {
 	mux.HandleFunc("/logout", logout)
 
 	var server gemini.Server
-	if err := server.CertificateStore.Load("/var/lib/gemini/certs"); err != nil {
+	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
 	server.Register("localhost", &mux)
