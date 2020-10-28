@@ -120,6 +120,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 				return c.Do(req)
 			}
 		}
+		return resp, ErrCertificateRequired
 	} else if resp.Status.Class() == StatusClassRedirect {
 		if via == nil {
 			via = []*Request{}
@@ -154,6 +155,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 				return c.do(req, via)
 			}
 		}
+		return resp, ErrInputRequired
 	}
 
 	resp.Request = req
