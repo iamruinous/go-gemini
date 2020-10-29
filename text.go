@@ -87,58 +87,68 @@ func (l LineText) line()                {}
 // Text represents a Gemini text response.
 type Text []Line
 
-// Parse parses Gemini text from the provided io.Reader.
-func Parse(r io.Reader) Text {
-	const spacetab = " \t"
+// ParseText parses Gemini text from the provided io.Reader.
+func ParseText(r io.Reader) Text {
 	var t Text
+	ParseLines(r, func(line Line) {
+		t = append(t, line)
+	})
+	return t
+}
+
+// ParseLines parses Gemini text from the provided io.Reader.
+// It calls handler with each line that it parses.
+func ParseLines(r io.Reader, handler func(Line)) {
+	const spacetab = " \t"
 	var pre bool
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "```") {
+		var line Line
+		text := scanner.Text()
+		if strings.HasPrefix(text, "```") {
 			pre = !pre
-			line = line[3:]
-			t = append(t, LinePreformattingToggle(line))
+			text = text[3:]
+			line = LinePreformattingToggle(text)
 		} else if pre {
-			t = append(t, LinePreformattedText(line))
-		} else if strings.HasPrefix(line, "=>") {
-			line = line[2:]
-			line = strings.TrimLeft(line, spacetab)
-			split := strings.IndexAny(line, spacetab)
+			line = LinePreformattedText(text)
+		} else if strings.HasPrefix(text, "=>") {
+			text = text[2:]
+			text = strings.TrimLeft(text, spacetab)
+			split := strings.IndexAny(text, spacetab)
 			if split == -1 {
-				// line is a URL
-				t = append(t, LineLink{URL: line})
+				// text is a URL
+				line = LineLink{URL: text}
 			} else {
-				url := line[:split]
-				name := line[split:]
+				url := text[:split]
+				name := text[split:]
 				name = strings.TrimLeft(name, spacetab)
-				t = append(t, LineLink{url, name})
+				line = LineLink{url, name}
 			}
-		} else if strings.HasPrefix(line, "*") {
-			line = line[1:]
-			line = strings.TrimLeft(line, spacetab)
-			t = append(t, LineListItem(line))
-		} else if strings.HasPrefix(line, "###") {
-			line = line[3:]
-			line = strings.TrimLeft(line, spacetab)
-			t = append(t, LineHeading3(line))
-		} else if strings.HasPrefix(line, "##") {
-			line = line[2:]
-			line = strings.TrimLeft(line, spacetab)
-			t = append(t, LineHeading2(line))
-		} else if strings.HasPrefix(line, "#") {
-			line = line[1:]
-			line = strings.TrimLeft(line, spacetab)
-			t = append(t, LineHeading1(line))
-		} else if strings.HasPrefix(line, ">") {
-			line = line[1:]
-			line = strings.TrimLeft(line, spacetab)
-			t = append(t, LineQuote(line))
+		} else if strings.HasPrefix(text, "*") {
+			text = text[1:]
+			text = strings.TrimLeft(text, spacetab)
+			line = LineListItem(text)
+		} else if strings.HasPrefix(text, "###") {
+			text = text[3:]
+			text = strings.TrimLeft(text, spacetab)
+			line = LineHeading3(text)
+		} else if strings.HasPrefix(text, "##") {
+			text = text[2:]
+			text = strings.TrimLeft(text, spacetab)
+			line = LineHeading2(text)
+		} else if strings.HasPrefix(text, "#") {
+			text = text[1:]
+			text = strings.TrimLeft(text, spacetab)
+			line = LineHeading1(text)
+		} else if strings.HasPrefix(text, ">") {
+			text = text[1:]
+			text = strings.TrimLeft(text, spacetab)
+			line = LineQuote(text)
 		} else {
-			t = append(t, LineText(line))
+			line = LineText(text)
 		}
+		handler(line)
 	}
-	return t
 }
 
 // String writes the Gemini text response to a string and returns it.
