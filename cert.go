@@ -53,7 +53,7 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 func (c *CertificateStore) Lookup(scope string) (*tls.Certificate, error) {
 	cert, ok := c.store[scope]
 	if !ok {
-		return nil, ErrCertificateUnknown
+		return nil, ErrCertificateNotFound
 	}
 	// Ensure that the certificate is not expired
 	if cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {

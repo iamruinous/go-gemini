@@ -150,7 +150,7 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 	cert, err := s.Certificates.Lookup(hostname)
 
 	switch err {
-	case ErrCertificateUnknown, ErrCertificateExpired:
+	case ErrCertificateNotFound, ErrCertificateExpired:
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
@@ -176,16 +176,16 @@ func (s *Server) respond(conn net.Conn) {
 	if b, err := r.ReadByte(); err != nil {
 		return
 	} else if b != '\n' {
-		w.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteStatus(StatusBadRequest)
 	}
 	// Trim carriage return
 	rawurl = rawurl[:len(rawurl)-1]
 	// Ensure URL is valid
 	if len(rawurl) > 1024 {
-		w.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteStatus(StatusBadRequest)
 	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
 		// Note that we return an error status if User is specified in the URL
-		w.WriteHeader(StatusBadRequest, "Bad request")
+		w.WriteStatus(StatusBadRequest)
 	} else {
 		// If no scheme is specified, assume a default scheme of gemini://
 		if url.Scheme == "" {

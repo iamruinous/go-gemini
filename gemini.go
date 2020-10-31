@@ -23,6 +23,7 @@ var (
 	ErrTooManyRedirects      = errors.New("gemini: too many redirects")
 	ErrInputRequired         = errors.New("gemini: input required")
 	ErrCertificateRequired   = errors.New("gemini: certificate required")
+	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
 )
 
 // DefaultClient is the default client. It is used by Get and Do.
