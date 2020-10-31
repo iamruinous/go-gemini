@@ -22,7 +22,7 @@ type Server struct {
 	Certificates CertificateStore
 
 	// CreateCertificate, if not nil, will be called to create a new certificate
-	// if the current one is expired or missing.
+	// if the current one is expired.
 	CreateCertificate func(hostname string) (tls.Certificate, error)
 
 	// registered responders
@@ -32,7 +32,6 @@ type Server struct {
 type responderKey struct {
 	scheme   string
 	hostname string
-	wildcard bool
 }
 
 // Register registers a responder for the given pattern.
@@ -65,11 +64,6 @@ func (s *Server) Register(pattern string, responder Responder) {
 	} else {
 		key.scheme = "gemini"
 		key.hostname = split[0]
-	}
-	split = strings.SplitN(key.hostname, ".", 2)
-	if len(split) == 2 && split[0] == "*" {
-		key.hostname = split[1]
-		key.wildcard = true
 	}
 
 	if _, ok := s.responders[key]; ok {
@@ -136,8 +130,14 @@ func (s *Server) Serve(l net.Listener) error {
 
 func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	cert, err := s.Certificates.Lookup(h.ServerName)
-	switch err {
-	case ErrCertificateExpired, ErrCertificateUnknown:
+	if err == ErrCertificateUnknown {
+		wildcard := strings.SplitN(h.ServerName, ".", 2)
+		if len(wildcard) == 2 {
+			cert, err = s.Certificates.Lookup("*." + wildcard[1])
+		}
+	}
+
+	if err == ErrCertificateExpired {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(h.ServerName)
 			if err == nil {
@@ -146,6 +146,7 @@ func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error
 			return &cert, err
 		}
 	}
+
 	return cert, err
 }
 
@@ -194,12 +195,12 @@ func (s *Server) respond(conn net.Conn) {
 }
 
 func (s *Server) responder(r *Request) Responder {
-	if h, ok := s.responders[responderKey{r.URL.Scheme, r.URL.Hostname(), false}]; ok {
+	if h, ok := s.responders[responderKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
 	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
 	if len(wildcard) == 2 {
-		if h, ok := s.responders[responderKey{r.URL.Scheme, wildcard[1], true}]; ok {
+		if h, ok := s.responders[responderKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
 			return h
 		}
 	}
