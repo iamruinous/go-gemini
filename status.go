@@ -8,7 +8,7 @@ const (
 	StatusSensitiveInput           Status = 11
 	StatusSuccess                  Status = 20
 	StatusRedirect                 Status = 30
-	StatusRedirectPermanent        Status = 31
+	StatusPermanentRedirect        Status = 31
 	StatusTemporaryFailure         Status = 40
 	StatusServerUnavailable        Status = 41
 	StatusCGIError                 Status = 42
@@ -52,7 +52,7 @@ func (s Status) Message() string {
 		return "Success"
 	case StatusRedirect:
 		return "Redirect"
-	case StatusRedirectPermanent:
+	case StatusPermanentRedirect:
 		return "Permanent redirect"
 	case StatusTemporaryFailure:
 		return "Temporary failure"

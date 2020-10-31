@@ -70,7 +70,7 @@ func login(w *gemini.ResponseWriter, r *gemini.Request) {
 	sessions[fingerprint] = &session{
 		username: username,
 	}
-	gemini.Redirect(w, "/password")
+	w.WriteHeader(gemini.StatusRedirect, "/password")
 }
 
 func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
@@ -91,7 +91,7 @@ func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
 	expected := logins[session.username].password
 	if password == expected {
 		session.authorized = true
-		gemini.Redirect(w, "/profile")
+		w.WriteHeader(gemini.StatusRedirect, "/profile")
 	} else {
 		gemini.SensitiveInput(w, r, "Wrong password. Try again")
 	}

@@ -319,16 +319,6 @@ func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool)
 	return "", false
 }
 
-// Redirect replies to the request with a redirect to the given URL.
-func Redirect(w *ResponseWriter, url string) {
-	w.WriteHeader(StatusRedirect, url)
-}
-
-// PermanentRedirect replies to the request with a permanent redirect to the given URL.
-func PermanentRedirect(w *ResponseWriter, url string) {
-	w.WriteHeader(StatusRedirectPermanent, url)
-}
-
 // Certificate returns the request certificate. If one is not provided,
 // it returns nil and responds with StatusCertificateRequired.
 func Certificate(w *ResponseWriter, r *Request) (*x509.Certificate, bool) {
