@@ -39,7 +39,7 @@ type responderKey struct {
 //
 // Patterns must be in the form of hostname or scheme://hostname
 // (e.g. gemini://example.com).
-// If no scheme is specified, a default scheme of gemini:// is assumed.
+// If no scheme is specified, a default scheme of gemini:// is implied.
 //
 // Wildcard patterns are supported (e.g. *.example.com).
 // To register a certificate for a wildcard hostname, call Certificates.Add:
@@ -132,27 +132,29 @@ func (s *Server) Serve(l net.Listener) error {
 }
 
 func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	hostname := h.ServerName
-	cert, err := s.Certificates.Lookup(hostname)
-	if err == ErrCertificateUnknown {
+	cert, err := s.getCertificateFor(h.ServerName)
+	if err != nil {
+		// Try wildcard
 		wildcard := strings.SplitN(h.ServerName, ".", 2)
 		if len(wildcard) == 2 {
-			cert, err = s.Certificates.Lookup("*." + wildcard[1])
+			cert, err = s.getCertificateFor("*." + wildcard[1])
 		}
 	}
+	return cert, err
+}
+
+func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
+	if _, ok := s.hosts[hostname]; !ok {
+		return nil, ErrCertificateUnknown
+	}
+	cert, err := s.Certificates.Lookup(hostname)
 
 	switch err {
-	case ErrCertificateUnknown:
-		if _, ok := s.hosts[hostname]; !ok {
-			break
-		}
-		fallthrough
-
-	case ErrCertificateExpired:
+	case ErrCertificateUnknown, ErrCertificateExpired:
 		if s.CreateCertificate != nil {
-			cert, err := s.CreateCertificate(h.ServerName)
+			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
-				s.Certificates.Add(h.ServerName, cert)
+				s.Certificates.Add(hostname, cert)
 			}
 			return &cert, err
 		}

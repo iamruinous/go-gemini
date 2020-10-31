@@ -6,8 +6,11 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
+	"log"
 	"math/big"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +20,8 @@ import (
 // The zero value of CertificateStore is an empty store ready to use.
 type CertificateStore struct {
 	store map[string]tls.Certificate
+	dir   bool
+	path  string
 }
 
 // Add adds a certificate for the given scope to the store.
@@ -30,6 +35,15 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 		parsed, err := x509.ParseCertificate(cert.Certificate[0])
 		if err == nil {
 			cert.Leaf = parsed
+		}
+	}
+	if c.dir {
+		// Write certificates
+		log.Printf("Writing certificate for %s to disk", scope)
+		certPath := filepath.Join(c.path, scope+".crt")
+		keyPath := filepath.Join(c.path, scope+".key")
+		if err := WriteCertificate(cert, certPath, keyPath); err != nil {
+			log.Printf("Failed to write certificate to disk: %s", err)
 		}
 	}
 	c.store[scope] = cert
@@ -53,6 +67,7 @@ func (c *CertificateStore) Lookup(scope string) (*tls.Certificate, error) {
 // in the form scope.crt and scope.key.
 // For example, the hostname "localhost" would have the corresponding files
 // localhost.crt (certificate) and localhost.key (private key).
+// New certificates will be written to this directory.
 func (c *CertificateStore) Load(path string) error {
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
@@ -67,6 +82,8 @@ func (c *CertificateStore) Load(path string) error {
 		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
 		c.Add(scope, cert)
 	}
+	c.dir = true
+	c.path = path
 	return nil
 }
 
@@ -132,4 +149,31 @@ func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.Priva
 		return nil, nil, err
 	}
 	return cert, priv, nil
+}
+
+// WriteCertificate writes the provided certificate and private key
+// to certPath and keyPath respectively.
+func WriteCertificate(cert tls.Certificate, certPath, keyPath string) error {
+	certOut, err := os.OpenFile(certPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer certOut.Close()
+	if err := pem.Encode(certOut, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Leaf.Raw,
+	}); err != nil {
+		return err
+	}
+
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer keyOut.Close()
+	privBytes, err := x509.MarshalPKCS8PrivateKey(cert.PrivateKey)
+	if err != nil {
+		return err
+	}
+	return pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
 }
