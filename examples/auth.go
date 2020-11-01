@@ -51,19 +51,21 @@ func main() {
 	}
 }
 
-func getSession(crt *x509.Certificate) (*session, bool) {
-	fingerprint := gemini.Fingerprint(crt)
+func getSession(cert *x509.Certificate) (*session, bool) {
+	fingerprint := gemini.Fingerprint(cert)
 	session, ok := sessions[fingerprint]
 	return session, ok
 }
 
 func login(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert, ok := gemini.Certificate(w, r)
-	if !ok {
+	cert := gemini.Certificate(r)
+	if cert == nil {
+		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	username, ok := gemini.Input(w, r, "Username")
+	username, ok := gemini.Input(r)
 	if !ok {
+		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
 	fingerprint := gemini.Fingerprint(cert)
@@ -74,8 +76,9 @@ func login(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert, ok := gemini.Certificate(w, r)
-	if !ok {
+	cert := gemini.Certificate(r)
+	if cert == nil {
+		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
 	session, ok := getSession(cert)
@@ -84,8 +87,9 @@ func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
 		return
 	}
 
-	password, ok := gemini.SensitiveInput(w, r, "Password")
+	password, ok := gemini.Input(r)
 	if !ok {
+		w.WriteHeader(gemini.StatusSensitiveInput, "Password")
 		return
 	}
 	expected := logins[session.username].password
@@ -93,13 +97,14 @@ func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
 		session.authorized = true
 		w.WriteHeader(gemini.StatusRedirect, "/profile")
 	} else {
-		gemini.SensitiveInput(w, r, "Wrong password. Try again")
+		w.WriteHeader(gemini.StatusSensitiveInput, "Wrong password. Try again")
 	}
 }
 
 func logout(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert, ok := gemini.Certificate(w, r)
-	if !ok {
+	cert := gemini.Certificate(r)
+	if cert == nil {
+		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
 	fingerprint := gemini.Fingerprint(cert)
@@ -108,8 +113,9 @@ func logout(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func profile(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert, ok := gemini.Certificate(w, r)
-	if !ok {
+	cert := gemini.Certificate(r)
+	if cert == nil {
+		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
 	session, ok := getSession(cert)
@@ -124,8 +130,9 @@ func profile(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func admin(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert, ok := gemini.Certificate(w, r)
-	if !ok {
+	cert := gemini.Certificate(r)
+	if cert == nil {
+		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
 	session, ok := getSession(cert)
