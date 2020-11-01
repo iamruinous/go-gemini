@@ -28,7 +28,7 @@ type Client struct {
 	Timeout time.Duration
 
 	// InsecureTrustAlways specifies whether the client should trust
-	// any certificate it recieves without checking KnownHosts
+	// any certificate it receives without checking KnownHosts
 	// or calling TrustCertificate.
 	// Use with caution.
 	InsecureTrustAlways bool
