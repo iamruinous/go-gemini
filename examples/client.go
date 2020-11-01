@@ -76,17 +76,18 @@ func main() {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
+	defer resp.Body.Close()
 
 	if resp.Status.Class() == gemini.StatusClassSuccess {
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Print(string(body))
 	} else {
-		log.Fatalf("request failed: %d %s: %s", resp.Status, resp.Status.Message(), resp.Meta)
+		fmt.Printf("request failed: %d %s: %s", resp.Status, resp.Status.Message(), resp.Meta)
 	}
 }
