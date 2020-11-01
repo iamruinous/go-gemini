@@ -51,7 +51,13 @@ type Client struct {
 
 	// TrustCertificate is called to determine whether the client
 	// should trust a certificate it has not seen before.
-	// If TrustCertificate is nil, the certificate will not be trusted.
+	// If TrustCertificate is nil, the certificate will not be trusted
+	// and the connection will be aborted.
+	//
+	// If TrustCertificate returns TrustOnce, the certificate will be added
+	// to the client's list of known hosts.
+	// If TrustCertificate returns TrustAlways, the certificate will also be
+	// written to the known hosts file.
 	TrustCertificate func(hostname string, cert *x509.Certificate) Trust
 }
 

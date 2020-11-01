@@ -37,8 +37,8 @@ Clients can load their own list of known hosts:
 
 Clients can control when to trust certificates with TrustCertificate:
 
-	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
-		return knownHosts.Lookup(hostname, cert)
+	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
+		return gemini.TrustOnce
 	}
 
 Clients can create client certificates upon the request of a server:
@@ -53,7 +53,7 @@ Server is a Gemini server.
 
 	var server gemini.Server
 
-Servers must be configured with certificates:
+Servers should be configured with certificates:
 
 	err := server.Certificates.Load("/var/lib/gemini/certs")
 	if err != nil {
