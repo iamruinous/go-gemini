@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 )
 
 // Client is a Gemini client.
@@ -17,6 +18,14 @@ type Client struct {
 
 	// Certificates stores client-side certificates.
 	Certificates CertificateStore
+
+	// Timeout specifies a time limit for requests made by this
+	// Client. The timeout includes connection time and reading
+	// the response body. The timer remains running after
+	// Get and Do return and will interrupt reading of the Response.Body.
+	//
+	// A Timeout of zero means no timeout.
+	Timeout time.Duration
 
 	// GetInput is called to retrieve input when the server requests it.
 	// If GetInput is nil or returns false, no input will be sent and
@@ -56,6 +65,13 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	return c.do(req, nil)
 }
 
+func (c *Client) deadline() time.Time {
+	if c.Timeout > 0 {
+		return time.Now().Add(c.Timeout)
+	}
+	return time.Time{}
+}
+
 func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
@@ -72,7 +88,12 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Set connection deadline
+	// Set connection deadline
+	if deadline := c.deadline(); !deadline.IsZero() {
+		if err := conn.SetDeadline(deadline); err != nil {
+			return nil, err
+		}
+	}
 
 	// Write the request
 	w := bufio.NewWriter(conn)

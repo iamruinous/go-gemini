@@ -20,6 +20,7 @@ var (
 )
 
 func init() {
+	client.Timeout = 2 * time.Minute
 	client.KnownHosts.LoadDefault()
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *gemini.KnownHosts) error {
 		err := knownHosts.Lookup(hostname, cert)
