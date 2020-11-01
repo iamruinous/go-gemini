@@ -3,9 +3,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"log"
+	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
 )
@@ -44,6 +46,12 @@ func main() {
 	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
+	server.CreateCertificate = func(hostname string) (tls.Certificate, error) {
+		return gemini.CreateCertificate(gemini.CertificateOptions{
+			DNSNames: []string{hostname},
+			Duration: time.Hour,
+		})
+	}
 	server.Register("localhost", &mux)
 
 	if err := server.ListenAndServe(); err != nil {
@@ -58,8 +66,7 @@ func getSession(cert *x509.Certificate) (*session, bool) {
 }
 
 func login(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert := gemini.Certificate(r)
-	if cert == nil {
+	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
@@ -68,7 +75,7 @@ func login(w *gemini.ResponseWriter, r *gemini.Request) {
 		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
-	fingerprint := gemini.Fingerprint(cert)
+	fingerprint := gemini.Fingerprint(r.Certificate.Leaf)
 	sessions[fingerprint] = &session{
 		username: username,
 	}
@@ -76,12 +83,11 @@ func login(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert := gemini.Certificate(r)
-	if cert == nil {
+	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	session, ok := getSession(cert)
+	session, ok := getSession(r.Certificate.Leaf)
 	if !ok {
 		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
@@ -102,23 +108,21 @@ func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func logout(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert := gemini.Certificate(r)
-	if cert == nil {
+	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	fingerprint := gemini.Fingerprint(cert)
+	fingerprint := gemini.Fingerprint(r.Certificate.Leaf)
 	delete(sessions, fingerprint)
 	fmt.Fprintln(w, "Successfully logged out.")
 }
 
 func profile(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert := gemini.Certificate(r)
-	if cert == nil {
+	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	session, ok := getSession(cert)
+	session, ok := getSession(r.Certificate.Leaf)
 	if !ok {
 		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return
@@ -130,12 +134,11 @@ func profile(w *gemini.ResponseWriter, r *gemini.Request) {
 }
 
 func admin(w *gemini.ResponseWriter, r *gemini.Request) {
-	cert := gemini.Certificate(r)
-	if cert == nil {
+	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	session, ok := getSession(cert)
+	session, ok := getSession(r.Certificate.Leaf)
 	if !ok {
 		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
 		return

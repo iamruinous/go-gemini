@@ -3,7 +3,6 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
-	"crypto/x509"
 	"log"
 	"net"
 	"net/url"
@@ -199,10 +198,24 @@ func (s *Server) respond(conn net.Conn) {
 		if url.Scheme == "" {
 			url.Scheme = "gemini"
 		}
+
+		// Store information about the TLS connection
+		connState := conn.(*tls.Conn).ConnectionState()
+		var cert *tls.Certificate
+		if len(connState.PeerCertificates) > 0 {
+			peerCert := connState.PeerCertificates[0]
+			// Store the TLS certificate
+			cert = &tls.Certificate{
+				Certificate: [][]byte{peerCert.Raw},
+				Leaf:        peerCert,
+			}
+		}
+
 		req := &Request{
-			URL:        url,
-			RemoteAddr: conn.RemoteAddr(),
-			TLS:        conn.(*tls.Conn).ConnectionState(),
+			URL:         url,
+			RemoteAddr:  conn.RemoteAddr(),
+			TLS:         connState,
+			Certificate: cert,
 		}
 		resp := s.responder(req)
 		if resp != nil {
@@ -329,23 +342,4 @@ func Input(r *Request) (query string, ok bool) {
 		return query, err == nil
 	}
 	return "", false
-}
-
-// Certificate returns the request certificate.
-// It returns nil if no certificate was provided.
-//
-// Example:
-//
-//    cert := gemini.Certificate(req)
-//    if cert == nil {
-//        w.WriteStatus(gemini.StatusCertificateRequired)
-//        return
-//    }
-//    // ...
-//
-func Certificate(r *Request) *x509.Certificate {
-	if len(r.TLS.PeerCertificates) == 0 {
-		return nil
-	}
-	return r.TLS.PeerCertificates[0]
 }

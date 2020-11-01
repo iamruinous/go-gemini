@@ -19,7 +19,9 @@ type Request struct {
 
 	// Certificate specifies the TLS certificate to use for the request.
 	// Request certificates take precedence over client certificates.
-	// This field is ignored by the server.
+	//
+	// On the server side, if the client provided a certificate then
+	// Certificate.Leaf is guaranteed to be non-nil.
 	Certificate *tls.Certificate
 
 	// RemoteAddr allows servers and other software to record the network
