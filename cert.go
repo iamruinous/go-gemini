@@ -39,11 +39,11 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 	}
 	if c.dir {
 		// Write certificates
-		log.Printf("Writing certificate for %s to disk", scope)
+		log.Printf("gemini: Writing certificate for %s to %s", scope, c.path)
 		certPath := filepath.Join(c.path, scope+".crt")
 		keyPath := filepath.Join(c.path, scope+".key")
 		if err := WriteCertificate(cert, certPath, keyPath); err != nil {
-			log.Printf("Failed to write certificate to disk: %s", err)
+			log.Printf("gemini: Failed to write certificate for %s: %s", scope, err)
 		}
 	}
 	c.store[scope] = cert
