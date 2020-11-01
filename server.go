@@ -304,41 +304,48 @@ type Responder interface {
 	Respond(*ResponseWriter, *Request)
 }
 
-// Input returns the request query.
-// If no input is provided, it responds with StatusInput.
-func Input(w *ResponseWriter, r *Request, prompt string) (string, bool) {
-	if r.URL.ForceQuery || r.URL.RawQuery != "" {
-		query, err := url.QueryUnescape(r.URL.RawQuery)
-		return query, err == nil
-	}
-	w.WriteHeader(StatusInput, prompt)
-	return "", false
-}
-
-// SensitiveInput returns the request query.
-// If no input is provided, it responds with StatusSensitiveInput.
-func SensitiveInput(w *ResponseWriter, r *Request, prompt string) (string, bool) {
-	if r.URL.ForceQuery || r.URL.RawQuery != "" {
-		query, err := url.QueryUnescape(r.URL.RawQuery)
-		return query, err == nil
-	}
-	w.WriteHeader(StatusSensitiveInput, prompt)
-	return "", false
-}
-
-// Certificate returns the request certificate. If one is not provided,
-// it returns nil and responds with StatusCertificateRequired.
-func Certificate(w *ResponseWriter, r *Request) (*x509.Certificate, bool) {
-	if len(r.TLS.PeerCertificates) == 0 {
-		w.WriteStatus(StatusCertificateRequired)
-		return nil, false
-	}
-	return r.TLS.PeerCertificates[0], true
-}
-
 // ResponderFunc is a wrapper around a bare function that implements Responder.
 type ResponderFunc func(*ResponseWriter, *Request)
 
 func (f ResponderFunc) Respond(w *ResponseWriter, r *Request) {
 	f(w, r)
+}
+
+// Input returns the request query.
+// If the query is invalid or no query is provided, ok will be false.
+//
+// Example:
+//
+//    input, ok := gemini.Input(req)
+//    if !ok {
+//        w.WriteHeader(gemini.StatusInput, "Prompt")
+//        return
+//    }
+//    // ...
+//
+func Input(r *Request) (query string, ok bool) {
+	if r.URL.ForceQuery || r.URL.RawQuery != "" {
+		query, err := url.QueryUnescape(r.URL.RawQuery)
+		return query, err == nil
+	}
+	return "", false
+}
+
+// Certificate returns the request certificate.
+// It returns nil if no certificate was provided.
+//
+// Example:
+//
+//    cert := gemini.Certificate(req)
+//    if cert == nil {
+//        w.WriteStatus(gemini.StatusCertificateRequired)
+//        return
+//    }
+//    // ...
+//
+func Certificate(r *Request) *x509.Certificate {
+	if len(r.TLS.PeerCertificates) == 0 {
+		return nil
+	}
+	return r.TLS.PeerCertificates[0]
 }
