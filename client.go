@@ -27,11 +27,11 @@ type Client struct {
 	// A Timeout of zero means no timeout.
 	Timeout time.Duration
 
-	// InsecureTrustAlways specifies whether the client should trust
+	// InsecureSkipTrust specifies whether the client should trust
 	// any certificate it receives without checking KnownHosts
 	// or calling TrustCertificate.
 	// Use with caution.
-	InsecureTrustAlways bool
+	InsecureSkipTrust bool
 
 	// GetInput is called to retrieve input when the server requests it.
 	// If GetInput is nil or returns false, no input will be sent and
@@ -208,7 +208,7 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	if err := verifyHostname(cert, hostname); err != nil {
 		return err
 	}
-	if c.InsecureTrustAlways {
+	if c.InsecureSkipTrust {
 		return nil
 	}
 	// Check the known hosts
