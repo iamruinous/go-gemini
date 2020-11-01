@@ -21,6 +21,13 @@ type Server struct {
 	// Certificates contains the certificates used by the server.
 	Certificates CertificateStore
 
+	// ReadTimeout is the maximum duration for reading a request.
+	ReadTimeout time.Duration
+
+	// WriteTimeout is the maximum duration before timing out
+	// writes of the response.
+	WriteTimeout time.Duration
+
 	// CreateCertificate, if not nil, will be called to create a new certificate
 	// if the current one is expired or missing.
 	CreateCertificate func(hostname string) (tls.Certificate, error)
@@ -159,6 +166,13 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 
 // respond responds to a connection.
 func (s *Server) respond(conn net.Conn) {
+	if d := s.ReadTimeout; d != 0 {
+		conn.SetReadDeadline(time.Now().Add(d))
+	}
+	if d := s.WriteTimeout; d != 0 {
+		conn.SetWriteDeadline(time.Now().Add(d))
+	}
+
 	r := bufio.NewReader(conn)
 	w := newResponseWriter(conn)
 	// Read requested URL

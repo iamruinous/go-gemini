@@ -65,13 +65,6 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	return c.do(req, nil)
 }
 
-func (c *Client) deadline() time.Time {
-	if c.Timeout > 0 {
-		return time.Now().Add(c.Timeout)
-	}
-	return time.Time{}
-}
-
 func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	// Connect to the host
 	config := &tls.Config{
@@ -89,10 +82,8 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		return nil, err
 	}
 	// Set connection deadline
-	if deadline := c.deadline(); !deadline.IsZero() {
-		if err := conn.SetDeadline(deadline); err != nil {
-			return nil, err
-		}
+	if d := c.Timeout; d != 0 {
+		conn.SetDeadline(time.Now().Add(d))
 	}
 
 	// Write the request
