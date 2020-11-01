@@ -37,11 +37,10 @@ func textToHTML(text gemini.Text) string {
 			list = false
 			fmt.Fprint(&b, "</ul>\n")
 		}
-		switch l.(type) {
+		switch l := l.(type) {
 		case gemini.LineLink:
-			link := l.(gemini.LineLink)
-			url := html.EscapeString(link.URL)
-			name := html.EscapeString(link.Name)
+			url := html.EscapeString(l.URL)
+			name := html.EscapeString(l.Name)
 			if name == "" {
 				name = url
 			}
@@ -54,29 +53,22 @@ func textToHTML(text gemini.Text) string {
 				fmt.Fprint(&b, "</pre>\n")
 			}
 		case gemini.LinePreformattedText:
-			text := string(l.(gemini.LinePreformattedText))
-			fmt.Fprintf(&b, "%s\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "%s\n", html.EscapeString(string(l)))
 		case gemini.LineHeading1:
-			text := string(l.(gemini.LineHeading1))
-			fmt.Fprintf(&b, "<h1>%s</h1>\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "<h1>%s</h1>\n", html.EscapeString(string(l)))
 		case gemini.LineHeading2:
-			text := string(l.(gemini.LineHeading2))
-			fmt.Fprintf(&b, "<h2>%s</h2>\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "<h2>%s</h2>\n", html.EscapeString(string(l)))
 		case gemini.LineHeading3:
-			text := string(l.(gemini.LineHeading3))
-			fmt.Fprintf(&b, "<h3>%s</h3>\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "<h3>%s</h3>\n", html.EscapeString(string(l)))
 		case gemini.LineListItem:
-			text := string(l.(gemini.LineListItem))
-			fmt.Fprintf(&b, "<li>%s</li>\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "<li>%s</li>\n", html.EscapeString(string(l)))
 		case gemini.LineQuote:
-			text := string(l.(gemini.LineQuote))
-			fmt.Fprintf(&b, "<blockquote>%s</blockquote>\n", html.EscapeString(text))
+			fmt.Fprintf(&b, "<blockquote>%s</blockquote>\n", html.EscapeString(string(l)))
 		case gemini.LineText:
-			text := string(l.(gemini.LineText))
-			if text == "" {
+			if l == "" {
 				fmt.Fprint(&b, "<br>\n")
 			} else {
-				fmt.Fprintf(&b, "<p>%s</p>\n", html.EscapeString(text))
+				fmt.Fprintf(&b, "<p>%s</p>\n", html.EscapeString(string(l)))
 			}
 		}
 	}
