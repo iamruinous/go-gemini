@@ -182,6 +182,8 @@ func (c *Client) getClientCertificate(req *Request) (*tls.Certificate, error) {
 	for {
 		cert, err := c.Certificates.Lookup(scope)
 		if err == nil {
+			// Store the certificate
+			req.Certificate = cert
 			return cert, err
 		}
 		if err == ErrCertificateExpired {
