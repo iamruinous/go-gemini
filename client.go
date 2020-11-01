@@ -43,12 +43,10 @@ type Client struct {
 	// the request will not be sent again and the response will be returned.
 	CreateCertificate func(hostname, path string) (tls.Certificate, error)
 
-	// TrustCertificate determines whether the client should trust
-	// the provided certificate.
-	// If the returned error is not nil, the connection will be aborted.
-	// If TrustCertificate is nil, the client will check KnownHosts
-	// for the certificate.
-	TrustCertificate func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error
+	// TrustCertificate is called to determine whether the client
+	// should trust a certificate it has not seen before.
+	// If TrustCertificate is nil, the certificate will not be trusted.
+	TrustCertificate func(hostname string, cert *x509.Certificate) Trust
 }
 
 // Get performs a Gemini request for the given url.
@@ -198,10 +196,25 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	if err := verifyHostname(cert, hostname); err != nil {
 		return err
 	}
-	// Check that the client trusts the certificate
-	var err error
+	// Check the known hosts
+	err := c.KnownHosts.Lookup(hostname, cert)
+	switch err {
+	case ErrCertificateExpired, ErrCertificateNotFound:
+	default:
+		return err
+	}
+	// See if the client trusts the certificate
 	if c.TrustCertificate != nil {
-		return c.TrustCertificate(hostname, cert, &c.KnownHosts)
+		switch c.TrustCertificate(hostname, cert) {
+		case TrustOnce:
+			c.KnownHosts.AddTemporary(hostname, cert)
+			return nil
+		case TrustAlways:
+			c.KnownHosts.Add(hostname, cert)
+			return nil
+		default:
+			return ErrCertificateNotTrusted
+		}
 	} else {
 		err = c.KnownHosts.Lookup(hostname, cert)
 	}

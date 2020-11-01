@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+// Trust represents the trustworthiness of a certificate.
+type Trust int
+
+const (
+	TrustNone   Trust = iota // The certificate is not trusted.
+	TrustOnce                // The certificate is trusted once.
+	TrustAlways              // The certificate is trusted always.
+)
+
 // KnownHosts represents a list of known hosts.
 // The zero value for KnownHosts is an empty list ready to use.
 type KnownHosts struct {
@@ -86,26 +95,25 @@ func (k *KnownHosts) add(hostname string, cert *x509.Certificate, write bool) {
 }
 
 // Lookup looks for the provided certificate in the list of known hosts.
-// If the hostname is in the list, but the fingerprint differs,
-// Lookup returns ErrCertificateNotTrusted.
-// If the hostname is not in the list, Lookup returns ErrCertificateUnknown.
-// If the certificate is found and the fingerprint matches, error will be nil.
+// If the hostname is not in the list, Lookup returns ErrCertificateNotFound.
+// If the fingerprint doesn't match, Lookup returns ErrCertificateNotTrusted.
+// Otherwise, Lookup returns nil.
 func (k *KnownHosts) Lookup(hostname string, cert *x509.Certificate) error {
 	now := time.Now().Unix()
 	fingerprint := Fingerprint(cert)
 	if c, ok := k.hosts[hostname]; ok {
 		if c.Expires <= now {
 			// Certificate is expired
-			return ErrCertificateUnknown
+			return ErrCertificateExpired
 		}
 		if c.Fingerprint != fingerprint {
 			// Fingerprint does not match
 			return ErrCertificateNotTrusted
 		}
-		// Certificate is trusted
+		// Certificate is found
 		return nil
 	}
-	return ErrCertificateUnknown
+	return ErrCertificateNotFound
 }
 
 // Parse parses the provided reader and adds the parsed known hosts to the list.

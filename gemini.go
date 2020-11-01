@@ -1,11 +1,8 @@
 package gemini
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"sync"
-	"time"
 )
 
 var crlf = []byte("\r\n")
@@ -14,16 +11,15 @@ var crlf = []byte("\r\n")
 var (
 	ErrInvalidURL            = errors.New("gemini: invalid URL")
 	ErrInvalidResponse       = errors.New("gemini: invalid response")
-	ErrCertificateUnknown    = errors.New("gemini: unknown certificate")
 	ErrCertificateExpired    = errors.New("gemini: certificate expired")
+	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
+	ErrCertificateRequired   = errors.New("gemini: certificate required")
 	ErrNotAFile              = errors.New("gemini: not a file")
 	ErrNotAGeminiURL         = errors.New("gemini: not a Gemini URL")
 	ErrBodyNotAllowed        = errors.New("gemini: response status code does not allow for body")
 	ErrTooManyRedirects      = errors.New("gemini: too many redirects")
 	ErrInputRequired         = errors.New("gemini: input required")
-	ErrCertificateRequired   = errors.New("gemini: certificate required")
-	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
 )
 
 // DefaultClient is the default client. It is used by Get and Do.
@@ -35,6 +31,7 @@ var DefaultClient Client
 //
 // Get is a wrapper around DefaultClient.Get.
 func Get(url string) (*Response, error) {
+	setupDefaultClientOnce()
 	return DefaultClient.Get(url)
 }
 
@@ -42,19 +39,14 @@ func Get(url string) (*Response, error) {
 //
 // Do is a wrapper around DefaultClient.Do.
 func Do(req *Request) (*Response, error) {
+	setupDefaultClientOnce()
 	return DefaultClient.Do(req)
 }
 
 var defaultClientOnce sync.Once
 
-func init() {
-	DefaultClient.TrustCertificate = func(hostname string, cert *x509.Certificate, knownHosts *KnownHosts) error {
-		defaultClientOnce.Do(func() { knownHosts.LoadDefault() })
-		return knownHosts.Lookup(hostname, cert)
-	}
-	DefaultClient.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
-		return CreateCertificate(CertificateOptions{
-			Duration: time.Hour,
-		})
-	}
+func setupDefaultClientOnce() {
+	defaultClientOnce.Do(func() {
+		DefaultClient.KnownHosts.LoadDefault()
+	})
 }

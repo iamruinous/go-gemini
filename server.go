@@ -146,7 +146,7 @@ func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error
 
 func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 	if _, ok := s.hosts[hostname]; !ok {
-		return nil, ErrCertificateUnknown
+		return nil, ErrCertificateNotFound
 	}
 	cert, err := s.Certificates.Lookup(hostname)
 

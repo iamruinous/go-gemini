@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// CertificateStore maps hostnames to certificates.
+// CertificateStore maps certificate scopes to certificates.
 // The zero value of CertificateStore is an empty store ready to use.
 type CertificateStore struct {
 	store map[string]tls.Certificate
