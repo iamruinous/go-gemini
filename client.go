@@ -27,6 +27,12 @@ type Client struct {
 	// A Timeout of zero means no timeout.
 	Timeout time.Duration
 
+	// InsecureTrustAlways specifies whether the client should trust
+	// any certificate it recieves without checking KnownHosts
+	// or calling TrustCertificate.
+	// Use with caution.
+	InsecureTrustAlways bool
+
 	// GetInput is called to retrieve input when the server requests it.
 	// If GetInput is nil or returns false, no input will be sent and
 	// the response will be returned.
@@ -196,27 +202,25 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	if err := verifyHostname(cert, hostname); err != nil {
 		return err
 	}
+	if c.InsecureTrustAlways {
+		return nil
+	}
 	// Check the known hosts
 	err := c.KnownHosts.Lookup(hostname, cert)
 	switch err {
 	case ErrCertificateExpired, ErrCertificateNotFound:
-	default:
-		return err
-	}
-	// See if the client trusts the certificate
-	if c.TrustCertificate != nil {
-		switch c.TrustCertificate(hostname, cert) {
-		case TrustOnce:
-			c.KnownHosts.AddTemporary(hostname, cert)
-			return nil
-		case TrustAlways:
-			c.KnownHosts.Add(hostname, cert)
-			return nil
-		default:
-			return ErrCertificateNotTrusted
+		// See if the client trusts the certificate
+		if c.TrustCertificate != nil {
+			switch c.TrustCertificate(hostname, cert) {
+			case TrustOnce:
+				c.KnownHosts.AddTemporary(hostname, cert)
+				return nil
+			case TrustAlways:
+				c.KnownHosts.Add(hostname, cert)
+				return nil
+			}
 		}
-	} else {
-		err = c.KnownHosts.Lookup(hostname, cert)
+		return ErrCertificateNotTrusted
 	}
 	return err
 }

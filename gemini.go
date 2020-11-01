@@ -13,7 +13,7 @@ var (
 	ErrInvalidResponse       = errors.New("gemini: invalid response")
 	ErrCertificateExpired    = errors.New("gemini: certificate expired")
 	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
-	ErrCertificateNotTrusted = errors.New("gemini: certificate is not trusted")
+	ErrCertificateNotTrusted = errors.New("gemini: certificate not trusted")
 	ErrCertificateRequired   = errors.New("gemini: certificate required")
 	ErrNotAFile              = errors.New("gemini: not a file")
 	ErrNotAGeminiURL         = errors.New("gemini: not a Gemini URL")
