@@ -9,7 +9,7 @@ import (
 
 // Response is a Gemini response.
 type Response struct {
-	// Status represents the response status.
+	// Status contains the response status code.
 	Status Status
 
 	// Meta contains more information related to the response status.
@@ -21,7 +21,7 @@ type Response struct {
 	// Body contains the response body for successful responses.
 	Body io.ReadCloser
 
-	// Request is the request that was sent to obtain this Response.
+	// Request is the request that was sent to obtain this response.
 	Request *Request
 
 	// TLS contains information about the TLS connection on which the response
@@ -67,6 +67,10 @@ func (resp *Response) read(rc io.ReadCloser) error {
 	// Ensure meta is less than or equal to 1024 bytes
 	if len(meta) > 1024 {
 		return ErrInvalidResponse
+	}
+	// Default mime type of text/gemini; charset=utf-8
+	if statusClass == StatusClassSuccess && meta == "" {
+		meta = "text/gemini; charset=utf-8"
 	}
 	resp.Meta = meta
 

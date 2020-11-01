@@ -37,15 +37,9 @@ type responderKey struct {
 
 // Register registers a responder for the given pattern.
 //
-// Patterns must be in the form of hostname or scheme://hostname
-// (e.g. gemini://example.com).
-// If no scheme is specified, a default scheme of gemini:// is implied.
-//
-// Wildcard patterns are supported (e.g. *.example.com).
-// To register a certificate for a wildcard hostname, call Certificates.Add:
-//
-//     var s gemini.Server
-//     s.Certificates.Add("*.example.com", cert)
+// Patterns must be in the form of "hostname" or "scheme://hostname".
+// If no scheme is specified, a scheme of "gemini://" is implied.
+// Wildcard patterns are supported (e.g. "*.example.com").
 func (s *Server) Register(pattern string, responder Responder) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
@@ -258,13 +252,13 @@ func (w *ResponseWriter) WriteHeader(status Status, meta string) {
 }
 
 // WriteStatus writes the response header with the given status code.
+//
+// WriteStatus is equivalent to WriteHeader(status, status.Message())
 func (w *ResponseWriter) WriteStatus(status Status) {
 	w.WriteHeader(status, status.Message())
 }
 
 // SetMimetype sets the mimetype that will be written for a successful response.
-// The provided mimetype will only be used if Write is called without calling
-// WriteHeader.
 // If the mimetype is not set, it will default to "text/gemini".
 func (w *ResponseWriter) SetMimetype(mimetype string) {
 	w.mimetype = mimetype
@@ -274,9 +268,8 @@ func (w *ResponseWriter) SetMimetype(mimetype string) {
 // If the response status does not allow for a response body, Write returns
 // ErrBodyNotAllowed.
 //
-// If WriteHeader has not yet been called, Write calls
-// WriteHeader(StatusSuccess, mimetype) where mimetype is the mimetype set in
-// SetMimetype. If no mimetype is set, a default of "text/gemini" will be used.
+// If the response header has not yet been written, Write calls WriteHeader
+// with StatusSuccess and the mimetype set in SetMimetype.
 func (w *ResponseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
 		mimetype := w.mimetype
