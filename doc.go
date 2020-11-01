@@ -7,51 +7,24 @@ Get makes a Gemini request:
 	if err != nil {
 		// handle error
 	}
-	// ...
-
-The client must close the response body when finished with it:
-
-	resp, err := gemini.Get("gemini://example.com")
-	if err != nil {
-		// handle error
-	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 	// ...
 
 For control over client behavior, create a Client:
 
-	var client gemini.Client
+	client := &gemini.Client{}
 	resp, err := client.Get("gemini://example.com")
 	if err != nil {
 		// handle error
 	}
 	// ...
 
-Clients can load their own list of known hosts:
-
-	err := client.KnownHosts.Load("path/to/my/known_hosts")
-	if err != nil {
-		// handle error
-	}
-
-Clients can control when to trust certificates with TrustCertificate:
-
-	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
-		return gemini.TrustOnce
-	}
-
-Clients can create client certificates upon the request of a server:
-
-	client.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
-		return gemini.CreateCertificate(gemini.CertificateOptions{
-			Duration: time.Hour,
-		})
-	}
-
 Server is a Gemini server.
 
-	var server gemini.Server
+	server := &gemini.Server{
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+	}
 
 Servers should be configured with certificates:
 

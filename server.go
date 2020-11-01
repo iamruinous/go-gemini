@@ -18,15 +18,15 @@ type Server struct {
 	// If Addr is empty, the server will listen on the address ":1965".
 	Addr string
 
-	// Certificates contains the certificates used by the server.
-	Certificates CertificateStore
-
 	// ReadTimeout is the maximum duration for reading a request.
 	ReadTimeout time.Duration
 
 	// WriteTimeout is the maximum duration before timing out
 	// writes of the response.
 	WriteTimeout time.Duration
+
+	// Certificates contains the certificates used by the server.
+	Certificates CertificateStore
 
 	// CreateCertificate, if not nil, will be called to create a new certificate
 	// if the current one is expired or missing.
