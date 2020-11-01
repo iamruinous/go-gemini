@@ -30,7 +30,7 @@ var (
 )
 
 func init() {
-	client.Timeout = 2 * time.Minute
+	client.Timeout = 30 * time.Second
 	client.KnownHosts.LoadDefault()
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
 		fmt.Printf(trustPrompt, hostname, gemini.Fingerprint(cert))

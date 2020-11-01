@@ -12,8 +12,8 @@ import (
 
 func main() {
 	var server gemini.Server
-	server.ReadTimeout = 1 * time.Minute
-	server.WriteTimeout = 2 * time.Minute
+	server.ReadTimeout = 30 * time.Second
+	server.WriteTimeout = 1 * time.Minute
 	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
