@@ -107,7 +107,7 @@ func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
 		session.authorized = true
 		w.WriteHeader(gemini.StatusRedirect, "/profile")
 	} else {
-		w.WriteHeader(gemini.StatusSensitiveInput, "Wrong password. Try again")
+		w.WriteHeader(gemini.StatusSensitiveInput, "Password")
 	}
 }
 
