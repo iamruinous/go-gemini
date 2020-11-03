@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"log"
 	"math/big"
@@ -91,6 +92,7 @@ func (c *CertificateStore) Load(path string) error {
 type CertificateOptions struct {
 	IPAddresses []net.IP
 	DNSNames    []string
+	Subject     pkix.Name
 	Duration    time.Duration
 }
 
@@ -138,6 +140,7 @@ func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.Priva
 		BasicConstraintsValid: true,
 		IPAddresses:           options.IPAddresses,
 		DNSNames:              options.DNSNames,
+		Subject:               options.Subject,
 	}
 
 	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, public, priv)

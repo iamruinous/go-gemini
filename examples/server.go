@@ -4,6 +4,7 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509/pkix"
 	"log"
 	"time"
 
@@ -19,6 +20,9 @@ func main() {
 	}
 	server.CreateCertificate = func(hostname string) (tls.Certificate, error) {
 		return gemini.CreateCertificate(gemini.CertificateOptions{
+			Subject: pkix.Name{
+				CommonName: hostname,
+			},
 			DNSNames: []string{hostname},
 			Duration: time.Minute, // for testing purposes
 		})
