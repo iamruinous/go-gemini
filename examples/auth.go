@@ -119,6 +119,7 @@ func logout(w *gemini.ResponseWriter, r *gemini.Request) {
 	fingerprint := gemini.Fingerprint(r.Certificate.Leaf)
 	delete(sessions, fingerprint)
 	fmt.Fprintln(w, "Successfully logged out.")
+	fmt.Fprintln(w, "=> / Index")
 }
 
 func profile(w *gemini.ResponseWriter, r *gemini.Request) {

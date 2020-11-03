@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
 	"math/big"
 	"net"
 	"os"
@@ -27,7 +26,7 @@ type CertificateStore struct {
 
 // Add adds a certificate for the given scope to the store.
 // It tries to parse the certificate if it is not already parsed.
-func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
+func (c *CertificateStore) Add(scope string, cert tls.Certificate) error {
 	if c.store == nil {
 		c.store = map[string]tls.Certificate{}
 	}
@@ -40,14 +39,14 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 	}
 	if c.dir {
 		// Write certificates
-		log.Printf("gemini: Writing certificate for %s to %s", scope, c.path)
 		certPath := filepath.Join(c.path, scope+".crt")
 		keyPath := filepath.Join(c.path, scope+".key")
 		if err := WriteCertificate(cert, certPath, keyPath); err != nil {
-			log.Printf("gemini: Failed to write certificate for %s: %s", scope, err)
+			return err
 		}
 	}
 	c.store[scope] = cert
+	return nil
 }
 
 // Lookup returns the certificate for the given scope.

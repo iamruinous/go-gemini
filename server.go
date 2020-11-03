@@ -31,6 +31,11 @@ type Server struct {
 	// if the current one is expired or missing.
 	CreateCertificate func(hostname string) (tls.Certificate, error)
 
+	// ErrorLog specifies an optional logger for errors accepting connections
+	// and file system errors.
+	// If nil, logging is done via the log package's standard logger.
+	ErrorLog *log.Logger
+
 	// registered responders
 	responders map[responderKey]Responder
 	hosts      map[string]bool
@@ -117,7 +122,7 @@ func (s *Server) Serve(l net.Listener) error {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				log.Printf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
+				s.logf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -154,7 +159,9 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
-				s.Certificates.Add(hostname, cert)
+				if err := s.Certificates.Add(hostname, cert); err != nil {
+					s.logf("gemini: Failed to add new certificate for %s: %s", hostname, err)
+				}
 			}
 			return &cert, err
 		}
@@ -239,6 +246,14 @@ func (s *Server) responder(r *Request) Responder {
 		}
 	}
 	return nil
+}
+
+func (s *Server) logf(format string, args ...interface{}) {
+	if s.ErrorLog != nil {
+		s.ErrorLog.Printf(format, args...)
+	} else {
+		log.Printf(format, args...)
+	}
 }
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
