@@ -2,7 +2,9 @@ package gemini
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -93,6 +95,7 @@ type CertificateOptions struct {
 	DNSNames    []string
 	Subject     pkix.Name
 	Duration    time.Duration
+	ED25519     bool
 }
 
 // CreateCertificate creates a new TLS certificate.
@@ -110,15 +113,27 @@ func CreateCertificate(options CertificateOptions) (tls.Certificate, error) {
 
 // newX509KeyPair creates and returns a new certificate and private key.
 func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.PrivateKey, error) {
-	// Generate an ED25519 private key
-	_, priv, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, nil, err
+	var pub crypto.PublicKey
+	var priv crypto.PrivateKey
+	if options.ED25519 {
+		// Generate an ED25519 private key
+		var err error
+		pub, priv, err = ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		// Generate an ECDSA private key
+		private, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+		priv = private
+		pub = &private.PublicKey
 	}
-	public := priv.Public()
 
-	// ED25519 keys should have the DigitalSignature KeyUsage bits set
-	// in the x509.Certificate template
+	// ECDSA and ED25519 keys should have the DigitalSignature KeyUsage bits
+	// set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -142,7 +157,7 @@ func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.Priva
 		Subject:               options.Subject,
 	}
 
-	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, public, priv)
+	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
 	if err != nil {
 		return nil, nil, err
 	}
