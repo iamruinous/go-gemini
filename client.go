@@ -40,8 +40,7 @@ type Client struct {
 	GetInput func(prompt string, sensitive bool) (input string, ok bool)
 
 	// CheckRedirect determines whether to follow a redirect.
-	// If CheckRedirect is nil, a default policy of no more than 5 consecutive
-	// redirects will be enforced.
+	// If CheckRedirect is nil, redirects will not be followed.
 	CheckRedirect func(req *Request, via []*Request) error
 
 	// CreateCertificate is called to generate a certificate upon
@@ -163,11 +162,8 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			if err := c.CheckRedirect(redirect, via); err != nil {
 				return resp, err
 			}
-		} else if len(via) > 5 {
-			// Default policy of no more than 5 redirects
-			return resp, errors.New("gemini: too many redirects")
+			return c.do(redirect, via)
 		}
-		return c.do(redirect, via)
 	}
 
 	resp.Request = req
