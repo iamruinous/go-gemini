@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/x509/pkix"
 	"fmt"
 	"log"
 	"os"
@@ -22,6 +23,9 @@ func main() {
 		log.Fatal(err)
 	}
 	options := gemini.CertificateOptions{
+		Subject: pkix.Name{
+			CommonName: host,
+		},
 		DNSNames: []string{host},
 		Duration: duration,
 	}
