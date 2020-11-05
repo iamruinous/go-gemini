@@ -89,13 +89,31 @@ func (c *CertificateStore) Load(path string) error {
 	return nil
 }
 
-// CertificateOptions configures how a certificate is created.
+// CertificateOptions configures the creation of a certificate.
 type CertificateOptions struct {
+	// Subject Alternate Name values.
+	// Should contain the IP addresses that the certificate is valid for.
 	IPAddresses []net.IP
-	DNSNames    []string
-	Subject     pkix.Name
-	Duration    time.Duration
-	ED25519     bool
+
+	// Subject Alternate Name values.
+	// Should contain the DNS names that this certificate is valid for.
+	// E.g. example.com, *.example.com
+	DNSNames []string
+
+	// Subject specifies the certificate Subject.
+	//
+	// Subject.CommonName can contain the DNS name that this certificate
+	// is valid for. Server certificates should specify both a Subject
+	// and a Subject Alternate Name.
+	Subject pkix.Name
+
+	// Duration specifies the amount of time that the certificate is valid for.
+	Duration time.Duration
+
+	// Ed25519 specifies whether to generate an Ed25519 key pair.
+	// If false, an ECDSA key will be generated instead.
+	// Ed25519 is not as widely supported as ECDSA.
+	Ed25519 bool
 }
 
 // CreateCertificate creates a new TLS certificate.
@@ -115,8 +133,8 @@ func CreateCertificate(options CertificateOptions) (tls.Certificate, error) {
 func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.PrivateKey, error) {
 	var pub crypto.PublicKey
 	var priv crypto.PrivateKey
-	if options.ED25519 {
-		// Generate an ED25519 private key
+	if options.Ed25519 {
+		// Generate an Ed25519 private key
 		var err error
 		pub, priv, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
@@ -132,7 +150,7 @@ func newX509KeyPair(options CertificateOptions) (*x509.Certificate, crypto.Priva
 		pub = &private.PublicKey
 	}
 
-	// ECDSA and ED25519 keys should have the DigitalSignature KeyUsage bits
+	// ECDSA and Ed25519 keys should have the DigitalSignature KeyUsage bits
 	// set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
 
