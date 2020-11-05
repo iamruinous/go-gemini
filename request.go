@@ -41,15 +41,12 @@ func NewRequest(rawurl string) (*Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewRequestFromURL(u)
+	return NewRequestFromURL(u), nil
 }
 
 // NewRequestFromURL returns a new request for the given URL.
 // The host is inferred from the URL.
-func NewRequestFromURL(url *url.URL) (*Request, error) {
-	if url.Scheme != "" && url.Scheme != "gemini" {
-		return nil, ErrNotAGeminiURL
-	}
+func NewRequestFromURL(url *url.URL) *Request {
 	host := url.Host
 	if url.Port() == "" {
 		host += ":1965"
@@ -57,7 +54,7 @@ func NewRequestFromURL(url *url.URL) (*Request, error) {
 	return &Request{
 		URL:  url,
 		Host: host,
-	}, nil
+	}
 }
 
 // write writes the Gemini request to the provided buffered writer.

@@ -96,9 +96,9 @@ func openFile(p string) (File, error) {
 			if stat.Mode().IsRegular() {
 				return f, nil
 			}
-			return nil, ErrNotAFile
+			return nil, os.ErrNotExist
 		} else if !stat.Mode().IsRegular() {
-			return nil, ErrNotAFile
+			return nil, os.ErrNotExist
 		}
 	}
 	return f, nil

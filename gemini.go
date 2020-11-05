@@ -14,12 +14,8 @@ var (
 	ErrCertificateExpired    = errors.New("gemini: certificate expired")
 	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
 	ErrCertificateNotTrusted = errors.New("gemini: certificate not trusted")
-	ErrCertificateRequired   = errors.New("gemini: certificate required")
-	ErrNotAFile              = errors.New("gemini: not a file")
-	ErrNotAGeminiURL         = errors.New("gemini: not a Gemini URL")
-	ErrBodyNotAllowed        = errors.New("gemini: response status code does not allow for body")
+	ErrBodyNotAllowed        = errors.New("gemini: response body not allowed")
 	ErrTooManyRedirects      = errors.New("gemini: too many redirects")
-	ErrInputRequired         = errors.New("gemini: input required")
 )
 
 // defaultClient is the default client. It is used by Get and Do.

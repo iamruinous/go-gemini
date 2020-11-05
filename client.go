@@ -128,7 +128,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			req.Certificate = &cert
 			return c.do(req, via)
 		}
-		return resp, ErrCertificateRequired
+		return resp, nil
 
 	case resp.Status.Class() == StatusClassInput:
 		if c.GetInput != nil {
@@ -139,7 +139,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 				return c.do(req, via)
 			}
 		}
-		return resp, ErrInputRequired
+		return resp, nil
 
 	case resp.Status.Class() == StatusClassRedirect:
 		if via == nil {
@@ -151,12 +151,13 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		if err != nil {
 			return resp, err
 		}
+
 		target = req.URL.ResolveReference(target)
-		redirect, err := NewRequestFromURL(target)
-		if err != nil {
-			return resp, err
+		if target.Scheme != "" && target.Scheme != "gemini" {
+			return resp, nil
 		}
 
+		redirect := NewRequestFromURL(target)
 		if c.CheckRedirect != nil {
 			if err := c.CheckRedirect(redirect, via); err != nil {
 				return resp, err
