@@ -64,8 +64,8 @@ func main() {
 }
 
 func getSession(cert *x509.Certificate) (*session, bool) {
-	fingerprint := gemini.Fingerprint(cert)
-	session, ok := sessions[fingerprint]
+	fingerprint := gemini.NewFingerprint(cert)
+	session, ok := sessions[fingerprint.Hex]
 	return session, ok
 }
 
@@ -79,8 +79,8 @@ func login(w *gemini.ResponseWriter, r *gemini.Request) {
 		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
-	fingerprint := gemini.Fingerprint(r.Certificate.Leaf)
-	sessions[fingerprint] = &session{
+	fingerprint := gemini.NewFingerprint(r.Certificate.Leaf)
+	sessions[fingerprint.Hex] = &session{
 		username: username,
 	}
 	w.WriteHeader(gemini.StatusRedirect, "/password")
@@ -116,8 +116,8 @@ func logout(w *gemini.ResponseWriter, r *gemini.Request) {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	fingerprint := gemini.Fingerprint(r.Certificate.Leaf)
-	delete(sessions, fingerprint)
+	fingerprint := gemini.NewFingerprint(r.Certificate.Leaf)
+	delete(sessions, fingerprint.Hex)
 	fmt.Fprintln(w, "Successfully logged out.")
 	fmt.Fprintln(w, "=> / Index")
 }
