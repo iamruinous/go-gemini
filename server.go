@@ -3,6 +3,7 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net"
 	"net/url"
@@ -150,12 +151,12 @@ func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error
 
 func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 	if _, ok := s.hosts[hostname]; !ok {
-		return nil, ErrCertificateNotFound
+		return nil, errors.New("hostname not registered")
 	}
-	cert, err := s.Certificates.Lookup(hostname)
 
-	switch err {
-	case ErrCertificateNotFound, ErrCertificateExpired:
+	// Generate a new certificate if it is missing or expired
+	cert, ok := s.Certificates.Lookup(hostname)
+	if !ok || cert.Leaf != nil && !time.Now().After(cert.Leaf.NotAfter) {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
@@ -165,9 +166,9 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 			}
 			return &cert, err
 		}
+		return nil, errors.New("no certificate")
 	}
-
-	return cert, err
+	return &cert, nil
 }
 
 // respond responds to a connection.

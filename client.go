@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"net/url"
 	"path"
@@ -164,7 +165,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			}
 		} else if len(via) > 5 {
 			// Default policy of no more than 5 redirects
-			return resp, ErrTooManyRedirects
+			return resp, errors.New("gemini: too many redirects")
 		}
 		return c.do(redirect, via)
 	}
@@ -182,13 +183,14 @@ func (c *Client) getClientCertificate(req *Request) (*tls.Certificate, error) {
 	// Search recursively for the certificate
 	scope := req.URL.Hostname() + strings.TrimSuffix(req.URL.Path, "/")
 	for {
-		cert, err := c.Certificates.Lookup(scope)
-		if err == nil {
-			// Store the certificate
-			req.Certificate = cert
-			return cert, err
-		}
-		if err == ErrCertificateExpired {
+		cert, ok := c.Certificates.Lookup(scope)
+		if ok {
+			// Ensure that the certificate is not expired
+			if cert.Leaf != nil && !time.Now().After(cert.Leaf.NotAfter) {
+				// Store the certificate
+				req.Certificate = &cert
+				return &cert, nil
+			}
 			break
 		}
 		scope = path.Dir(scope)
@@ -216,21 +218,27 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 		return nil
 	}
 	// Check the known hosts
-	err := c.KnownHosts.Lookup(hostname, cert)
-	switch err {
-	case ErrCertificateExpired, ErrCertificateNotFound:
-		// See if the client trusts the certificate
-		if c.TrustCertificate != nil {
-			switch c.TrustCertificate(hostname, cert) {
-			case TrustOnce:
-				c.KnownHosts.AddTemporary(hostname, cert)
-				return nil
-			case TrustAlways:
-				c.KnownHosts.Add(hostname, cert)
-				return nil
-			}
+	knownHost, ok := c.KnownHosts.Lookup(hostname)
+	if ok && time.Now().After(cert.NotAfter) {
+		// Not expired
+		fingerprint := NewFingerprint(cert)
+		if knownHost.Hex != fingerprint.Hex {
+			return errors.New("gemini: fingerprint does not match")
 		}
-		return ErrCertificateNotTrusted
+		return nil
 	}
-	return err
+
+	// Unknown certificate
+	// See if the client trusts the certificate
+	if c.TrustCertificate != nil {
+		switch c.TrustCertificate(hostname, cert) {
+		case TrustOnce:
+			c.KnownHosts.AddTemporary(hostname, cert)
+			return nil
+		case TrustAlways:
+			c.KnownHosts.Add(hostname, cert)
+			return nil
+		}
+	}
+	return errors.New("gemini: certificate not trusted")
 }

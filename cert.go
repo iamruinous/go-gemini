@@ -52,16 +52,9 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) error {
 }
 
 // Lookup returns the certificate for the given scope.
-func (c *CertificateStore) Lookup(scope string) (*tls.Certificate, error) {
+func (c *CertificateStore) Lookup(scope string) (tls.Certificate, bool) {
 	cert, ok := c.store[scope]
-	if !ok {
-		return nil, ErrCertificateNotFound
-	}
-	// Ensure that the certificate is not expired
-	if cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
-		return &cert, ErrCertificateExpired
-	}
-	return &cert, nil
+	return cert, ok
 }
 
 // Load loads certificates from the given path.

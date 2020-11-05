@@ -9,13 +9,9 @@ var crlf = []byte("\r\n")
 
 // Errors.
 var (
-	ErrInvalidURL            = errors.New("gemini: invalid URL")
-	ErrInvalidResponse       = errors.New("gemini: invalid response")
-	ErrCertificateExpired    = errors.New("gemini: certificate expired")
-	ErrCertificateNotFound   = errors.New("gemini: certificate not found")
-	ErrCertificateNotTrusted = errors.New("gemini: certificate not trusted")
-	ErrBodyNotAllowed        = errors.New("gemini: response body not allowed")
-	ErrTooManyRedirects      = errors.New("gemini: too many redirects")
+	ErrInvalidURL      = errors.New("gemini: invalid URL")
+	ErrInvalidResponse = errors.New("gemini: invalid response")
+	ErrBodyNotAllowed  = errors.New("gemini: response body not allowed")
 )
 
 // defaultClient is the default client. It is used by Get and Do.

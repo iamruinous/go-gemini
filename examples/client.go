@@ -33,7 +33,8 @@ func init() {
 	client.Timeout = 30 * time.Second
 	client.KnownHosts.LoadDefault()
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
-		fmt.Printf(trustPrompt, hostname, gemini.Fingerprint(cert))
+		fingerprint := gemini.NewFingerprint(cert)
+		fmt.Printf(trustPrompt, hostname, fingerprint.Hex)
 		scanner.Scan()
 		switch scanner.Text() {
 		case "t":
