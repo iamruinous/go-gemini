@@ -214,9 +214,9 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 		return nil
 	}
 	// Check the known hosts
+	// No need to check if it is expired as tls already does that
 	knownHost, ok := c.KnownHosts.Lookup(hostname)
-	if ok && time.Now().After(cert.NotAfter) {
-		// Not expired
+	if ok {
 		fingerprint := NewFingerprint(cert)
 		if knownHost.Hex != fingerprint.Hex {
 			return errors.New("gemini: fingerprint does not match")
@@ -224,7 +224,6 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 		return nil
 	}
 
-	// Unknown certificate
 	// See if the client trusts the certificate
 	if c.TrustCertificate != nil {
 		switch c.TrustCertificate(hostname, cert) {
