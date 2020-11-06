@@ -108,6 +108,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	if err := resp.read(conn); err != nil {
 		return nil, err
 	}
+	resp.Request = req
 	// Store connection state
 	resp.TLS = conn.ConnectionState()
 
@@ -152,11 +153,6 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			return resp, err
 		}
 
-		target = req.URL.ResolveReference(target)
-		if target.Scheme != "" && target.Scheme != "gemini" {
-			return resp, nil
-		}
-
 		redirect := NewRequestFromURL(target)
 		if c.CheckRedirect != nil {
 			if err := c.CheckRedirect(redirect, via); err != nil {
@@ -166,7 +162,6 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		}
 	}
 
-	resp.Request = req
 	return resp, nil
 }
 
