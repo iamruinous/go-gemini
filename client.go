@@ -213,27 +213,27 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	if c.InsecureSkipTrust {
 		return nil
 	}
+
 	// Check the known hosts
-	// No need to check if it is expired as tls already does that
 	knownHost, ok := c.KnownHosts.Lookup(hostname)
-	if ok {
-		fingerprint := NewFingerprint(cert)
-		if knownHost.Hex != fingerprint.Hex {
-			return errors.New("gemini: fingerprint does not match")
+	if !ok || time.Now().Unix() >= knownHost.Expires {
+		// See if the client trusts the certificate
+		if c.TrustCertificate != nil {
+			switch c.TrustCertificate(hostname, cert) {
+			case TrustOnce:
+				c.KnownHosts.AddTemporary(hostname, cert)
+				return nil
+			case TrustAlways:
+				c.KnownHosts.Add(hostname, cert)
+				return nil
+			}
 		}
-		return nil
+		return errors.New("gemini: certificate not trusted")
 	}
 
-	// See if the client trusts the certificate
-	if c.TrustCertificate != nil {
-		switch c.TrustCertificate(hostname, cert) {
-		case TrustOnce:
-			c.KnownHosts.AddTemporary(hostname, cert)
-			return nil
-		case TrustAlways:
-			c.KnownHosts.Add(hostname, cert)
-			return nil
-		}
+	fingerprint := NewFingerprint(cert)
+	if knownHost.Hex == fingerprint.Hex {
+		return nil
 	}
-	return errors.New("gemini: certificate not trusted")
+	return errors.New("gemini: fingerprint does not match")
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -105,7 +106,7 @@ func (k *KnownHosts) Parse(r io.Reader) {
 	for scanner.Scan() {
 		text := scanner.Text()
 		parts := strings.Split(text, " ")
-		if len(parts) < 3 {
+		if len(parts) < 4 {
 			continue
 		}
 
@@ -116,9 +117,15 @@ func (k *KnownHosts) Parse(r io.Reader) {
 		}
 		fingerprint := parts[2]
 
+		expires, err := strconv.ParseInt(parts[3], 10, 0)
+		if err != nil {
+			continue
+		}
+
 		k.hosts[hostname] = Fingerprint{
 			Algorithm: algorithm,
 			Hex:       fingerprint,
+			Expires:   expires,
 		}
 	}
 }
@@ -131,13 +138,14 @@ func (k *KnownHosts) Write(w io.Writer) {
 }
 
 func appendKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
-	return fmt.Fprintf(w, "%s %s %s\n", hostname, f.Algorithm, f.Hex)
+	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires)
 }
 
 // Fingerprint represents a fingerprint using a certain algorithm.
 type Fingerprint struct {
 	Algorithm string // fingerprint algorithm e.g. SHA-512
 	Hex       string // fingerprint in hexadecimal, with ':' between each octet
+	Expires   int64  // unix time of the fingerprint expiration date
 }
 
 // NewFingerprint returns the SHA-512 fingerprint of the provided certificate.
@@ -153,6 +161,7 @@ func NewFingerprint(cert *x509.Certificate) Fingerprint {
 	return Fingerprint{
 		Algorithm: "SHA-512",
 		Hex:       b.String(),
+		Expires:   cert.NotAfter.Unix(),
 	}
 }
 

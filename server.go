@@ -156,7 +156,7 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 
 	// Generate a new certificate if it is missing or expired
 	cert, ok := s.Certificates.Lookup(hostname)
-	if !ok || cert.Leaf != nil && !time.Now().After(cert.Leaf.NotAfter) {
+	if !ok || cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
