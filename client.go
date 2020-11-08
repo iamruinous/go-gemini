@@ -152,6 +152,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		if err != nil {
 			return resp, err
 		}
+		target = req.URL.ResolveReference(target)
 
 		redirect := NewRequestFromURL(target)
 		if c.CheckRedirect != nil {
