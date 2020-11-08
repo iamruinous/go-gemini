@@ -7,7 +7,10 @@ Get makes a Gemini request:
 	if err != nil {
 		// handle error
 	}
-	defer resp.Body.Close()
+	if resp.Status.Class() == gemini.StatusClassSucess {
+		defer resp.Body.Close()
+		// ...
+	}
 	// ...
 
 For control over client behavior, create a Client:

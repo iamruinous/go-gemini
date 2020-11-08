@@ -2,10 +2,8 @@ package gemini
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"io"
-	"io/ioutil"
 	"strconv"
 )
 
@@ -21,7 +19,6 @@ type Response struct {
 	Meta string
 
 	// Body contains the response body for successful responses.
-	// Body is guaranteed to be non-nil.
 	Body io.ReadCloser
 
 	// Request is the request that was sent to obtain this response.
@@ -86,8 +83,6 @@ func (resp *Response) read(rc io.ReadCloser) error {
 
 	if resp.Status.Class() == StatusClassSuccess {
 		resp.Body = newReadCloserBody(br, rc)
-	} else {
-		resp.Body = ioutil.NopCloser(bytes.NewReader([]byte{}))
 	}
 	return nil
 }
