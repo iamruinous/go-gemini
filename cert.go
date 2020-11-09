@@ -28,7 +28,7 @@ type CertificateStore struct {
 
 // Add adds a certificate for the given scope to the store.
 // It tries to parse the certificate if it is not already parsed.
-func (c *CertificateStore) Add(scope string, cert tls.Certificate) error {
+func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 	if c.store == nil {
 		c.store = map[string]tls.Certificate{}
 	}
@@ -39,15 +39,18 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) error {
 			cert.Leaf = parsed
 		}
 	}
+	c.store[scope] = cert
+}
+
+// Write writes the provided certificate to the certificate directory.
+func (c *CertificateStore) Write(scope string, cert tls.Certificate) error {
 	if c.dir {
-		// Write certificates
 		certPath := filepath.Join(c.path, scope+".crt")
 		keyPath := filepath.Join(c.path, scope+".key")
 		if err := WriteCertificate(cert, certPath, keyPath); err != nil {
 			return err
 		}
 	}
-	c.store[scope] = cert
 	return nil
 }
 
@@ -80,6 +83,12 @@ func (c *CertificateStore) Load(path string) error {
 	c.dir = true
 	c.path = path
 	return nil
+}
+
+// SetOutput sets the directory that new certificates will be written to.
+func (c *CertificateStore) SetOutput(path string) {
+	c.dir = true
+	c.path = path
 }
 
 // CertificateOptions configures the creation of a certificate.

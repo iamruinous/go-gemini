@@ -160,8 +160,9 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
-				if err := s.Certificates.Add(hostname, cert); err != nil {
-					s.logf("gemini: Failed to add new certificate for %s: %s", hostname, err)
+				s.Certificates.Add(hostname, cert)
+				if err := s.Certificates.Write(hostname, cert); err != nil {
+					s.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
 				}
 			}
 			return &cert, err
@@ -262,7 +263,7 @@ type ResponseWriter struct {
 	b           *bufio.Writer
 	bodyAllowed bool
 	wroteHeader bool
-	mediatype    string
+	mediatype   string
 }
 
 func newResponseWriter(conn net.Conn) *ResponseWriter {
