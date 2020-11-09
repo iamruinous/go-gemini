@@ -32,7 +32,7 @@ func (k *KnownHosts) SetOutput(w io.Writer) {
 	k.out = w
 }
 
-// Add adds a fingerprint to the list of known hosts.
+// Add adds a known host to the list of known hosts.
 func (k *KnownHosts) Add(hostname string, fingerprint Fingerprint) {
 	if k.hosts == nil {
 		k.hosts = map[string]Fingerprint{}
@@ -70,6 +70,7 @@ func (k *KnownHosts) writeKnownHost(w io.Writer, hostname string, f Fingerprint)
 }
 
 // Load loads the known hosts from the provided path.
+// It creates the file if it does not exist.
 // New known hosts will be appended to the file.
 func (k *KnownHosts) Load(path string) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
