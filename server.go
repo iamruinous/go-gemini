@@ -262,7 +262,7 @@ type ResponseWriter struct {
 	b           *bufio.Writer
 	bodyAllowed bool
 	wroteHeader bool
-	mimetype    string
+	mediatype    string
 }
 
 func newResponseWriter(conn net.Conn) *ResponseWriter {
@@ -301,10 +301,10 @@ func (w *ResponseWriter) WriteStatus(status Status) {
 	w.WriteHeader(status, status.Message())
 }
 
-// SetMimetype sets the mimetype that will be written for a successful response.
+// SetMediaType sets the media type that will be written for a successful response.
 // If the mimetype is not set, it will default to "text/gemini".
-func (w *ResponseWriter) SetMimetype(mimetype string) {
-	w.mimetype = mimetype
+func (w *ResponseWriter) SetMediaType(mediatype string) {
+	w.mediatype = mediatype
 }
 
 // Write writes the response body.
@@ -315,11 +315,11 @@ func (w *ResponseWriter) SetMimetype(mimetype string) {
 // with StatusSuccess and the mimetype set in SetMimetype.
 func (w *ResponseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
-		mimetype := w.mimetype
-		if mimetype == "" {
-			mimetype = "text/gemini"
+		mediatype := w.mediatype
+		if mediatype == "" {
+			mediatype = "text/gemini"
 		}
-		w.WriteHeader(StatusSuccess, mimetype)
+		w.WriteHeader(StatusSuccess, mediatype)
 	}
 	if !w.bodyAllowed {
 		return 0, ErrBodyNotAllowed

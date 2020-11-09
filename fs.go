@@ -33,7 +33,7 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	// Detect mimetype
 	ext := path.Ext(p)
 	mimetype := mime.TypeByExtension(ext)
-	w.SetMimetype(mimetype)
+	w.SetMediaType(mimetype)
 	// Copy file to response writer
 	io.Copy(w, f)
 }
@@ -72,7 +72,7 @@ func ServeFile(w *ResponseWriter, fs FS, name string) {
 	// Detect mimetype
 	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
-	w.SetMimetype(mimetype)
+	w.SetMediaType(mimetype)
 	// Copy file to response writer
 	io.Copy(w, f)
 }
