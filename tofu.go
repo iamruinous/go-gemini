@@ -24,7 +24,12 @@ const (
 // The zero value for KnownHosts is an empty list ready to use.
 type KnownHosts struct {
 	hosts map[string]Fingerprint
-	file  *os.File
+	out   io.Writer
+}
+
+// SetOutput sets the output to which new known hosts will be written to.
+func (k *KnownHosts) SetOutput(w io.Writer) {
+	k.out = w
 }
 
 // Add adds a fingerprint to the list of known hosts.
@@ -42,10 +47,10 @@ func (k *KnownHosts) Lookup(hostname string) (Fingerprint, bool) {
 	return c, ok
 }
 
-// Write appends a fingerprint to the known hosts file.
+// Write writes a known hosts entry to the configured output.
 func (k *KnownHosts) Write(hostname string, fingerprint Fingerprint) {
-	if k.file != nil {
-		k.writeKnownHost(k.file, hostname, fingerprint)
+	if k.out != nil {
+		k.writeKnownHost(k.out, hostname, fingerprint)
 	}
 }
 
@@ -59,7 +64,7 @@ func (k *KnownHosts) WriteAll(w io.Writer) error {
 	return nil
 }
 
-// writeKnownHost writes the fingerprint to the provided io.Writer.
+// writeKnownHost writes a known host to the provided io.Writer.
 func (k *KnownHosts) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
 	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires)
 }
@@ -78,12 +83,12 @@ func (k *KnownHosts) Load(path string) error {
 	if err != nil {
 		return err
 	}
-	k.file = f
+	k.out = f
 	return nil
 }
 
 // Parse parses the provided reader and adds the parsed known hosts to the list.
-// Invalid lines are ignored.
+// Invalid entries are ignored.
 func (k *KnownHosts) Parse(r io.Reader) {
 	if k.hosts == nil {
 		k.hosts = map[string]Fingerprint{}
