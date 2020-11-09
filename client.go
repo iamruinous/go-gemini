@@ -217,17 +217,20 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 		if c.TrustCertificate != nil {
 			switch c.TrustCertificate(hostname, cert) {
 			case TrustOnce:
-				c.KnownHosts.AddTemporary(hostname, cert)
+				fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
+				c.KnownHosts.Add(hostname, fingerprint)
 				return nil
 			case TrustAlways:
-				c.KnownHosts.Add(hostname, cert)
+				fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
+				c.KnownHosts.Add(hostname, fingerprint)
+				c.KnownHosts.Write(hostname, fingerprint)
 				return nil
 			}
 		}
 		return errors.New("gemini: certificate not trusted")
 	}
 
-	fingerprint := NewFingerprint(cert)
+	fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
 	if knownHost.Hex == fingerprint.Hex {
 		return nil
 	}

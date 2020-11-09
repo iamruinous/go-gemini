@@ -10,9 +10,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-xdg"
 )
 
 const trustPrompt = `The certificate offered by %s is of unknown trust. Its fingerprint is:
@@ -31,9 +33,9 @@ var (
 
 func init() {
 	client.Timeout = 30 * time.Second
-	client.KnownHosts.LoadDefault()
+	client.KnownHosts.Load(filepath.Join(xdg.DataHome(), "gemini", "known_hosts"))
 	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
-		fingerprint := gemini.NewFingerprint(cert)
+		fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
 		fmt.Printf(trustPrompt, hostname, fingerprint.Hex)
 		scanner.Scan()
 		switch scanner.Text() {

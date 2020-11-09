@@ -3,12 +3,12 @@ package gemini
 import (
 	"bufio"
 	"crypto/sha512"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Trust represents the trustworthiness of a certificate.
@@ -27,6 +27,43 @@ type KnownHosts struct {
 	file  *os.File
 }
 
+// Add adds a fingerprint to the list of known hosts.
+func (k *KnownHosts) Add(hostname string, fingerprint Fingerprint) {
+	if k.hosts == nil {
+		k.hosts = map[string]Fingerprint{}
+	}
+	k.hosts[hostname] = fingerprint
+}
+
+// Lookup returns the fingerprint of the certificate corresponding to
+// the given hostname.
+func (k *KnownHosts) Lookup(hostname string) (Fingerprint, bool) {
+	c, ok := k.hosts[hostname]
+	return c, ok
+}
+
+// Write appends a fingerprint to the known hosts file.
+func (k *KnownHosts) Write(hostname string, fingerprint Fingerprint) {
+	if k.file != nil {
+		k.writeKnownHost(k.file, hostname, fingerprint)
+	}
+}
+
+// WriteAll writes all of the known hosts to the provided io.Writer.
+func (k *KnownHosts) WriteAll(w io.Writer) error {
+	for h, c := range k.hosts {
+		if _, err := k.writeKnownHost(w, h, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeKnownHost writes the fingerprint to the provided io.Writer.
+func (k *KnownHosts) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
+	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires)
+}
+
 // Load loads the known hosts from the provided path.
 // New known hosts will be appended to the file.
 func (k *KnownHosts) Load(path string) error {
@@ -43,31 +80,6 @@ func (k *KnownHosts) Load(path string) error {
 	}
 	k.file = f
 	return nil
-}
-
-// Add adds a certificate to the list of known hosts.
-// If KnownHosts was loaded from a file, Add will append to the file.
-func (k *KnownHosts) Add(hostname string, cert *x509.Certificate) {
-	k.add(hostname, cert, true)
-}
-
-func (k *KnownHosts) add(hostname string, cert *x509.Certificate, write bool) {
-	if k.hosts == nil {
-		k.hosts = map[string]Fingerprint{}
-	}
-	fingerprint := NewFingerprint(cert)
-	k.hosts[hostname] = fingerprint
-	// Append to the file
-	if write && k.file != nil {
-		appendKnownHost(k.file, hostname, fingerprint)
-	}
-}
-
-// Lookup returns the fingerprint of the certificate corresponding to
-// the given hostname.
-func (k *KnownHosts) Lookup(hostname string) (Fingerprint, bool) {
-	c, ok := k.hosts[hostname]
-	return c, ok
 }
 
 // Parse parses the provided reader and adds the parsed known hosts to the list.
@@ -104,17 +116,6 @@ func (k *KnownHosts) Parse(r io.Reader) {
 	}
 }
 
-// Write writes the known hosts to the provided io.Writer.
-func (k *KnownHosts) Write(w io.Writer) {
-	for h, c := range k.hosts {
-		appendKnownHost(w, h, c)
-	}
-}
-
-func appendKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
-	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires)
-}
-
 // Fingerprint represents a fingerprint using a certain algorithm.
 type Fingerprint struct {
 	Algorithm string // fingerprint algorithm e.g. SHA-512
@@ -122,9 +123,9 @@ type Fingerprint struct {
 	Expires   int64  // unix time of the fingerprint expiration date
 }
 
-// NewFingerprint returns the SHA-512 fingerprint of the provided certificate.
-func NewFingerprint(cert *x509.Certificate) Fingerprint {
-	sum512 := sha512.Sum512(cert.Raw)
+// NewFingerprint returns the SHA-512 fingerprint of the provided raw data.
+func NewFingerprint(raw []byte, expires time.Time) Fingerprint {
+	sum512 := sha512.Sum512(raw)
 	var b strings.Builder
 	for i, f := range sum512 {
 		if i > 0 {
@@ -135,6 +136,6 @@ func NewFingerprint(cert *x509.Certificate) Fingerprint {
 	return Fingerprint{
 		Algorithm: "SHA-512",
 		Hex:       b.String(),
-		Expires:   cert.NotAfter.Unix(),
+		Expires:   expires.Unix(),
 	}
 }

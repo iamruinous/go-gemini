@@ -1,24 +1,16 @@
 /*
 Package gemini implements the Gemini protocol.
 
-Get makes a Gemini request:
+Client is a Gemini client.
 
-	resp, err := gemini.Get("gemini://example.com")
+	client := &gemini.Client{}
+	resp, err := client.Get("gemini://example.com")
 	if err != nil {
 		// handle error
 	}
 	if resp.Status.Class() == gemini.StatusClassSucess {
 		defer resp.Body.Close()
 		// ...
-	}
-	// ...
-
-For control over client behavior, create a Client:
-
-	client := &gemini.Client{}
-	resp, err := client.Get("gemini://example.com")
-	if err != nil {
-		// handle error
 	}
 	// ...
 
