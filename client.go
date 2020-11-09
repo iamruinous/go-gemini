@@ -47,7 +47,7 @@ type Client struct {
 	// the request of a server.
 	// If CreateCertificate is nil or the returned error is not nil,
 	// the request will not be sent again and the response will be returned.
-	CreateCertificate func(hostname, path string) (tls.Certificate, error)
+	CreateCertificate func(scope, path string) (tls.Certificate, error)
 
 	// TrustCertificate is called to determine whether the client
 	// should trust a certificate it has not seen before.

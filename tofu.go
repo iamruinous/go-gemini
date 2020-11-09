@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -28,28 +27,9 @@ type KnownHosts struct {
 	file  *os.File
 }
 
-// LoadDefault loads the known hosts from the default known hosts path, which is
-// $XDG_DATA_HOME/gemini/known_hosts.
-// It creates the path and any of its parent directories if they do not exist.
-// KnownHosts will append to the file whenever a certificate is added.
-func (k *KnownHosts) LoadDefault() error {
-	path, err := defaultKnownHostsPath()
-	if err != nil {
-		return err
-	}
-	return k.Load(path)
-}
-
 // Load loads the known hosts from the provided path.
-// It creates the path and any of its parent directories if they do not exist.
-// KnownHosts will append to the file whenever a certificate is added.
+// New known hosts will be appended to the file.
 func (k *KnownHosts) Load(path string) error {
-	if dir := filepath.Dir(path); dir != "." {
-		err := os.MkdirAll(dir, 0755)
-		if err != nil {
-			return err
-		}
-	}
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
@@ -69,12 +49,6 @@ func (k *KnownHosts) Load(path string) error {
 // If KnownHosts was loaded from a file, Add will append to the file.
 func (k *KnownHosts) Add(hostname string, cert *x509.Certificate) {
 	k.add(hostname, cert, true)
-}
-
-// AddTemporary adds a certificate to the list of known hosts
-// without writing it to the known hosts file.
-func (k *KnownHosts) AddTemporary(hostname string, cert *x509.Certificate) {
-	k.add(hostname, cert, false)
 }
 
 func (k *KnownHosts) add(hostname string, cert *x509.Certificate, write bool) {
@@ -163,28 +137,4 @@ func NewFingerprint(cert *x509.Certificate) Fingerprint {
 		Hex:       b.String(),
 		Expires:   cert.NotAfter.Unix(),
 	}
-}
-
-// defaultKnownHostsPath returns the default known_hosts path.
-// The default path is $XDG_DATA_HOME/gemini/known_hosts
-func defaultKnownHostsPath() (string, error) {
-	dataDir, err := userDataDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dataDir, "gemini", "known_hosts"), nil
-}
-
-// userDataDir returns the user data directory.
-func userDataDir() (string, error) {
-	dataDir, ok := os.LookupEnv("XDG_DATA_HOME")
-	if ok {
-		return dataDir, nil
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".local", "share"), nil
 }
