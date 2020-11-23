@@ -15,10 +15,10 @@ import (
 // Client is a Gemini client.
 type Client struct {
 	// KnownHosts is a list of known hosts.
-	KnownHosts KnownHosts
+	KnownHosts KnownHostsFile
 
 	// Certificates stores client-side certificates.
-	Certificates CertificateStore
+	Certificates CertificateDir
 
 	// Timeout specifies a time limit for requests made by this
 	// Client. The timeout includes connection time and reading

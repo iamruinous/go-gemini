@@ -26,7 +26,7 @@ type Server struct {
 	WriteTimeout time.Duration
 
 	// Certificates contains the certificates used by the server.
-	Certificates CertificateStore
+	Certificates CertificateDir
 
 	// CreateCertificate, if not nil, will be called to create a new certificate
 	// if the current one is expired or missing.

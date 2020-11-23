@@ -21,42 +21,45 @@ const (
 )
 
 // KnownHosts represents a list of known hosts.
-// The zero value for KnownHosts is an empty list ready to use.
-type KnownHosts struct {
-	hosts map[string]Fingerprint
-	out   io.Writer
+type KnownHosts map[string]Fingerprint
+
+// KnownHostsFile represents a list of known hosts optionally loaded from a file.
+// The zero value for KnownHostsFile represents an empty list ready to use.
+type KnownHostsFile struct {
+	KnownHosts
+	out io.Writer
 }
 
 // SetOutput sets the output to which new known hosts will be written to.
-func (k *KnownHosts) SetOutput(w io.Writer) {
+func (k *KnownHostsFile) SetOutput(w io.Writer) {
 	k.out = w
 }
 
 // Add adds a known host to the list of known hosts.
-func (k *KnownHosts) Add(hostname string, fingerprint Fingerprint) {
-	if k.hosts == nil {
-		k.hosts = map[string]Fingerprint{}
+func (k *KnownHostsFile) Add(hostname string, fingerprint Fingerprint) {
+	if k.KnownHosts == nil {
+		k.KnownHosts = KnownHosts{}
 	}
-	k.hosts[hostname] = fingerprint
+	k.KnownHosts[hostname] = fingerprint
 }
 
 // Lookup returns the fingerprint of the certificate corresponding to
 // the given hostname.
-func (k *KnownHosts) Lookup(hostname string) (Fingerprint, bool) {
-	c, ok := k.hosts[hostname]
+func (k *KnownHostsFile) Lookup(hostname string) (Fingerprint, bool) {
+	c, ok := k.KnownHosts[hostname]
 	return c, ok
 }
 
 // Write writes a known hosts entry to the configured output.
-func (k *KnownHosts) Write(hostname string, fingerprint Fingerprint) {
+func (k *KnownHostsFile) Write(hostname string, fingerprint Fingerprint) {
 	if k.out != nil {
 		k.writeKnownHost(k.out, hostname, fingerprint)
 	}
 }
 
 // WriteAll writes all of the known hosts to the provided io.Writer.
-func (k *KnownHosts) WriteAll(w io.Writer) error {
-	for h, c := range k.hosts {
+func (k *KnownHostsFile) WriteAll(w io.Writer) error {
+	for h, c := range k.KnownHosts {
 		if _, err := k.writeKnownHost(w, h, c); err != nil {
 			return err
 		}
@@ -65,14 +68,14 @@ func (k *KnownHosts) WriteAll(w io.Writer) error {
 }
 
 // writeKnownHost writes a known host to the provided io.Writer.
-func (k *KnownHosts) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
+func (k *KnownHostsFile) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
 	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires)
 }
 
 // Load loads the known hosts from the provided path.
 // It creates the file if it does not exist.
 // New known hosts will be appended to the file.
-func (k *KnownHosts) Load(path string) error {
+func (k *KnownHostsFile) Load(path string) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
@@ -90,9 +93,9 @@ func (k *KnownHosts) Load(path string) error {
 
 // Parse parses the provided reader and adds the parsed known hosts to the list.
 // Invalid entries are ignored.
-func (k *KnownHosts) Parse(r io.Reader) {
-	if k.hosts == nil {
-		k.hosts = map[string]Fingerprint{}
+func (k *KnownHostsFile) Parse(r io.Reader) {
+	if k.KnownHosts == nil {
+		k.KnownHosts = map[string]Fingerprint{}
 	}
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -114,7 +117,7 @@ func (k *KnownHosts) Parse(r io.Reader) {
 			continue
 		}
 
-		k.hosts[hostname] = Fingerprint{
+		k.KnownHosts[hostname] = Fingerprint{
 			Algorithm: algorithm,
 			Hex:       fingerprint,
 			Expires:   expires,

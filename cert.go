@@ -18,19 +18,22 @@ import (
 	"time"
 )
 
-// CertificateStore maps certificate scopes to certificates.
-// The zero value of CertificateStore is an empty store ready to use.
-type CertificateStore struct {
-	store map[string]tls.Certificate
-	dir   bool
-	path  string
+// CertificateDir maps certificate scopes to certificates.
+type CertificateStore map[string]tls.Certificate
+
+// CertificateDir represents a certificate store optionally loaded from a directory.
+// The zero value of CertificateDir is an empty store ready to use.
+type CertificateDir struct {
+	CertificateStore
+	dir  bool
+	path string
 }
 
 // Add adds a certificate for the given scope to the store.
 // It tries to parse the certificate if it is not already parsed.
-func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
-	if c.store == nil {
-		c.store = map[string]tls.Certificate{}
+func (c *CertificateDir) Add(scope string, cert tls.Certificate) {
+	if c.CertificateStore == nil {
+		c.CertificateStore = CertificateStore{}
 	}
 	// Parse certificate if not already parsed
 	if cert.Leaf == nil {
@@ -39,11 +42,11 @@ func (c *CertificateStore) Add(scope string, cert tls.Certificate) {
 			cert.Leaf = parsed
 		}
 	}
-	c.store[scope] = cert
+	c.CertificateStore[scope] = cert
 }
 
 // Write writes the provided certificate to the certificate directory.
-func (c *CertificateStore) Write(scope string, cert tls.Certificate) error {
+func (c *CertificateDir) Write(scope string, cert tls.Certificate) error {
 	if c.dir {
 		certPath := filepath.Join(c.path, scope+".crt")
 		keyPath := filepath.Join(c.path, scope+".key")
@@ -55,8 +58,8 @@ func (c *CertificateStore) Write(scope string, cert tls.Certificate) error {
 }
 
 // Lookup returns the certificate for the given scope.
-func (c *CertificateStore) Lookup(scope string) (tls.Certificate, bool) {
-	cert, ok := c.store[scope]
+func (c *CertificateDir) Lookup(scope string) (tls.Certificate, bool) {
+	cert, ok := c.CertificateStore[scope]
 	return cert, ok
 }
 
@@ -66,7 +69,7 @@ func (c *CertificateStore) Lookup(scope string) (tls.Certificate, bool) {
 // For example, the hostname "localhost" would have the corresponding files
 // localhost.crt (certificate) and localhost.key (private key).
 // New certificates will be written to this directory.
-func (c *CertificateStore) Load(path string) error {
+func (c *CertificateDir) Load(path string) error {
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
 		return err
@@ -85,8 +88,8 @@ func (c *CertificateStore) Load(path string) error {
 	return nil
 }
 
-// SetOutput sets the directory that new certificates will be written to.
-func (c *CertificateStore) SetOutput(path string) {
+// SetDir sets the directory that new certificates will be written to.
+func (c *CertificateDir) SetDir(path string) {
 	c.dir = true
 	c.path = path
 }
