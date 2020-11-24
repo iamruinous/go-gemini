@@ -203,11 +203,6 @@ func (s *Server) respond(conn net.Conn) {
 		// Note that we return an error status if User is specified in the URL
 		w.WriteStatus(StatusBadRequest)
 	} else {
-		// If no scheme is specified, assume a default scheme of gemini://
-		if url.Scheme == "" {
-			url.Scheme = "gemini"
-		}
-
 		// Store information about the TLS connection
 		connState := conn.(*tls.Conn).ConnectionState()
 		var cert *tls.Certificate
