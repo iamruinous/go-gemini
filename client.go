@@ -9,10 +9,13 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 	"time"
 )
 
 // Client is a Gemini client.
+//
+// Clients are safe for concurrent use by multiple goroutines.
 type Client struct {
 	// KnownHosts is a list of known hosts.
 	KnownHosts KnownHostsFile
@@ -59,6 +62,8 @@ type Client struct {
 	// If TrustCertificate returns TrustAlways, the certificate will also be
 	// written to the known hosts file.
 	TrustCertificate func(hostname string, cert *x509.Certificate) Trust
+
+	mu sync.Mutex
 }
 
 // Get performs a Gemini request for the given url.
@@ -76,6 +81,9 @@ func (c *Client) Do(req *Request) (*Response, error) {
 }
 
 func (c *Client) do(req *Request, via []*Request) (*Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
