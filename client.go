@@ -77,13 +77,13 @@ func (c *Client) Get(url string) (*Response, error) {
 
 // Do performs a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.do(req, nil)
 }
 
 func (c *Client) do(req *Request, via []*Request) (*Response, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
