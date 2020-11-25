@@ -134,6 +134,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 				return resp, err
 			}
 			c.Certificates.Add(hostname+path, cert)
+			c.Certificates.Write(hostname+path, cert)
 			req.Certificate = &cert
 			return c.do(req, via)
 		}

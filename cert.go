@@ -48,6 +48,8 @@ func (c *CertificateDir) Add(scope string, cert tls.Certificate) {
 // Write writes the provided certificate to the certificate directory.
 func (c *CertificateDir) Write(scope string, cert tls.Certificate) error {
 	if c.dir {
+		// Escape slash character
+		scope = strings.ReplaceAll(scope, "/", ":")
 		certPath := filepath.Join(c.path, scope+".crt")
 		keyPath := filepath.Join(c.path, scope+".key")
 		if err := WriteCertificate(cert, certPath, keyPath); err != nil {
@@ -81,6 +83,8 @@ func (c *CertificateDir) Load(path string) error {
 			continue
 		}
 		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
+		// Unescape slash character
+		scope = strings.ReplaceAll(scope, ":", "/")
 		c.Add(scope, cert)
 	}
 	c.dir = true
