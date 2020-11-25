@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -221,7 +222,7 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 
 	// Check the known hosts
 	knownHost, ok := c.KnownHosts.Lookup(hostname)
-	if !ok || time.Now().Unix() >= knownHost.Expires {
+	if !ok || !time.Now().Before(knownHost.Expires) {
 		// See if the client trusts the certificate
 		if c.TrustCertificate != nil {
 			switch c.TrustCertificate(hostname, cert) {
@@ -240,7 +241,7 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	}
 
 	fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
-	if knownHost.Hex == fingerprint.Hex {
+	if !bytes.Equal(knownHost.Raw, fingerprint.Raw) {
 		return nil
 	}
 	return errors.New("gemini: fingerprint does not match")
