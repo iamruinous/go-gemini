@@ -241,7 +241,7 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	}
 
 	fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
-	if !bytes.Equal(knownHost.Raw, fingerprint.Raw) {
+	if bytes.Equal(knownHost.Raw, fingerprint.Raw) {
 		return nil
 	}
 	return errors.New("gemini: fingerprint does not match")
