@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/sha512"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -13,35 +14,20 @@ import (
 	"git.sr.ht/~adnano/go-gemini"
 )
 
-type user struct {
-	password string // TODO: use hashes
-	admin    bool
-}
-
-type session struct {
-	username   string
-	authorized bool // whether or not the password was supplied
+type User struct {
+	Name string
 }
 
 var (
-	// Map of usernames to user data
-	logins = map[string]user{
-		"admin": {"p@ssw0rd", true}, // NOTE: These are bad passwords!
-		"user1": {"password1", false},
-		"user2": {"password2", false},
-	}
-
-	// Map of certificate fingerprints to sessions
-	sessions = map[string]*session{}
+	// Map of certificate hashes to users
+	users = map[string]*User{}
 )
 
 func main() {
 	var mux gemini.ServeMux
-	mux.HandleFunc("/", login)
-	mux.HandleFunc("/password", loginPassword)
-	mux.HandleFunc("/profile", profile)
-	mux.HandleFunc("/admin", admin)
-	mux.HandleFunc("/logout", logout)
+	mux.HandleFunc("/", profile)
+	mux.HandleFunc("/username", changeUsername)
+	mux.HandleFunc("/delete", deleteAccount)
 
 	var server gemini.Server
 	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
@@ -63,65 +49,9 @@ func main() {
 	}
 }
 
-func getSession(cert *x509.Certificate) (*session, bool) {
-	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
-	session, ok := sessions[fingerprint.Hex]
-	return session, ok
-}
-
-func login(w *gemini.ResponseWriter, r *gemini.Request) {
-	if r.Certificate == nil {
-		w.WriteStatus(gemini.StatusCertificateRequired)
-		return
-	}
-	username, ok := gemini.Input(r)
-	if !ok {
-		w.WriteHeader(gemini.StatusInput, "Username")
-		return
-	}
-	cert := r.Certificate.Leaf
-	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
-	sessions[fingerprint.Hex] = &session{
-		username: username,
-	}
-	w.WriteHeader(gemini.StatusRedirect, "/password")
-}
-
-func loginPassword(w *gemini.ResponseWriter, r *gemini.Request) {
-	if r.Certificate == nil {
-		w.WriteStatus(gemini.StatusCertificateRequired)
-		return
-	}
-	session, ok := getSession(r.Certificate.Leaf)
-	if !ok {
-		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
-		return
-	}
-
-	password, ok := gemini.Input(r)
-	if !ok {
-		w.WriteHeader(gemini.StatusSensitiveInput, "Password")
-		return
-	}
-	expected := logins[session.username].password
-	if password == expected {
-		session.authorized = true
-		w.WriteHeader(gemini.StatusRedirect, "/profile")
-	} else {
-		w.WriteHeader(gemini.StatusSensitiveInput, "Password")
-	}
-}
-
-func logout(w *gemini.ResponseWriter, r *gemini.Request) {
-	if r.Certificate == nil {
-		w.WriteStatus(gemini.StatusCertificateRequired)
-		return
-	}
-	cert := r.Certificate.Leaf
-	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
-	delete(sessions, fingerprint.Hex)
-	fmt.Fprintln(w, "Successfully logged out.")
-	fmt.Fprintln(w, "=> / Index")
+func fingerprint(cert *x509.Certificate) string {
+	b := sha512.Sum512(cert.Raw)
+	return string(b[:])
 }
 
 func profile(w *gemini.ResponseWriter, r *gemini.Request) {
@@ -129,31 +59,35 @@ func profile(w *gemini.ResponseWriter, r *gemini.Request) {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	session, ok := getSession(r.Certificate.Leaf)
+	fingerprint := fingerprint(r.Certificate.Leaf)
+	user, ok := users[fingerprint]
 	if !ok {
-		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
-		return
+		user = &User{}
+		users[fingerprint] = user
 	}
-	user := logins[session.username]
-	fmt.Fprintln(w, "Username:", session.username)
-	fmt.Fprintln(w, "Admin:", user.admin)
-	fmt.Fprintln(w, "=> /logout Logout")
+	fmt.Fprintln(w, "Username:", user.Name)
+	fmt.Fprintln(w, "=> /username Change username")
+	fmt.Fprintln(w, "=> /delete Delete account")
 }
 
-func admin(w *gemini.ResponseWriter, r *gemini.Request) {
+func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
 	if r.Certificate == nil {
 		w.WriteStatus(gemini.StatusCertificateRequired)
 		return
 	}
-	session, ok := getSession(r.Certificate.Leaf)
+
+	username, ok := gemini.Input(r)
 	if !ok {
-		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
+		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
-	user := logins[session.username]
-	if !user.admin {
-		w.WriteStatus(gemini.StatusCertificateNotAuthorized)
-		return
+	users[fingerprint(r.Certificate.Leaf)].Name = username
+	fmt.Fprintln(w, "Successfully changed username")
+}
+
+func deleteAccount(w *gemini.ResponseWriter, r *gemini.Request) {
+	if r.Certificate != nil {
+		delete(users, fingerprint(r.Certificate.Leaf))
 	}
-	fmt.Fprintln(w, "Welcome to the admin portal.")
+	fmt.Fprintln(w, "Account deleted")
 }

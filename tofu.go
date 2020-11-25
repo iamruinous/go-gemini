@@ -71,7 +71,7 @@ func (k *KnownHostsFile) WriteAll(w io.Writer) error {
 // writeKnownHost writes a known host to the provided io.Writer.
 func (k *KnownHostsFile) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
 	s := base64.StdEncoding.EncodeToString([]byte(f.Raw))
-	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, s, f.Expires)
+	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, s, f.Expires.Unix())
 }
 
 // Load loads the known hosts from the provided path.
