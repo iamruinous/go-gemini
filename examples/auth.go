@@ -27,7 +27,6 @@ func main() {
 	var mux gemini.ServeMux
 	mux.HandleFunc("/", profile)
 	mux.HandleFunc("/username", changeUsername)
-	mux.HandleFunc("/delete", deleteAccount)
 
 	var server gemini.Server
 	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
@@ -67,7 +66,6 @@ func profile(w *gemini.ResponseWriter, r *gemini.Request) {
 	}
 	fmt.Fprintln(w, "Username:", user.Name)
 	fmt.Fprintln(w, "=> /username Change username")
-	fmt.Fprintln(w, "=> /delete Delete account")
 }
 
 func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
@@ -82,12 +80,5 @@ func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
 		return
 	}
 	users[fingerprint(r.Certificate.Leaf)].Name = username
-	fmt.Fprintln(w, "Successfully changed username")
-}
-
-func deleteAccount(w *gemini.ResponseWriter, r *gemini.Request) {
-	if r.Certificate != nil {
-		delete(users, fingerprint(r.Certificate.Leaf))
-	}
-	fmt.Fprintln(w, "Account deleted")
+	w.WriteHeader(gemini.StatusRedirect, "/")
 }
