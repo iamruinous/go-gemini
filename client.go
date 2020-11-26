@@ -96,10 +96,11 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			return c.verifyConnection(req, cs)
 		},
 	}
-	conn, err := tls.Dial("tcp", req.Host, config)
+	netConn, err := (&net.Dialer{}).DialContext(req.Context, "tcp", req.Host)
 	if err != nil {
 		return nil, err
 	}
+	conn := tls.Client(netConn, config)
 	// Set connection deadline
 	if d := c.Timeout; d != 0 {
 		conn.SetDeadline(time.Now().Add(d))

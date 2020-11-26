@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"net"
 	"net/url"
@@ -33,6 +34,10 @@ type Request struct {
 	// connection on which the request was received.
 	// This field is ignored by the client.
 	TLS tls.ConnectionState
+
+	// Context specifies the context to use for client requests.
+	// Context must not be nil.
+	Context context.Context
 }
 
 // NewRequest returns a new request. The host is inferred from the URL.
@@ -52,8 +57,9 @@ func NewRequestFromURL(url *url.URL) *Request {
 		host += ":1965"
 	}
 	return &Request{
-		URL:  url,
-		Host: host,
+		URL:     url,
+		Host:    host,
+		Context: context.Background(),
 	}
 }
 
