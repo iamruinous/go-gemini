@@ -24,7 +24,7 @@ func main() {
 				CommonName: hostname,
 			},
 			DNSNames: []string{hostname},
-			Duration: time.Minute, // for testing purposes
+			Duration: 365 * 24 * time.Hour,
 		})
 	}
 
