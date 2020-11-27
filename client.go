@@ -85,6 +85,13 @@ func (c *Client) Do(req *Request) (*Response, error) {
 }
 
 func (c *Client) do(req *Request, via []*Request) (*Response, error) {
+	// Extract hostname
+	colonPos := strings.LastIndex(req.Host, ":")
+	if colonPos == -1 {
+		colonPos = len(req.Host)
+	}
+	hostname := req.Host[:colonPos]
+
 	// Connect to the host
 	config := &tls.Config{
 		InsecureSkipVerify: true,
@@ -95,6 +102,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			return c.verifyConnection(req, cs)
 		},
+		ServerName: hostname,
 	}
 	netConn, err := (&net.Dialer{}).DialContext(req.Context, "tcp", req.Host)
 	if err != nil {
@@ -166,6 +174,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		target = req.URL.ResolveReference(target)
 
 		redirect := NewRequestFromURL(target)
+		redirect.Context = req.Context
 		if c.CheckRedirect != nil {
 			if err := c.CheckRedirect(redirect, via); err != nil {
 				return resp, err
