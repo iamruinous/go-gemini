@@ -51,6 +51,9 @@ func NewRequest(rawurl string) (*Request, error) {
 
 // NewRequestFromURL returns a new request for the given URL.
 // The host is inferred from the URL.
+//
+// Callers should be careful that the URL query is properly escaped.
+// See the documentation for QueryEscape for more information.
 func NewRequestFromURL(url *url.URL) *Request {
 	host := url.Host
 	if url.Port() == "" {

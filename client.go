@@ -155,7 +155,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			input, ok := c.GetInput(resp.Meta, resp.Status == StatusSensitiveInput)
 			if ok {
 				req.URL.ForceQuery = true
-				req.URL.RawQuery = url.QueryEscape(input)
+				req.URL.RawQuery = QueryEscape(input)
 				return c.do(req, via)
 			}
 		}
