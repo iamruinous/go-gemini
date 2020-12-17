@@ -4,7 +4,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -46,12 +45,6 @@ func init() {
 		default:
 			return gemini.TrustNone
 		}
-	}
-	client.CreateCertificate = func(hostname, path string) (tls.Certificate, error) {
-		fmt.Println("Generating client certificate for", hostname, path)
-		return gemini.CreateCertificate(gemini.CertificateOptions{
-			Duration: time.Hour,
-		})
 	}
 	client.GetInput = func(prompt string, sensitive bool) (string, bool) {
 		fmt.Printf("%s: ", prompt)
