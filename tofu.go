@@ -3,7 +3,6 @@ package gemini
 import (
 	"bufio"
 	"crypto/sha512"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -70,8 +69,7 @@ func (k *KnownHostsFile) WriteAll(w io.Writer) error {
 
 // writeKnownHost writes a known host to the provided io.Writer.
 func (k *KnownHostsFile) writeKnownHost(w io.Writer, hostname string, f Fingerprint) (int, error) {
-	s := base64.StdEncoding.EncodeToString([]byte(f.Raw))
-	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, s, f.Expires.Unix())
+	return fmt.Fprintf(w, "%s %s %s %d\n", hostname, f.Algorithm, f.Hex, f.Expires.Unix())
 }
 
 // Load loads the known hosts from the provided path.
@@ -112,11 +110,7 @@ func (k *KnownHostsFile) Parse(r io.Reader) {
 		if algorithm != "SHA-512" {
 			continue
 		}
-		fingerprint := parts[2]
-		raw, err := base64.StdEncoding.DecodeString(fingerprint)
-		if err != nil {
-			continue
-		}
+		hex := parts[2]
 
 		unix, err := strconv.ParseInt(parts[3], 10, 0)
 		if err != nil {
@@ -125,8 +119,8 @@ func (k *KnownHostsFile) Parse(r io.Reader) {
 		expires := time.Unix(unix, 0)
 
 		k.KnownHosts[hostname] = Fingerprint{
-			Raw:       raw,
 			Algorithm: algorithm,
+			Hex:       hex,
 			Expires:   expires,
 		}
 	}
@@ -134,17 +128,24 @@ func (k *KnownHostsFile) Parse(r io.Reader) {
 
 // Fingerprint represents a fingerprint using a certain algorithm.
 type Fingerprint struct {
-	Raw       []byte    // raw fingerprint data
 	Algorithm string    // fingerprint algorithm e.g. SHA-512
+	Hex       string    // fingerprint in hexadecimal, with ':' between each octet
 	Expires   time.Time // unix time of the fingerprint expiration date
 }
 
 // NewFingerprint returns the SHA-512 fingerprint of the provided raw data.
 func NewFingerprint(raw []byte, expires time.Time) Fingerprint {
 	sum512 := sha512.Sum512(raw)
+	var b strings.Builder
+	for i, f := range sum512 {
+		if i > 0 {
+			b.WriteByte(':')
+		}
+		fmt.Fprintf(&b, "%02X", f)
+	}
 	return Fingerprint{
-		Raw:       sum512[:],
 		Algorithm: "SHA-512",
+		Hex:       b.String(),
 		Expires:   expires,
 	}
 }

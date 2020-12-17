@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -251,7 +250,7 @@ func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
 	}
 
 	fingerprint := NewFingerprint(cert.Raw, cert.NotAfter)
-	if bytes.Equal(knownHost.Raw, fingerprint.Raw) {
+	if knownHost.Hex == fingerprint.Hex {
 		return nil
 	}
 	return errors.New("gemini: fingerprint does not match")
