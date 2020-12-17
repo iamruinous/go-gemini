@@ -82,8 +82,6 @@ func (c *CertificateDir) Lookup(scope string) (tls.Certificate, bool) {
 // localhost.crt (certificate) and localhost.key (private key).
 // New certificates will be written to this directory.
 func (c *CertificateDir) Load(path string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
 		return err
@@ -99,8 +97,7 @@ func (c *CertificateDir) Load(path string) error {
 		scope = strings.ReplaceAll(scope, ":", "/")
 		c.Add(scope, cert)
 	}
-	c.dir = true
-	c.path = path
+	c.SetDir(path)
 	return nil
 }
 

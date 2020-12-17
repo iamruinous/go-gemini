@@ -90,20 +90,12 @@ func (k *KnownHostsFile) writeKnownHost(w io.Writer, hostname string, f Fingerpr
 // It creates the file if it does not exist.
 // New known hosts will be appended to the file.
 func (k *KnownHostsFile) Load(path string) error {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
 	k.Parse(f)
-	f.Close()
-	// Open the file for append-only use
-	f, err = os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	k.out = f
+	k.SetOutput(f)
 	return nil
 }
 
