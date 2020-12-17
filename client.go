@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -96,7 +97,12 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		},
 		ServerName: hostname,
 	}
-	netConn, err := (&net.Dialer{}).DialContext(req.Context, "tcp", req.Host)
+
+	ctx := req.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	netConn, err := (&net.Dialer{}).DialContext(ctx, "tcp", req.Host)
 	if err != nil {
 		return nil, err
 	}

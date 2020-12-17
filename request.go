@@ -36,7 +36,7 @@ type Request struct {
 	TLS tls.ConnectionState
 
 	// Context specifies the context to use for client requests.
-	// Context must not be nil.
+	// If Context is nil, the background context will be used.
 	Context context.Context
 }
 
@@ -60,9 +60,8 @@ func NewRequestFromURL(url *url.URL) *Request {
 		host += ":1965"
 	}
 	return &Request{
-		URL:     url,
-		Host:    host,
-		Context: context.Background(),
+		URL:  url,
+		Host: host,
 	}
 }
 
