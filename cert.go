@@ -30,7 +30,7 @@ type CertificateDir struct {
 	CertificateStore
 	dir  bool
 	path string
-	mu   sync.Mutex
+	mu   sync.RWMutex
 }
 
 // Add adds a certificate for the given scope to the store.

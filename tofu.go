@@ -31,7 +31,7 @@ type KnownHosts map[string]Fingerprint
 type KnownHostsFile struct {
 	KnownHosts
 	out io.Writer
-	mu  sync.Mutex
+	mu  sync.RWMutex
 }
 
 // SetOutput sets the output to which new known hosts will be written to.
