@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"errors"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -239,10 +240,10 @@ type ResponseWriter struct {
 	mediatype   string
 }
 
-// NewResponseWriter returns a ResponseWriter that will write to conn.
-func NewResponseWriter(conn net.Conn) *ResponseWriter {
+// NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
+func NewResponseWriter(w io.Writer) *ResponseWriter {
 	return &ResponseWriter{
-		b: bufio.NewWriter(conn),
+		b: bufio.NewWriter(w),
 	}
 }
 
