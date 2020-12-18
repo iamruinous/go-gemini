@@ -283,7 +283,7 @@ func (w *ResponseWriter) SetMediaType(mediatype string) {
 	w.mediatype = mediatype
 }
 
-// Write writes the response body.
+// Write writes data to the connection as part of the response body.
 // If the response status does not allow for a response body, Write returns
 // ErrBodyNotAllowed.
 //
@@ -301,6 +301,11 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 		return 0, ErrBodyNotAllowed
 	}
 	return w.b.Write(b)
+}
+
+// Flush writes any buffered data to the underlying io.Writer.
+func (w *ResponseWriter) Flush() error {
+	return w.b.Flush()
 }
 
 // A Responder responds to a Gemini request.

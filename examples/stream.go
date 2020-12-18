@@ -37,7 +37,8 @@ func main() {
 
 func stream(w *gemini.ResponseWriter, r *gemini.Request) {
 	for {
-		fmt.Fprintln(w, time.Now())
+		fmt.Fprintln(w, time.Now().UTC())
+		w.Flush()
 		time.Sleep(time.Second)
 	}
 }
