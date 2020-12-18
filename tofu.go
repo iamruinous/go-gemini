@@ -12,15 +12,6 @@ import (
 	"time"
 )
 
-// Trust represents the trustworthiness of a certificate.
-type Trust int
-
-const (
-	TrustNone   Trust = iota // The certificate is not trusted.
-	TrustOnce                // The certificate is trusted once.
-	TrustAlways              // The certificate is trusted always.
-)
-
 // KnownHosts maps hosts to fingerprints.
 type KnownHosts map[string]Fingerprint
 

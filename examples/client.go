@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,43 +26,52 @@ Otherwise, this should be safe to trust.
 [t]rust always; trust [o]nce; [a]bort
 => `
 
-var (
-	scanner = bufio.NewScanner(os.Stdin)
-	client  = &gemini.Client{}
-)
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Printf("usage: %s <url> [host]", os.Args[0])
+		os.Exit(1)
+	}
 
-func init() {
-	client.Timeout = 30 * time.Second
-	client.KnownHosts.Load(filepath.Join(xdg.DataHome(), "gemini", "known_hosts"))
-	client.TrustCertificate = func(hostname string, cert *x509.Certificate) gemini.Trust {
+	// Load known hosts file
+	var knownHosts gemini.KnownHostsFile
+	if err := knownHosts.Load(filepath.Join(xdg.DataHome(), "gemini", "known_hosts")); err != nil {
+		log.Println(err)
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	var client gemini.Client
+	client.TrustCertificate = func(hostname string, cert *x509.Certificate) error {
+		knownHost, ok := knownHosts.Lookup(hostname)
+		if ok && time.Now().Before(knownHost.Expires) {
+			// Certificate is in known hosts file and is not expired
+			return nil
+		}
+
 		fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
 		fmt.Printf(trustPrompt, hostname, fingerprint.Hex)
 		scanner.Scan()
 		switch scanner.Text() {
 		case "t":
-			return gemini.TrustAlways
+			knownHosts.Add(hostname, fingerprint)
+			knownHosts.Write(hostname, fingerprint)
+			return nil
 		case "o":
-			return gemini.TrustOnce
+			knownHosts.Add(hostname, fingerprint)
+			return nil
 		default:
-			return gemini.TrustNone
+			return errors.New("certificate not trusted")
 		}
 	}
 	client.GetInput = func(prompt string, sensitive bool) (string, bool) {
-		fmt.Printf("%s: ", prompt)
+		fmt.Printf("%s ", prompt)
 		scanner.Scan()
 		return scanner.Text(), true
 	}
-}
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("usage: %s gemini://... [host]", os.Args[0])
-		os.Exit(1)
-	}
-
+	// Do the request
 	url := os.Args[1]
 	req, err := gemini.NewRequest(url)
-
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -69,13 +79,13 @@ func main() {
 	if len(os.Args) == 3 {
 		req.Host = os.Args[2]
 	}
-
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
+	// Handle response
 	if resp.Status.Class() == gemini.StatusClassSuccess {
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
@@ -84,6 +94,7 @@ func main() {
 		}
 		fmt.Print(string(body))
 	} else {
-		fmt.Printf("request failed: %d %s: %s", resp.Status, resp.Status.Message(), resp.Meta)
+		fmt.Printf("%d %s: %s\n", resp.Status, resp.Status.Message(), resp.Meta)
+		os.Exit(1)
 	}
 }
