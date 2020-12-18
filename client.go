@@ -84,8 +84,8 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	}
 
 	// Read the response
-	resp := &Response{}
-	if err := resp.Read(conn); err != nil {
+	resp, err := ReadResponse(conn)
+	if err != nil {
 		return nil, err
 	}
 	// Store connection state

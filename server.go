@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"net"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -174,6 +173,7 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 
 // respond responds to a connection.
 func (s *Server) respond(conn net.Conn) {
+	defer conn.Close()
 	if d := s.ReadTimeout; d != 0 {
 		conn.SetReadDeadline(time.Now().Add(d))
 	}
@@ -181,58 +181,33 @@ func (s *Server) respond(conn net.Conn) {
 		conn.SetWriteDeadline(time.Now().Add(d))
 	}
 
-	r := bufio.NewReader(conn)
 	w := NewResponseWriter(conn)
-	// Read requested URL
-	rawurl, err := r.ReadString('\r')
+	defer w.b.Flush()
+
+	req, err := ReadRequest(conn)
 	if err != nil {
-		return
-	}
-	// Read terminating line feed
-	if b, err := r.ReadByte(); err != nil {
-		return
-	} else if b != '\n' {
-		w.WriteStatus(StatusBadRequest)
-	}
-	// Trim carriage return
-	rawurl = rawurl[:len(rawurl)-1]
-	// Ensure URL is valid
-	if len(rawurl) > 1024 {
-		w.WriteStatus(StatusBadRequest)
-	} else if url, err := url.Parse(rawurl); err != nil || url.User != nil {
-		// Note that we return an error status if User is specified in the URL
 		w.WriteStatus(StatusBadRequest)
 	} else {
 		// Store information about the TLS connection
-		var connState tls.ConnectionState
-		var cert *tls.Certificate
 		if tlsConn, ok := conn.(*tls.Conn); ok {
-			connState = tlsConn.ConnectionState()
-			if len(connState.PeerCertificates) > 0 {
-				peerCert := connState.PeerCertificates[0]
+			req.TLS = tlsConn.ConnectionState()
+			if len(req.TLS.PeerCertificates) > 0 {
+				peerCert := req.TLS.PeerCertificates[0]
 				// Store the TLS certificate
-				cert = &tls.Certificate{
+				req.Certificate = &tls.Certificate{
 					Certificate: [][]byte{peerCert.Raw},
 					Leaf:        peerCert,
 				}
 			}
 		}
-
-		req := &Request{
-			URL:         url,
-			RemoteAddr:  conn.RemoteAddr(),
-			TLS:         connState,
-			Certificate: cert,
-		}
-		resp := s.responder(req)
-		if resp != nil {
-			resp.Respond(w, req)
-		} else {
-			w.WriteStatus(StatusNotFound)
-		}
 	}
-	w.b.Flush()
-	conn.Close()
+
+	resp := s.responder(req)
+	if resp != nil {
+		resp.Respond(w, req)
+	} else {
+		w.WriteStatus(StatusNotFound)
+	}
 }
 
 func (s *Server) responder(r *Request) Responder {

@@ -26,17 +26,19 @@ type Response struct {
 	TLS tls.ConnectionState
 }
 
-// Read reads a Gemini response from the provided io.ReadCloser.
-func (resp *Response) Read(rc io.ReadCloser) error {
+// ReadResponse reads a Gemini response from the provided io.ReadCloser.
+func ReadResponse(rc io.ReadCloser) (*Response, error) {
+	resp := &Response{}
 	br := bufio.NewReader(rc)
+
 	// Read the status
 	statusB := make([]byte, 2)
 	if _, err := br.Read(statusB); err != nil {
-		return err
+		return nil, err
 	}
 	status, err := strconv.Atoi(string(statusB))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp.Status = Status(status)
 
@@ -44,26 +46,26 @@ func (resp *Response) Read(rc io.ReadCloser) error {
 	const minStatus, maxStatus = 1, 6
 	statusClass := resp.Status.Class()
 	if statusClass < minStatus || statusClass > maxStatus {
-		return ErrInvalidResponse
+		return nil, ErrInvalidResponse
 	}
 
 	// Read one space
 	if b, err := br.ReadByte(); err != nil {
-		return err
+		return nil, err
 	} else if b != ' ' {
-		return ErrInvalidResponse
+		return nil, ErrInvalidResponse
 	}
 
 	// Read the meta
 	meta, err := br.ReadString('\r')
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Trim carriage return
 	meta = meta[:len(meta)-1]
 	// Ensure meta is less than or equal to 1024 bytes
 	if len(meta) > 1024 {
-		return ErrInvalidResponse
+		return nil, ErrInvalidResponse
 	}
 	// Default mime type of text/gemini; charset=utf-8
 	if statusClass == StatusClassSuccess && meta == "" {
@@ -73,15 +75,15 @@ func (resp *Response) Read(rc io.ReadCloser) error {
 
 	// Read terminating newline
 	if b, err := br.ReadByte(); err != nil {
-		return err
+		return nil, err
 	} else if b != '\n' {
-		return ErrInvalidResponse
+		return nil, ErrInvalidResponse
 	}
 
 	if resp.Status.Class() == StatusClassSuccess {
 		resp.Body = newReadCloserBody(br, rc)
 	}
-	return nil
+	return resp, nil
 }
 
 type readCloserBody struct {

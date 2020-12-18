@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"io"
 	"net"
 	"net/url"
 )
@@ -63,6 +64,37 @@ func NewRequestFromURL(url *url.URL) *Request {
 		URL:  url,
 		Host: host,
 	}
+}
+
+// ReadRequest reads a Gemini request from the provided io.Reader
+func ReadRequest(r io.Reader) (*Request, error) {
+	// Read URL
+	br := bufio.NewReader(r)
+	rawurl, err := br.ReadString('\r')
+	if err != nil {
+		return nil, err
+	}
+	// Read terminating line feed
+	if b, err := br.ReadByte(); err != nil {
+		return nil, err
+	} else if b != '\n' {
+		return nil, ErrInvalidRequest
+	}
+	// Trim carriage return
+	rawurl = rawurl[:len(rawurl)-1]
+	// Validate URL
+	if len(rawurl) > 1024 {
+		return nil, ErrInvalidRequest
+	}
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return nil, err
+	}
+	if u.User != nil {
+		// User is not allowed
+		return nil, ErrInvalidURL
+	}
+	return &Request{URL: u}, nil
 }
 
 // Write writes the Gemini request to the provided buffered writer.
