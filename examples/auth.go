@@ -79,6 +79,12 @@ func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
 		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
-	users[fingerprint(r.Certificate.Leaf)].Name = username
+	fingerprint := fingerprint(r.Certificate.Leaf)
+	user, ok := users[fingerprint]
+	if !ok {
+		user = &User{}
+		users[fingerprint] = user
+	}
+	user.Name = username
 	w.WriteHeader(gemini.StatusRedirect, "/")
 }
