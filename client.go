@@ -20,14 +20,6 @@ type Client struct {
 	// and the request will be aborted.
 	TrustCertificate func(hostname string, cert *x509.Certificate) error
 
-	// GetCertificate is called to retrieve a certificate upon
-	// the request of a server.
-	// If GetCertificate is nil or the returned error is not nil,
-	// the request will not be sent again and the response will be returned.
-	//
-	// To specify a certificate ahead of time, see Request.Certificate.
-	GetCertificate func(hostname, path string) (tls.Certificate, error)
-
 	// GetInput is called to retrieve input when the server requests it.
 	// If GetInput is nil or returns false, no input will be sent and
 	// the response will be returned.
@@ -115,23 +107,6 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	resp.TLS = conn.ConnectionState()
 
 	switch {
-	case resp.Status == StatusCertificateRequired:
-		if c.GetCertificate == nil {
-			break
-		}
-
-		// Check to see if a certificate was already provided to prevent an infinite loop
-		if req.Certificate != nil {
-			break
-		}
-		hostname, path := req.URL.Hostname(), strings.TrimSuffix(req.URL.Path, "/")
-		cert, err := c.GetCertificate(hostname, path)
-		if err != nil {
-			return resp, err
-		}
-		req.Certificate = &cert
-		return c.do(req, via)
-
 	case resp.Status.Class() == StatusClassInput:
 		if c.GetInput == nil {
 			break
