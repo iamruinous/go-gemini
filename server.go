@@ -335,23 +335,3 @@ type ResponderFunc func(*ResponseWriter, *Request)
 func (f ResponderFunc) Respond(w *ResponseWriter, r *Request) {
 	f(w, r)
 }
-
-// Input returns the request query.
-// If the query is invalid or no query is provided, ok will be false.
-//
-// Example:
-//
-//    input, ok := gemini.Input(req)
-//    if !ok {
-//        w.WriteHeader(gemini.StatusInput, "Prompt")
-//        return
-//    }
-//    // ...
-//
-func Input(r *Request) (query string, ok bool) {
-	if r.URL.ForceQuery || r.URL.RawQuery != "" {
-		query, err := url.QueryUnescape(r.URL.RawQuery)
-		return query, err == nil
-	}
-	return "", false
-}

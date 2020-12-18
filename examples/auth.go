@@ -74,8 +74,8 @@ func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
 		return
 	}
 
-	username, ok := gemini.Input(r)
-	if !ok {
+	username, err := gemini.QueryUnescape(r.URL.RawQuery)
+	if err != nil || username == "" {
 		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
