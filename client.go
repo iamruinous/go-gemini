@@ -72,8 +72,8 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	}
 	conn := tls.Client(netConn, config)
 	// Set connection deadline
-	if d := c.Timeout; d != 0 {
-		conn.SetDeadline(time.Now().Add(d))
+	if c.Timeout != 0 {
+		conn.SetDeadline(time.Now().Add(c.Timeout))
 	}
 
 	// Write the request
