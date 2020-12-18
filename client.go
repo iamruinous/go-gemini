@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -19,15 +18,6 @@ type Client struct {
 	// If the returned error is not nil, the certificate will not be trusted
 	// and the request will be aborted.
 	TrustCertificate func(hostname string, cert *x509.Certificate) error
-
-	// GetInput is called to retrieve input when the server requests it.
-	// If GetInput is nil or returns false, no input will be sent and
-	// the response will be returned.
-	GetInput func(prompt string, sensitive bool) (input string, ok bool)
-
-	// CheckRedirect determines whether to follow a redirect.
-	// If CheckRedirect is nil, redirects will not be followed.
-	CheckRedirect func(req *Request, via []*Request) error
 
 	// Timeout specifies a time limit for requests made by this
 	// Client. The timeout includes connection time and reading
@@ -49,10 +39,6 @@ func (c *Client) Get(url string) (*Response, error) {
 
 // Do performs a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
-	return c.do(req, nil)
-}
-
-func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	// Extract hostname
 	colonPos := strings.LastIndex(req.Host, ":")
 	if colonPos == -1 {
@@ -75,7 +61,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 		},
 		ServerName: hostname,
 	}
-
+	// Set connection context
 	ctx := req.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -105,43 +91,6 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	resp.Request = req
 	// Store connection state
 	resp.TLS = conn.ConnectionState()
-
-	switch resp.Status.Class() {
-	case StatusClassInput:
-		if c.GetInput == nil {
-			break
-		}
-
-		input, ok := c.GetInput(resp.Meta, resp.Status == StatusSensitiveInput)
-		if ok {
-			req.URL.ForceQuery = true
-			req.URL.RawQuery = QueryEscape(input)
-			return c.do(req, via)
-		}
-
-	case StatusClassRedirect:
-		if c.CheckRedirect == nil {
-			break
-		}
-
-		if via == nil {
-			via = []*Request{}
-		}
-		via = append(via, req)
-
-		target, err := url.Parse(resp.Meta)
-		if err != nil {
-			return resp, err
-		}
-		target = req.URL.ResolveReference(target)
-
-		redirect := NewRequestFromURL(target)
-		redirect.Context = req.Context
-		if err := c.CheckRedirect(redirect, via); err != nil {
-			return resp, err
-		}
-		return c.do(redirect, via)
-	}
 
 	return resp, nil
 }
