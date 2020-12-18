@@ -78,14 +78,14 @@ func (c *Client) Do(req *Request) (*Response, error) {
 
 	// Write the request
 	w := bufio.NewWriter(conn)
-	req.write(w)
+	req.Write(w)
 	if err := w.Flush(); err != nil {
 		return nil, err
 	}
 
 	// Read the response
 	resp := &Response{}
-	if err := resp.read(conn); err != nil {
+	if err := resp.Read(conn); err != nil {
 		return nil, err
 	}
 	// Store connection state

@@ -182,7 +182,7 @@ func (s *Server) respond(conn net.Conn) {
 	}
 
 	r := bufio.NewReader(conn)
-	w := newResponseWriter(conn)
+	w := NewResponseWriter(conn)
 	// Read requested URL
 	rawurl, err := r.ReadString('\r')
 	if err != nil {
@@ -264,7 +264,8 @@ type ResponseWriter struct {
 	mediatype   string
 }
 
-func newResponseWriter(conn net.Conn) *ResponseWriter {
+// NewResponseWriter returns a ResponseWriter that will write to conn.
+func NewResponseWriter(conn net.Conn) *ResponseWriter {
 	return &ResponseWriter{
 		b: bufio.NewWriter(conn),
 	}

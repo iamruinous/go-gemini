@@ -65,8 +65,8 @@ func NewRequestFromURL(url *url.URL) *Request {
 	}
 }
 
-// write writes the Gemini request to the provided buffered writer.
-func (r *Request) write(w *bufio.Writer) error {
+// Write writes the Gemini request to the provided buffered writer.
+func (r *Request) Write(w *bufio.Writer) error {
 	url := r.URL.String()
 	// User is invalid
 	if r.URL.User != nil || len(url) > 1024 {

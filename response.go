@@ -26,8 +26,8 @@ type Response struct {
 	TLS tls.ConnectionState
 }
 
-// read reads a Gemini response from the provided io.ReadCloser.
-func (resp *Response) read(rc io.ReadCloser) error {
+// Read reads a Gemini response from the provided io.ReadCloser.
+func (resp *Response) Read(rc io.ReadCloser) error {
 	br := bufio.NewReader(rc)
 	// Read the status
 	statusB := make([]byte, 2)
