@@ -16,6 +16,7 @@ type Request struct {
 
 	// For client requests, Host specifies the host on which the URL is sought.
 	// Host must contain a port.
+	//
 	// This field is ignored by the server.
 	Host string
 
@@ -28,11 +29,13 @@ type Request struct {
 
 	// RemoteAddr allows servers and other software to record the network
 	// address that sent the request.
+	//
 	// This field is ignored by the client.
 	RemoteAddr net.Addr
 
 	// TLS allows servers and other software to record information about the TLS
 	// connection on which the request was received.
+	//
 	// This field is ignored by the client.
 	TLS tls.ConnectionState
 
