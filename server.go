@@ -204,14 +204,17 @@ func (s *Server) respond(conn net.Conn) {
 		w.WriteStatus(StatusBadRequest)
 	} else {
 		// Store information about the TLS connection
-		connState := conn.(*tls.Conn).ConnectionState()
+		var connState tls.ConnectionState
 		var cert *tls.Certificate
-		if len(connState.PeerCertificates) > 0 {
-			peerCert := connState.PeerCertificates[0]
-			// Store the TLS certificate
-			cert = &tls.Certificate{
-				Certificate: [][]byte{peerCert.Raw},
-				Leaf:        peerCert,
+		if tlsConn, ok := conn.(*tls.Conn); ok {
+			connState = tlsConn.ConnectionState()
+			if len(connState.PeerCertificates) > 0 {
+				peerCert := connState.PeerCertificates[0]
+				// Store the TLS certificate
+				cert = &tls.Certificate{
+					Certificate: [][]byte{peerCert.Raw},
+					Leaf:        peerCert,
+				}
 			}
 		}
 
