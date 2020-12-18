@@ -88,7 +88,6 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	if err := resp.read(conn); err != nil {
 		return nil, err
 	}
-	resp.Request = req
 	// Store connection state
 	resp.TLS = conn.ConnectionState()
 

@@ -21,9 +21,6 @@ type Response struct {
 	// Body contains the response body for successful responses.
 	Body io.ReadCloser
 
-	// Request is the request that was sent to obtain this response.
-	Request *Request
-
 	// TLS contains information about the TLS connection on which the response
 	// was received.
 	TLS tls.ConnectionState
