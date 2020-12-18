@@ -5,8 +5,9 @@ import (
 	"strings"
 )
 
-// QueryEscape properly escapes a string for use in a Gemini URL query.
-// It is like url.PathEscape except that it also replaces plus signs with their percent-encoded counterpart.
+// QueryEscape escapes a string for use in a Gemini URL query.
+// It is like url.PathEscape except that it also replaces plus signs
+// with their percent-encoded counterpart.
 func QueryEscape(query string) string {
 	return strings.ReplaceAll(url.PathEscape(query), "+", "%2B")
 }
