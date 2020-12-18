@@ -24,7 +24,9 @@ type Client struct {
 	// the request of a server.
 	// If GetCertificate is nil or the returned error is not nil,
 	// the request will not be sent again and the response will be returned.
-	GetCertificate func(scope, path string) (tls.Certificate, error)
+	//
+	// To specify a certificate ahead of time, see Request.Certificate.
+	GetCertificate func(hostname, path string) (tls.Certificate, error)
 
 	// GetInput is called to retrieve input when the server requests it.
 	// If GetInput is nil or returns false, no input will be sent and
