@@ -106,8 +106,8 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 	// Store connection state
 	resp.TLS = conn.ConnectionState()
 
-	switch {
-	case resp.Status.Class() == StatusClassInput:
+	switch resp.Status.Class() {
+	case StatusClassInput:
 		if c.GetInput == nil {
 			break
 		}
@@ -119,7 +119,7 @@ func (c *Client) do(req *Request, via []*Request) (*Response, error) {
 			return c.do(req, via)
 		}
 
-	case resp.Status.Class() == StatusClassRedirect:
+	case StatusClassRedirect:
 		if c.CheckRedirect == nil {
 			break
 		}
