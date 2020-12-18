@@ -1,5 +1,7 @@
 // +build ignore
 
+// This example illustrates a Gemini client.
+
 package main
 
 import (

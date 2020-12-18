@@ -1,5 +1,7 @@
 // +build ignore
 
+// This example illustrates a certificate generation tool.
+
 package main
 
 import (

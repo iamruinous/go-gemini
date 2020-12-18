@@ -1,5 +1,7 @@
 // +build ignore
 
+// This example illustrates a Gemini server.
+
 package main
 
 import (
