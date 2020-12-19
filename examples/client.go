@@ -46,13 +46,16 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(hostname string, cert *x509.Certificate) error {
+	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
 	knownHost, ok := hosts.Lookup(hostname)
 	if ok && time.Now().Before(knownHost.Expires) {
-		// Certificate is in known hosts file and is not expired
-		return nil
+		// Check fingerprint
+		if knownHost.Hex == fingerprint.Hex {
+			return nil
+		}
+		return errors.New("error: fingerprint does not match!")
 	}
 
-	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
 	fmt.Printf(trustPrompt, hostname, fingerprint.Hex)
 	scanner.Scan()
 	switch scanner.Text() {
