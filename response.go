@@ -82,6 +82,8 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 
 	if resp.Status.Class() == StatusClassSuccess {
 		resp.Body = newReadCloserBody(br, rc)
+	} else {
+		rc.Close()
 	}
 	return resp, nil
 }
