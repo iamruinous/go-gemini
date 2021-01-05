@@ -188,27 +188,29 @@ func (s *Server) respond(conn net.Conn) {
 	req, err := ReadRequest(conn)
 	if err != nil {
 		w.WriteStatus(StatusBadRequest)
-	} else {
-		// Store information about the TLS connection
-		if tlsConn, ok := conn.(*tls.Conn); ok {
-			req.TLS = tlsConn.ConnectionState()
-			if len(req.TLS.PeerCertificates) > 0 {
-				peerCert := req.TLS.PeerCertificates[0]
-				// Store the TLS certificate
-				req.Certificate = &tls.Certificate{
-					Certificate: [][]byte{peerCert.Raw},
-					Leaf:        peerCert,
-				}
+		return
+	}
+
+	// Store information about the TLS connection
+	if tlsConn, ok := conn.(*tls.Conn); ok {
+		req.TLS = tlsConn.ConnectionState()
+		if len(req.TLS.PeerCertificates) > 0 {
+			peerCert := req.TLS.PeerCertificates[0]
+			// Store the TLS certificate
+			req.Certificate = &tls.Certificate{
+				Certificate: [][]byte{peerCert.Raw},
+				Leaf:        peerCert,
 			}
 		}
 	}
 
 	resp := s.responder(req)
-	if resp != nil {
-		resp.Respond(w, req)
-	} else {
+	if resp == nil {
 		w.WriteStatus(StatusNotFound)
+		return
 	}
+
+	resp.Respond(w, req)
 }
 
 func (s *Server) responder(r *Request) Responder {
