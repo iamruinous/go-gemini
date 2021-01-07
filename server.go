@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -176,18 +176,20 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 func (s *Server) respond(conn net.Conn) {
 	defer conn.Close()
 	if d := s.ReadTimeout; d != 0 {
-		conn.SetReadDeadline(time.Now().Add(d))
+		_ = conn.SetReadDeadline(time.Now().Add(d))
 	}
 	if d := s.WriteTimeout; d != 0 {
-		conn.SetWriteDeadline(time.Now().Add(d))
+		_ = conn.SetWriteDeadline(time.Now().Add(d))
 	}
 
 	w := NewResponseWriter(conn)
-	defer w.b.Flush()
+	defer func() {
+		_ = w.Flush()
+	}()
 
 	req, err := ReadRequest(conn)
 	if err != nil {
-		w.WriteStatus(StatusBadRequest)
+		w.Status(StatusBadRequest)
 		return
 	}
 
@@ -206,7 +208,7 @@ func (s *Server) respond(conn net.Conn) {
 
 	resp := s.responder(req)
 	if resp == nil {
-		w.WriteStatus(StatusNotFound)
+		w.Status(StatusNotFound)
 		return
 	}
 
@@ -236,6 +238,8 @@ func (s *Server) logf(format string, args ...interface{}) {
 
 // ResponseWriter is used by a Gemini handler to construct a Gemini response.
 type ResponseWriter struct {
+	status      Status
+	meta        string
 	b           *bufio.Writer
 	bodyAllowed bool
 	wroteHeader bool
@@ -249,34 +253,28 @@ func NewResponseWriter(w io.Writer) *ResponseWriter {
 	}
 }
 
-// WriteHeader writes the response header.
-// If the header has already been written, WriteHeader does nothing.
+// Header sets the response header.
 //
 // Meta contains more information related to the response status.
 // For successful responses, Meta should contain the mimetype of the response.
 // For failure responses, Meta should contain a short description of the failure.
 // Meta should not be longer than 1024 bytes.
-func (w *ResponseWriter) WriteHeader(status Status, meta string) {
-	if w.wroteHeader {
-		return
-	}
-	w.b.WriteString(strconv.Itoa(int(status)))
-	w.b.WriteByte(' ')
-	w.b.WriteString(meta)
-	w.b.Write(crlf)
-
-	// Only allow body to be written on successful status codes.
-	if status.Class() == StatusClassSuccess {
-		w.bodyAllowed = true
-	}
-	w.wroteHeader = true
+func (w *ResponseWriter) Header(status Status, meta string) {
+	w.status = status
+	w.meta = meta
 }
 
-// WriteStatus writes the response header with the given status code.
+// Status sets the response header to the given status code.
 //
-// WriteStatus is equivalent to WriteHeader(status, status.Message())
-func (w *ResponseWriter) WriteStatus(status Status) {
-	w.WriteHeader(status, status.Message())
+// Status is equivalent to Header(status, status.Message())
+func (w *ResponseWriter) Status(status Status) {
+	meta := status.Message()
+
+	if status.Class() == StatusClassSuccess {
+		meta = w.mediatype
+	}
+
+	w.Header(status, meta)
 }
 
 // SetMediaType sets the media type that will be written for a successful response.
@@ -293,20 +291,58 @@ func (w *ResponseWriter) SetMediaType(mediatype string) {
 // with StatusSuccess and the mimetype set in SetMimetype.
 func (w *ResponseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
-		mediatype := w.mediatype
-		if mediatype == "" {
-			mediatype = "text/gemini"
+		err := w.writeHeader()
+		if err != nil {
+			return 0, err
 		}
-		w.WriteHeader(StatusSuccess, mediatype)
 	}
+
 	if !w.bodyAllowed {
 		return 0, ErrBodyNotAllowed
 	}
+
 	return w.b.Write(b)
+}
+
+func (w *ResponseWriter) writeHeader() error {
+	status := w.status
+	if status == 0 {
+		status = StatusSuccess
+	}
+
+	meta := w.meta
+
+	if status.Class() == StatusClassSuccess {
+		w.bodyAllowed = true
+
+		if meta == "" {
+			meta = w.mediatype
+		}
+
+		if meta == "" {
+			meta = "text/gemini"
+		}
+	}
+
+	_, err := fmt.Fprintf(w.b, "%d %s\r\n", int(status), meta)
+	if err != nil {
+		return fmt.Errorf("failed to write response header: %w", err)
+	}
+
+	w.wroteHeader = true
+
+	return nil
 }
 
 // Flush writes any buffered data to the underlying io.Writer.
 func (w *ResponseWriter) Flush() error {
+	if !w.wroteHeader {
+		err := w.writeHeader()
+		if err != nil {
+			return err
+		}
+	}
+
 	return w.b.Flush()
 }
 

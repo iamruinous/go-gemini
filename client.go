@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"time"
@@ -74,12 +75,22 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	conn := tls.Client(netConn, config)
 	// Set connection deadline
 	if c.Timeout != 0 {
-		conn.SetDeadline(time.Now().Add(c.Timeout))
+		err := conn.SetDeadline(time.Now().Add(c.Timeout))
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to set connection deadline: %w", err)
+		}
 	}
 
 	// Write the request
 	w := bufio.NewWriter(conn)
-	req.Write(w)
+
+	err = req.Write(w)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to write request data: %w", err)
+	}
+
 	if err := w.Flush(); err != nil {
 		return nil, err
 	}

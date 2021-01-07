@@ -52,12 +52,17 @@ func (k *KnownHostsFile) Lookup(hostname string) (Fingerprint, bool) {
 }
 
 // Write writes a known hosts entry to the configured output.
-func (k *KnownHostsFile) Write(hostname string, fingerprint Fingerprint) {
+func (k *KnownHostsFile) Write(hostname string, fingerprint Fingerprint) error {
 	k.mu.RLock()
 	defer k.mu.RUnlock()
 	if k.out != nil {
-		k.writeKnownHost(k.out, hostname, fingerprint)
+		_, err := k.writeKnownHost(k.out, hostname, fingerprint)
+		if err != nil {
+			return fmt.Errorf("failed to write to known host file: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // WriteAll writes all of the known hosts to the provided io.Writer.

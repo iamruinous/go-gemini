@@ -88,17 +88,17 @@ func (l LineText) line()                {}
 type Text []Line
 
 // ParseText parses Gemini text from the provided io.Reader.
-func ParseText(r io.Reader) Text {
+func ParseText(r io.Reader) (Text, error) {
 	var t Text
-	ParseLines(r, func(line Line) {
+	err := ParseLines(r, func(line Line) {
 		t = append(t, line)
 	})
-	return t
+	return t, err
 }
 
 // ParseLines parses Gemini text from the provided io.Reader.
 // It calls handler with each line that it parses.
-func ParseLines(r io.Reader, handler func(Line)) {
+func ParseLines(r io.Reader, handler func(Line)) error {
 	const spacetab = " \t"
 	var pre bool
 	scanner := bufio.NewScanner(r)
@@ -149,6 +149,8 @@ func ParseLines(r io.Reader, handler func(Line)) {
 		}
 		handler(line)
 	}
+
+	return scanner.Err()
 }
 
 // String writes the Gemini text response to a string and returns it.

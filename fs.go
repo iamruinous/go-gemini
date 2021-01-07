@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"fmt"
 	"io"
 	"mime"
 	"os"
@@ -9,8 +10,13 @@ import (
 
 func init() {
 	// Add Gemini mime types
-	mime.AddExtensionType(".gmi", "text/gemini")
-	mime.AddExtensionType(".gemini", "text/gemini")
+	if err := mime.AddExtensionType(".gmi", "text/gemini"); err != nil {
+		panic(fmt.Errorf("failed to register .gmi extension mimetype: %w", err))
+	}
+
+	if err := mime.AddExtensionType(".gemini", "text/gemini"); err != nil {
+		panic(fmt.Errorf("failed to register .gemini extension mimetype: %w", err))
+	}
 }
 
 // FileServer takes a filesystem and returns a Responder which uses that filesystem.
@@ -27,7 +33,7 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	p := path.Clean(r.URL.Path)
 	f, err := fsh.Open(p)
 	if err != nil {
-		w.WriteStatus(StatusNotFound)
+		w.Status(StatusNotFound)
 		return
 	}
 	// Detect mimetype
@@ -35,7 +41,7 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	mimetype := mime.TypeByExtension(ext)
 	w.SetMediaType(mimetype)
 	// Copy file to response writer
-	io.Copy(w, f)
+	_, _ = io.Copy(w, f)
 }
 
 // TODO: replace with io/fs.FS when available
@@ -66,7 +72,7 @@ func (d Dir) Open(name string) (File, error) {
 func ServeFile(w *ResponseWriter, fs FS, name string) {
 	f, err := fs.Open(name)
 	if err != nil {
-		w.WriteStatus(StatusNotFound)
+		w.Status(StatusNotFound)
 		return
 	}
 	// Detect mimetype
@@ -74,7 +80,7 @@ func ServeFile(w *ResponseWriter, fs FS, name string) {
 	mimetype := mime.TypeByExtension(ext)
 	w.SetMediaType(mimetype)
 	// Copy file to response writer
-	io.Copy(w, f)
+	_, _ = io.Copy(w, f)
 }
 
 func openFile(p string) (File, error) {

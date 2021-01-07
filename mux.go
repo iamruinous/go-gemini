@@ -138,14 +138,14 @@ func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
 	if u, ok := mux.redirectToPathSlash(path, r.URL); ok {
-		w.WriteHeader(StatusRedirect, u.String())
+		w.Header(StatusRedirect, u.String())
 		return
 	}
 
 	if path != r.URL.Path {
 		u := *r.URL
 		u.Path = path
-		w.WriteHeader(StatusRedirect, u.String())
+		w.Header(StatusRedirect, u.String())
 		return
 	}
 
@@ -154,7 +154,7 @@ func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 
 	resp := mux.match(path)
 	if resp == nil {
-		w.WriteStatus(StatusNotFound)
+		w.Status(StatusNotFound)
 		return
 	}
 	resp.Respond(w, r)
