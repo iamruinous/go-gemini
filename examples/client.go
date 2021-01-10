@@ -17,11 +17,12 @@ import (
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini/tofu"
 	"git.sr.ht/~adnano/go-xdg"
 )
 
 var (
-	hosts   gemini.KnownHostsFile
+	hosts   tofu.KnownHostsFile
 	scanner *bufio.Scanner
 )
 
@@ -46,7 +47,7 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(hostname string, cert *x509.Certificate) error {
-	fingerprint := gemini.NewFingerprint(cert.Raw, cert.NotAfter)
+	fingerprint := tofu.NewFingerprint(cert.Raw, cert.NotAfter)
 	knownHost, ok := hosts.Lookup(hostname)
 	if ok && time.Now().Before(knownHost.Expires) {
 		// Check fingerprint

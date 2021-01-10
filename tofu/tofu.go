@@ -1,4 +1,5 @@
-package gemini
+// Package tofu implements trust on first use using hosts and fingerprints.
+package tofu
 
 import (
 	"bufio"
