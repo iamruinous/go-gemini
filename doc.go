@@ -8,7 +8,7 @@ Client is a Gemini client.
 	if err != nil {
 		// handle error
 	}
-	if resp.Status.Class() == gemini.StatusClassSucess {
+	if resp.Body != nil {
 		defer resp.Body.Close()
 		// ...
 	}
@@ -17,8 +17,8 @@ Client is a Gemini client.
 Server is a Gemini server.
 
 	server := &gemini.Server{
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 Servers should be configured with certificates:
