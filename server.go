@@ -1,11 +1,8 @@
 package gemini
 
 import (
-	"bufio"
 	"crypto/tls"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net"
 	"strings"
@@ -234,111 +231,6 @@ func (s *Server) logf(format string, args ...interface{}) {
 	} else {
 		log.Printf(format, args...)
 	}
-}
-
-// ResponseWriter is used by a Gemini handler to construct a Gemini response.
-type ResponseWriter struct {
-	status      Status
-	meta        string
-	b           *bufio.Writer
-	bodyAllowed bool
-	wroteHeader bool
-	mediatype   string
-}
-
-// NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
-func NewResponseWriter(w io.Writer) *ResponseWriter {
-	return &ResponseWriter{
-		b: bufio.NewWriter(w),
-	}
-}
-
-// Header sets the response header.
-//
-// Meta contains more information related to the response status.
-// For successful responses, Meta should contain the mimetype of the response.
-// For failure responses, Meta should contain a short description of the failure.
-// Meta should not be longer than 1024 bytes.
-func (w *ResponseWriter) Header(status Status, meta string) {
-	w.status = status
-	w.meta = meta
-}
-
-// Status sets the response header to the given status code.
-//
-// Status is equivalent to Header(status, status.Meta())
-func (w *ResponseWriter) Status(status Status) {
-	w.status = status
-	w.meta = status.Meta()
-}
-
-// SetMediaType sets the media type that will be written for a successful response.
-// If the mimetype is not set, it will default to "text/gemini".
-func (w *ResponseWriter) SetMediaType(mediatype string) {
-	w.mediatype = mediatype
-}
-
-// Write writes data to the connection as part of the response body.
-// If the response status does not allow for a response body, Write returns
-// ErrBodyNotAllowed.
-//
-// If the response header has not yet been written, Write calls WriteHeader
-// with StatusSuccess and the mimetype set in SetMimetype.
-func (w *ResponseWriter) Write(b []byte) (int, error) {
-	if !w.wroteHeader {
-		err := w.writeHeader()
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	if !w.bodyAllowed {
-		return 0, ErrBodyNotAllowed
-	}
-
-	return w.b.Write(b)
-}
-
-func (w *ResponseWriter) writeHeader() error {
-	status := w.status
-	if status == 0 {
-		status = StatusSuccess
-	}
-
-	meta := w.meta
-
-	if status.Class() == StatusClassSuccess {
-		w.bodyAllowed = true
-
-		if meta == "" {
-			meta = w.mediatype
-		}
-
-		if meta == "" {
-			meta = "text/gemini"
-		}
-	}
-
-	_, err := fmt.Fprintf(w.b, "%d %s\r\n", int(status), meta)
-	if err != nil {
-		return fmt.Errorf("failed to write response header: %w", err)
-	}
-
-	w.wroteHeader = true
-
-	return nil
-}
-
-// Flush writes any buffered data to the underlying io.Writer.
-func (w *ResponseWriter) Flush() error {
-	if !w.wroteHeader {
-		err := w.writeHeader()
-		if err != nil {
-			return err
-		}
-	}
-
-	return w.b.Flush()
 }
 
 // A Responder responds to a Gemini request.

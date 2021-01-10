@@ -114,3 +114,92 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 	}
 	return b.ReadCloser.Read(p)
 }
+
+// ResponseWriter is used by a Gemini handler to construct a Gemini response.
+type ResponseWriter struct {
+	b           *bufio.Writer
+	status      Status
+	meta        string
+	setHeader   bool
+	wroteHeader bool
+	bodyAllowed bool
+}
+
+// NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
+func NewResponseWriter(w io.Writer) *ResponseWriter {
+	return &ResponseWriter{
+		b: bufio.NewWriter(w),
+	}
+}
+
+// Header sets the response header.
+func (w *ResponseWriter) Header(status Status, meta string) {
+	w.status = status
+	w.meta = meta
+}
+
+// Status sets the response status code.
+// It also sets the response meta to status.Meta().
+func (w *ResponseWriter) Status(status Status) {
+	w.status = status
+	w.meta = status.Meta()
+}
+
+// Meta sets the response meta.
+//
+// For successful responses, meta should contain the media type of the response.
+// For failure responses, meta should contain a short description of the failure.
+// The response meta should not be greater than 1024 bytes.
+func (w *ResponseWriter) Meta(meta string) {
+	w.meta = meta
+}
+
+// Write writes data to the connection as part of the response body.
+// If the response status does not allow for a response body, Write returns
+// ErrBodyNotAllowed.
+//
+// Write writes the response header if it has not already been written.
+// It writes a successful status code if one is not set.
+func (w *ResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.writeHeader(StatusSuccess)
+	}
+	if !w.bodyAllowed {
+		return 0, ErrBodyNotAllowed
+	}
+	return w.b.Write(b)
+}
+
+func (w *ResponseWriter) writeHeader(defaultStatus Status) {
+	status := w.status
+	if status == 0 {
+		status = defaultStatus
+	}
+
+	meta := w.meta
+	if status.Class() == StatusClassSuccess {
+		w.bodyAllowed = true
+
+		if meta == "" {
+			meta = "text/gemini"
+		}
+	}
+
+	w.b.WriteString(strconv.Itoa(int(status)))
+	w.b.WriteByte(' ')
+	w.b.WriteString(meta)
+	w.b.Write(crlf)
+	w.wroteHeader = true
+}
+
+// Flush writes any buffered data to the underlying io.Writer.
+//
+// Flush writes the response header if it has not already been written.
+// It writes a failure status code if one is not set.
+func (w *ResponseWriter) Flush() error {
+	if !w.wroteHeader {
+		w.writeHeader(StatusTemporaryFailure)
+	}
+	// Write errors from writeHeader will be returned here.
+	return w.b.Flush()
+}
