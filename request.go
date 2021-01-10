@@ -21,7 +21,6 @@ type Request struct {
 	Host string
 
 	// Certificate specifies the TLS certificate to use for the request.
-	// Request certificates take precedence over client certificates.
 	//
 	// On the server side, if the client provided a certificate then
 	// Certificate.Leaf is guaranteed to be non-nil.

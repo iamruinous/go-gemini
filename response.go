@@ -13,7 +13,7 @@ type Response struct {
 	Status Status
 
 	// Meta contains more information related to the response status.
-	// For successful responses, Meta should contain the mimetype of the response.
+	// For successful responses, Meta should contain the media type of the response.
 	// For failure responses, Meta should contain a short description of the failure.
 	// Meta should not be longer than 1024 bytes.
 	Meta string
@@ -115,7 +115,7 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 	return b.ReadCloser.Read(p)
 }
 
-// ResponseWriter is used by a Gemini handler to construct a Gemini response.
+// ResponseWriter is used to construct a Gemini response.
 type ResponseWriter struct {
 	b           *bufio.Writer
 	status      Status
