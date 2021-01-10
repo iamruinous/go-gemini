@@ -266,15 +266,10 @@ func (w *ResponseWriter) Header(status Status, meta string) {
 
 // Status sets the response header to the given status code.
 //
-// Status is equivalent to Header(status, status.Message())
+// Status is equivalent to Header(status, status.Meta())
 func (w *ResponseWriter) Status(status Status) {
-	meta := status.Message()
-
-	if status.Class() == StatusClassSuccess {
-		meta = w.mediatype
-	}
-
-	w.Header(status, meta)
+	w.status = status
+	w.meta = status.Meta()
 }
 
 // SetMediaType sets the media type that will be written for a successful response.

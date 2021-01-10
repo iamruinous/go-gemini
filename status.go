@@ -41,19 +41,11 @@ func (s Status) Class() StatusClass {
 	return StatusClass(s / 10)
 }
 
-// Message returns a status message corresponding to this status code.
-func (s Status) Message() string {
+// Meta returns a description of the status code appropriate for use in a response.
+//
+// Meta returns an empty string for input, success, and redirect status codes.
+func (s Status) Meta() string {
 	switch s {
-	case StatusInput:
-		return "Input"
-	case StatusSensitiveInput:
-		return "Sensitive input"
-	case StatusSuccess:
-		return "Success"
-	case StatusRedirect:
-		return "Redirect"
-	case StatusPermanentRedirect:
-		return "Permanent redirect"
 	case StatusTemporaryFailure:
 		return "Temporary failure"
 	case StatusServerUnavailable:

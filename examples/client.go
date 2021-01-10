@@ -146,7 +146,7 @@ func main() {
 		}
 		fmt.Print(string(body))
 	} else {
-		fmt.Printf("%d %s: %s\n", resp.Status, resp.Status.Message(), resp.Meta)
+		fmt.Printf("%d %s\n", resp.Status, resp.Meta)
 		os.Exit(1)
 	}
 }
