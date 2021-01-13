@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -29,7 +30,7 @@ var (
 func init() {
 	// Load known hosts file
 	path := filepath.Join(xdg.DataHome(), "gemini", "known_hosts")
-	err := hosts.Load(path)
+	err := hosts.Open(path)
 	if err != nil {
 		log.Println(err)
 	}
@@ -47,25 +48,24 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(hostname string, cert *x509.Certificate) error {
-	fingerprint := tofu.NewFingerprint(cert.Raw, cert.NotAfter)
+	host := tofu.NewKnownHost(hostname, cert.Raw, cert.NotAfter)
+
 	knownHost, ok := hosts.Lookup(hostname)
 	if ok && time.Now().Before(knownHost.Expires) {
 		// Check fingerprint
-		if knownHost.Hex == fingerprint.Hex {
+		if bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
 			return nil
 		}
 		return errors.New("error: fingerprint does not match!")
 	}
 
-	fmt.Printf(trustPrompt, hostname, fingerprint.Hex)
+	fmt.Printf(trustPrompt, hostname, host.Fingerprint)
 	scanner.Scan()
 	switch scanner.Text() {
 	case "t":
-		hosts.Add(hostname, fingerprint)
-		hosts.Write(hostname, fingerprint)
+		hosts.Add(host)
 		return nil
 	case "o":
-		hosts.Add(hostname, fingerprint)
 		return nil
 	default:
 		return errors.New("certificate not trusted")
