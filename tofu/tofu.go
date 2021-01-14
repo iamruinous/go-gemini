@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -118,17 +119,31 @@ func (k *KnownHosts) TOFU(hostname string, cert *x509.Certificate) error {
 	return nil
 }
 
-// HostWriter writes host entries to an io.Writer.
+// HostWriter writes host entries to an io.WriteCloser.
+//
+// HostWriter is safe for concurrent use by multiple goroutines.
 type HostWriter struct {
 	bw *bufio.Writer
+	cl io.Closer
 	mu sync.Mutex
 }
 
-// NewHostsWriter returns a new host writer that writes to the provided writer.
-func NewHostsWriter(w io.Writer) *HostWriter {
+// NewHostWriter returns a new host writer that writes to
+// the provided io.WriteCloser.
+func NewHostWriter(w io.WriteCloser) *HostWriter {
 	return &HostWriter{
 		bw: bufio.NewWriter(w),
+		cl: w,
 	}
+}
+
+// NewHostsFile returns a new host writer that appends to the file at the given path.
+func NewHostsFile(path string) (*HostWriter, error) {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return NewHostWriter(f), nil
 }
 
 // WriteHost writes the host to the underlying io.Writer.
@@ -140,9 +155,16 @@ func (h *HostWriter) WriteHost(host Host) error {
 	h.bw.WriteByte('\n')
 
 	if err := h.bw.Flush(); err != nil {
-		return fmt.Errorf("failed to write to hosts file: %w", err)
+		return fmt.Errorf("failed to write host: %w", err)
 	}
 	return nil
+}
+
+// Close closes the underlying io.WriteCloser.
+func (h *HostWriter) Close() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.cl.Close()
 }
 
 // Host represents a host entry with a fingerprint using a certain algorithm.
