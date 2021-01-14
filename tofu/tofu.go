@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,6 +44,21 @@ func (k *KnownHosts) Lookup(hostname string) (Host, bool) {
 	defer k.mu.RUnlock()
 	c, ok := k.hosts[hostname]
 	return c, ok
+}
+
+// Hosts returns the known hosts sorted by hostname.
+func (k *KnownHosts) Hosts() []Host {
+	keys := make([]string, 0, len(k.hosts))
+	for key := range k.hosts {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	hosts := make([]Host, 0, len(k.hosts))
+	for _, key := range keys {
+		hosts = append(hosts, k.hosts[key])
+	}
+	return hosts
 }
 
 // WriteTo writes the list of known hosts to the provided io.Writer.
