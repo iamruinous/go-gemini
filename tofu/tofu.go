@@ -121,6 +121,7 @@ func (k *KnownHosts) TOFU(hostname string, cert *x509.Certificate) error {
 // HostWriter writes host entries to an io.Writer.
 type HostWriter struct {
 	bw *bufio.Writer
+	mu sync.Mutex
 }
 
 // NewHostsWriter returns a new host writer that writes to the provided writer.
@@ -131,11 +132,14 @@ func NewHostsWriter(w io.Writer) *HostWriter {
 }
 
 // WriteHost writes the host to the underlying io.Writer.
-func (f *HostWriter) WriteHost(host Host) error {
-	f.bw.WriteString(host.String())
-	f.bw.WriteByte('\n')
+func (h *HostWriter) WriteHost(host Host) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
-	if err := f.bw.Flush(); err != nil {
+	h.bw.WriteString(host.String())
+	h.bw.WriteByte('\n')
+
+	if err := h.bw.Flush(); err != nil {
 		return fmt.Errorf("failed to write to hosts file: %w", err)
 	}
 	return nil
