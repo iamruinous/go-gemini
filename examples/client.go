@@ -23,16 +23,22 @@ import (
 )
 
 var (
-	hosts   tofu.KnownHostsFile
-	scanner *bufio.Scanner
+	hosts     tofu.KnownHosts
+	hostsfile *tofu.HostWriter
+	scanner   *bufio.Scanner
 )
 
 func init() {
 	// Load known hosts file
 	path := filepath.Join(xdg.DataHome(), "gemini", "known_hosts")
-	err := hosts.Open(path)
+	err := hosts.Load(path)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
+	}
+
+	hostsfile, err = tofu.NewHostsFile(path)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	scanner = bufio.NewScanner(os.Stdin)
@@ -48,7 +54,7 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(hostname string, cert *x509.Certificate) error {
-	host := tofu.NewKnownHost(hostname, cert.Raw, cert.NotAfter)
+	host := tofu.NewHost(hostname, cert.Raw, cert.NotAfter)
 
 	knownHost, ok := hosts.Lookup(hostname)
 	if ok && time.Now().Before(knownHost.Expires) {
@@ -64,8 +70,10 @@ func trustCertificate(hostname string, cert *x509.Certificate) error {
 	switch scanner.Text() {
 	case "t":
 		hosts.Add(host)
+		hostsfile.WriteHost(host)
 		return nil
 	case "o":
+		hosts.Add(host)
 		return nil
 	default:
 		return errors.New("certificate not trusted")
