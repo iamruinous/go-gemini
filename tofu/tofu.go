@@ -46,8 +46,8 @@ func (k *KnownHosts) Lookup(hostname string) (Host, bool) {
 	return c, ok
 }
 
-// Hosts returns the known hosts sorted by hostname.
-func (k *KnownHosts) Hosts() []Host {
+// Entries returns the known host entries sorted by hostname.
+func (k *KnownHosts) Entries() []Host {
 	keys := make([]string, 0, len(k.hosts))
 	for key := range k.hosts {
 		keys = append(keys, key)
