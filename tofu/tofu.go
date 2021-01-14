@@ -67,6 +67,17 @@ func (k *KnownHosts) WriteTo(w io.Writer) (int64, error) {
 	return int64(written), bw.Flush()
 }
 
+// Load loads the known hosts entries from the provided path.
+func (k *KnownHosts) Load(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return k.Parse(f)
+}
+
 // Parse parses the provided io.Reader and adds the parsed hosts to the list.
 // Invalid entries are ignored.
 //
