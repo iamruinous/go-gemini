@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
 func main() {
@@ -24,20 +24,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	options := gemini.CertificateOptions{
+	options := certificate.CreateOptions{
 		Subject: pkix.Name{
 			CommonName: host,
 		},
 		DNSNames: []string{host},
 		Duration: duration,
 	}
-	cert, err := gemini.CreateCertificate(options)
+	cert, err := certificate.Create(options)
 	if err != nil {
 		log.Fatal(err)
 	}
 	certPath := host + ".crt"
 	keyPath := host + ".key"
-	if err := gemini.WriteCertificate(cert, certPath, keyPath); err != nil {
+	if err := certificate.Write(cert, certPath, keyPath); err != nil {
 		log.Fatal(err)
 	}
 }

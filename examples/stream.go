@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
 func main() {
@@ -21,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 	server.CreateCertificate = func(hostname string) (tls.Certificate, error) {
-		return gemini.CreateCertificate(gemini.CertificateOptions{
+		return certificate.Create(certificate.CreateOptions{
 			Subject: pkix.Name{
 				CommonName: hostname,
 			},

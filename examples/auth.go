@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
+	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
 type User struct {
@@ -33,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 	server.CreateCertificate = func(hostname string) (tls.Certificate, error) {
-		return gemini.CreateCertificate(gemini.CertificateOptions{
+		return certificate.Create(certificate.CreateOptions{
 			Subject: pkix.Name{
 				CommonName: hostname,
 			},
