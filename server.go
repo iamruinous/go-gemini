@@ -7,6 +7,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
 // Server is a Gemini server.
@@ -23,7 +25,7 @@ type Server struct {
 	WriteTimeout time.Duration
 
 	// Certificates contains the certificates used by the server.
-	Certificates CertificateDir
+	Certificates certificate.Dir
 
 	// CreateCertificate, if not nil, will be called to create a new certificate
 	// if the current one is expired or missing.
@@ -157,8 +159,7 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 		if s.CreateCertificate != nil {
 			cert, err := s.CreateCertificate(hostname)
 			if err == nil {
-				s.Certificates.Add(hostname, cert)
-				if err := s.Certificates.Write(hostname, cert); err != nil {
+				if err := s.Certificates.Add(hostname, cert); err != nil {
 					s.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
 				}
 			}
