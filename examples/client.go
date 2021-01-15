@@ -145,10 +145,10 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	defer resp.Body.Close()
 
 	// Handle response
 	if resp.Status.Class() == gemini.StatusClassSuccess {
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)

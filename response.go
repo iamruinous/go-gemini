@@ -18,7 +18,10 @@ type Response struct {
 	// Meta should not be longer than 1024 bytes.
 	Meta string
 
-	// Body contains the response body for successful responses.
+	// Body represents the response body.
+	// Body is guaranteed to always be non-nil.
+	//
+	// The response body is streamed on demand as the Body field is read.
 	Body io.ReadCloser
 
 	// TLS contains information about the TLS connection on which the response
@@ -83,9 +86,20 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	if resp.Status.Class() == StatusClassSuccess {
 		resp.Body = newReadCloserBody(br, rc)
 	} else {
+		resp.Body = nopReadCloser{}
 		rc.Close()
 	}
 	return resp, nil
+}
+
+type nopReadCloser struct{}
+
+func (nopReadCloser) Read(p []byte) (int, error) {
+	return 0, io.EOF
+}
+
+func (nopReadCloser) Close() error {
+	return nil
 }
 
 type readCloserBody struct {
