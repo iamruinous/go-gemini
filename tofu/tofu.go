@@ -97,8 +97,24 @@ func (k *KnownHosts) Load(path string) error {
 // Parse parses the provided io.Reader and adds the parsed hosts to the list.
 // Invalid entries are ignored.
 //
-// For more control over errors encountered by parsing, scan the reader with a bufio.Scanner
-// and call ParseHost with scanner.Bytes().
+// For more control over errors encountered during parsing, use bufio.Scanner
+// in combination with ParseHost. For example:
+//
+//    var knownHosts tofu.KnownHosts
+//    scanner := bufio.NewScanner(r)
+//    for scanner.Scan() {
+//        host, err := ParseHost(scanner.Bytes())
+//        if err != nil {
+//            // handle error
+//        } else {
+//            knownHosts.Add(host)
+//        }
+//    }
+//    err := scanner.Err()
+//    if err != nil {
+//        // handle error
+//    }
+//
 func (k *KnownHosts) Parse(r io.Reader) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -108,10 +124,7 @@ func (k *KnownHosts) Parse(r io.Reader) error {
 	}
 
 	scanner := bufio.NewScanner(r)
-	var line int
 	for scanner.Scan() {
-		line++
-
 		text := scanner.Bytes()
 		if len(text) == 0 {
 			continue
@@ -128,7 +141,7 @@ func (k *KnownHosts) Parse(r io.Reader) error {
 	return scanner.Err()
 }
 
-// TOFU implements basic Trust on First Use.
+// TOFU implements basic trust on first use.
 //
 // If the host is not on file, it is added to the list.
 // If the host on file is expired, it is replaced with the provided host.
@@ -169,6 +182,7 @@ func NewHostWriter(w io.WriteCloser) *HostWriter {
 }
 
 // NewHostsFile returns a new host writer that appends to the file at the given path.
+// The file is created if it does not exist.
 func NewHostsFile(path string) (*HostWriter, error) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -191,7 +205,7 @@ func (h *HostWriter) WriteHost(host Host) error {
 	return nil
 }
 
-// Close closes the underlying io.WriteCloser.
+// Close closes the underlying io.Closer.
 func (h *HostWriter) Close() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
