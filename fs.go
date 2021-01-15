@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"fmt"
 	"io"
 	"mime"
 	"os"
