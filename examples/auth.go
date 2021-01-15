@@ -42,7 +42,7 @@ func main() {
 			Duration: time.Hour,
 		})
 	}
-	server.Register("localhost", &mux)
+	server.Handle("localhost", &mux)
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)

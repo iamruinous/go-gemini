@@ -31,7 +31,7 @@ func main() {
 		})
 	}
 
-	server.RegisterFunc("localhost", stream)
+	server.HandleFunc("localhost", stream)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

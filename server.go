@@ -46,12 +46,12 @@ type responderKey struct {
 	hostname string
 }
 
-// Register registers a responder for the given pattern.
+// Handle registers a responder for the given pattern.
 //
-// Patterns must be in the form of "hostname" or "scheme://hostname".
+// The pattern must be in the form of "hostname" or "scheme://hostname".
 // If no scheme is specified, a scheme of "gemini://" is implied.
 // Wildcard patterns are supported (e.g. "*.example.com").
-func (s *Server) Register(pattern string, responder Responder) {
+func (s *Server) Handle(pattern string, responder Responder) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
 	}
@@ -80,9 +80,9 @@ func (s *Server) Register(pattern string, responder Responder) {
 	s.hosts[key.hostname] = true
 }
 
-// RegisterFunc registers a responder function for the given pattern.
-func (s *Server) RegisterFunc(pattern string, responder func(*ResponseWriter, *Request)) {
-	s.Register(pattern, ResponderFunc(responder))
+// HandleFunc registers a responder function for the given pattern.
+func (s *Server) HandleFunc(pattern string, responder func(*ResponseWriter, *Request)) {
+	s.Handle(pattern, ResponderFunc(responder))
 }
 
 // ListenAndServe listens for requests at the server's configured address.
