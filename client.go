@@ -19,6 +19,9 @@ type Client struct {
 	// If TrustCertificate is nil, the client will accept any certificate.
 	// If the returned error is not nil, the certificate will not be trusted
 	// and the request will be aborted.
+	//
+	// For a basic trust on first use implementation, see (*KnownHosts).TOFU
+	// in the tofu submodule.
 	TrustCertificate func(hostname string, cert *x509.Certificate) error
 
 	// Timeout specifies a time limit for requests made by this
