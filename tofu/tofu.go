@@ -128,7 +128,11 @@ func (k *KnownHosts) Parse(r io.Reader) error {
 	return scanner.Err()
 }
 
-// TOFU implements a basic Trust On First Use flow.
+// TOFU implements basic Trust on First Use.
+//
+// If the host is not on file, it is added to the list.
+// If the host on file is expired, it is replaced with the provided host.
+// If the fingerprint does not match the one on file, an error is returned.
 func (k *KnownHosts) TOFU(hostname string, cert *x509.Certificate) error {
 	host := NewHost(hostname, cert.Raw, cert.NotAfter)
 
