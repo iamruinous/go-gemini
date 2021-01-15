@@ -15,7 +15,7 @@ func init() {
 }
 
 // FileServer takes a filesystem and returns a Responder which uses that filesystem.
-// The returned Responder sanitizes paths before handling them.
+// The returned Responder cleans paths before handling them.
 //
 // TODO: Use io/fs.FS when available.
 func FileServer(fsys FS) Responder {
@@ -43,7 +43,7 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 
 // FS represents a filesystem.
 //
-// TODO: Replace with io/fs.FS when available
+// TODO: Replace with io/fs.FS when available.
 type FS interface {
 	Open(name string) (File, error)
 }
