@@ -10,13 +10,8 @@ import (
 
 func init() {
 	// Add Gemini mime types
-	if err := mime.AddExtensionType(".gmi", "text/gemini"); err != nil {
-		panic(fmt.Errorf("failed to register .gmi extension mimetype: %w", err))
-	}
-
-	if err := mime.AddExtensionType(".gemini", "text/gemini"); err != nil {
-		panic(fmt.Errorf("failed to register .gemini extension mimetype: %w", err))
-	}
+	mime.AddExtensionType(".gmi", "text/gemini")
+	mime.AddExtensionType(".gemini", "text/gemini")
 }
 
 // FileServer takes a filesystem and returns a Responder which uses that filesystem.
