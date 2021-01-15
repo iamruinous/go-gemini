@@ -21,6 +21,8 @@ func init() {
 
 // FileServer takes a filesystem and returns a Responder which uses that filesystem.
 // The returned Responder sanitizes paths before handling them.
+//
+// TODO: Use io/fs.FS when available.
 func FileServer(fsys FS) Responder {
 	return fsHandler{fsys}
 }
@@ -44,12 +46,16 @@ func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
 	_, _ = io.Copy(w, f)
 }
 
-// TODO: replace with io/fs.FS when available
+// FS represents a filesystem.
+//
+// TODO: Replace with io/fs.FS when available
 type FS interface {
 	Open(name string) (File, error)
 }
 
-// TODO: replace with io/fs.File when available
+// File represents a file.
+//
+// TODO: Replace with io/fs.File when available.
 type File interface {
 	Stat() (os.FileInfo, error)
 	Read([]byte) (int, error)
@@ -57,6 +63,8 @@ type File interface {
 }
 
 // Dir implements FS using the native filesystem restricted to a specific directory.
+//
+// TODO: replace with os.DirFS when available.
 type Dir string
 
 // Open tries to open the file with the given name.
@@ -68,6 +76,7 @@ func (d Dir) Open(name string) (File, error) {
 
 // ServeFile responds to the request with the contents of the named file
 // or directory.
+//
 // TODO: Use io/fs.FS when available.
 func ServeFile(w *ResponseWriter, fs FS, name string) {
 	f, err := fs.Open(name)
