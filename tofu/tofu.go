@@ -103,7 +103,7 @@ func (k *KnownHosts) Load(path string) error {
 //    var knownHosts tofu.KnownHosts
 //    scanner := bufio.NewScanner(r)
 //    for scanner.Scan() {
-//        host, err := ParseHost(scanner.Bytes())
+//        host, err := tofu.ParseHost(scanner.Bytes())
 //        if err != nil {
 //            // handle error
 //        } else {
