@@ -21,7 +21,7 @@ import (
 )
 
 // Dir represents a directory of certificates.
-// The zero value of Dir is an empty directory ready to use.
+// The zero value for Dir is an empty directory ready to use.
 //
 // Dir is safe for concurrent use by multiple goroutines.
 type Dir struct {
@@ -68,12 +68,21 @@ func (d *Dir) Lookup(scope string) (tls.Certificate, bool) {
 	return cert, ok
 }
 
-// Load loads certificates from the given path.
-// The path should lead to a directory containing certificates and private keys
-// in the form scope.crt and scope.key.
-// For example, the hostname "localhost" would have the corresponding files
-// localhost.crt (certificate) and localhost.key (private key).
-// New certificates will be written to this directory.
+// Entries returns a map of hostnames to certificates.
+func (d *Dir) Entries() map[string]tls.Certificate {
+	certs := map[string]tls.Certificate{}
+	for key := range d.certs {
+		certs[key] = d.certs[key]
+	}
+	return certs
+}
+
+// Load loads certificates from the provided path.
+// Add will write certificates to this path.
+//
+// The directory should contain certificates and private keys
+// named scope.crt and scope.key respectively, where scope is
+// the scope of the certificate.
 func (d *Dir) Load(path string) error {
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
@@ -94,7 +103,8 @@ func (d *Dir) Load(path string) error {
 	return nil
 }
 
-// SetPath sets the directory that new certificates will be written to.
+// SetPath sets the directory path.
+// Add will write certificates to this path.
 func (d *Dir) SetPath(path string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
