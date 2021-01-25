@@ -21,7 +21,7 @@ func main() {
 	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
-	server.CreateCertificate = func(hostname string) (tls.Certificate, error) {
+	server.GetCertificate = func(hostname string) (tls.Certificate, error) {
 		return certificate.Create(certificate.CreateOptions{
 			Subject: pkix.Name{
 				CommonName: hostname,
