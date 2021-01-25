@@ -27,9 +27,9 @@ type Server struct {
 	// Certificates contains the certificates used by the server.
 	Certificates certificate.Dir
 
-	// CreateCertificate, if not nil, will be called to create a new certificate
+	// GetCertificate, if not nil, will be called to retrieve a new certificate
 	// if the current one is expired or missing.
-	CreateCertificate func(hostname string) (tls.Certificate, error)
+	GetCertificate func(hostname string) (tls.Certificate, error)
 
 	// ErrorLog specifies an optional logger for errors accepting connections
 	// and file system errors.
@@ -51,6 +51,7 @@ type responderKey struct {
 // The pattern must be in the form of "hostname" or "scheme://hostname".
 // If no scheme is specified, a scheme of "gemini://" is implied.
 // Wildcard patterns are supported (e.g. "*.example.com").
+// To handle any hostname, use the wildcard pattern "*".
 func (s *Server) Handle(pattern string, responder Responder) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
@@ -136,28 +137,40 @@ func (s *Server) Serve(l net.Listener) error {
 	}
 }
 
+// getCertificate retrieves a certificate for the given client hello.
 func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	cert, err := s.getCertificateFor(h.ServerName)
+	cert, err := s.lookupCertificate(h.ServerName, h.ServerName)
 	if err != nil {
 		// Try wildcard
 		wildcard := strings.SplitN(h.ServerName, ".", 2)
 		if len(wildcard) == 2 {
-			cert, err = s.getCertificateFor("*." + wildcard[1])
+			// Use the wildcard pattern as the hostname.
+			hostname := "*." + wildcard[1]
+			cert, err = s.lookupCertificate(hostname, hostname)
+		}
+		// Try "*" wildcard
+		if err != nil {
+			// Use the server name as the hostname
+			// since "*" is not a valid hostname.
+			cert, err = s.lookupCertificate("*", h.ServerName)
 		}
 	}
 	return cert, err
 }
 
-func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
-	if _, ok := s.hosts[hostname]; !ok {
+// lookupCertificate retrieves the certificate for the given hostname,
+// if and only if the provided pattern is registered.
+// If no certificate is found in the certificate store or the certificate
+// is expired, it calls GetCertificate to retrieve a new certificate.
+func (s *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
+	if _, ok := s.hosts[pattern]; !ok {
 		return nil, errors.New("hostname not registered")
 	}
 
-	// Generate a new certificate if it is missing or expired
 	cert, ok := s.Certificates.Lookup(hostname)
 	if !ok || cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
-		if s.CreateCertificate != nil {
-			cert, err := s.CreateCertificate(hostname)
+		if s.GetCertificate != nil {
+			cert, err := s.GetCertificate(hostname)
 			if err == nil {
 				if err := s.Certificates.Add(hostname, cert); err != nil {
 					s.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
@@ -167,6 +180,7 @@ func (s *Server) getCertificateFor(hostname string) (*tls.Certificate, error) {
 		}
 		return nil, errors.New("no certificate")
 	}
+
 	return &cert, nil
 }
 
@@ -222,6 +236,9 @@ func (s *Server) responder(r *Request) Responder {
 		if h, ok := s.responders[responderKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
 			return h
 		}
+	}
+	if h, ok := s.responders[responderKey{r.URL.Scheme, "*"}]; ok {
+		return h
 	}
 	return nil
 }
