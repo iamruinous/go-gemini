@@ -20,8 +20,7 @@ type Client struct {
 	// If the returned error is not nil, the certificate will not be trusted
 	// and the request will be aborted.
 	//
-	// For a basic trust on first use implementation, see (*KnownHosts).TOFU
-	// in the tofu submodule.
+	// See the tofu submodule for an implementation of trust on first use.
 	TrustCertificate func(hostname string, cert *x509.Certificate) error
 
 	// Timeout specifies a time limit for requests made by this
@@ -88,8 +87,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	if c.Timeout != 0 {
 		err := conn.SetDeadline(start.Add(c.Timeout))
 		if err != nil {
-			return nil, fmt.Errorf(
-				"failed to set connection deadline: %w", err)
+			return nil, fmt.Errorf("failed to set connection deadline: %w", err)
 		}
 	}
 
@@ -114,8 +112,7 @@ func (c *Client) do(conn *tls.Conn, req *Request) (*Response, error) {
 
 	err := req.Write(w)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to write request data: %w", err)
+		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
 	if err := w.Flush(); err != nil {
