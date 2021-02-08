@@ -207,7 +207,8 @@ func (s *Server) respond(conn net.Conn) {
 
 	// Store information about the TLS connection
 	if tlsConn, ok := conn.(*tls.Conn); ok {
-		req.TLS = tlsConn.ConnectionState()
+		state := tlsConn.ConnectionState()
+		req.TLS = &state
 		if len(req.TLS.PeerCertificates) > 0 {
 			peerCert := req.TLS.PeerCertificates[0]
 			// Store the TLS certificate

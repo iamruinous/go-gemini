@@ -36,7 +36,7 @@ type Request struct {
 	// connection on which the request was received.
 	//
 	// This field is ignored by the client.
-	TLS tls.ConnectionState
+	TLS *tls.ConnectionState
 
 	// Context specifies the context to use for client requests.
 	// If Context is nil, the background context will be used.

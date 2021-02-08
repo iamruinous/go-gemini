@@ -101,7 +101,8 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	}
 
 	// Store connection state
-	resp.TLS = conn.ConnectionState()
+	state := conn.ConnectionState()
+	resp.TLS = &state
 
 	return resp, nil
 }

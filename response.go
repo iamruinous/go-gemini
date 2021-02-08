@@ -26,7 +26,7 @@ type Response struct {
 
 	// TLS contains information about the TLS connection on which the response
 	// was received.
-	TLS tls.ConnectionState
+	TLS *tls.ConnectionState
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
