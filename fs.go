@@ -13,11 +13,12 @@ func init() {
 	mime.AddExtensionType(".gemini", "text/gemini")
 }
 
-// FileServer takes a filesystem and returns a Responder which uses that filesystem.
-// The returned Responder cleans paths before handling them.
+// FileServer returns a handler that serves Gemini requests with the contents
+// of the file system rooted at root.
+// The returned handler cleans paths before handling them.
 //
 // TODO: Use io/fs.FS when available.
-func FileServer(fsys FS) Responder {
+func FileServer(fsys FS) Handler {
 	return fsHandler{fsys}
 }
 
@@ -25,7 +26,7 @@ type fsHandler struct {
 	FS
 }
 
-func (fsh fsHandler) Respond(w *ResponseWriter, r *Request) {
+func (fsh fsHandler) ServeGemini(w *ResponseWriter, r *Request) {
 	p := path.Clean(r.URL.Path)
 	f, err := fsh.Open(p)
 	if err != nil {

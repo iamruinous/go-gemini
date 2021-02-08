@@ -37,35 +37,36 @@ type Server struct {
 	ErrorLog *log.Logger
 
 	// registered responders
-	responders map[responderKey]Responder
+	responders map[handlerKey]Handler
 	hosts      map[string]bool
 }
 
-type responderKey struct {
+type handlerKey struct {
 	scheme   string
 	hostname string
 }
 
-// Handle registers a responder for the given pattern.
+// Handle registers the handler for the given pattern.
+// If a handler already exists for pattern, Handle panics.
 //
 // The pattern must be in the form of "hostname" or "scheme://hostname".
 // If no scheme is specified, a scheme of "gemini://" is implied.
 // Wildcard patterns are supported (e.g. "*.example.com").
 // To handle any hostname, use the wildcard pattern "*".
-func (s *Server) Handle(pattern string, responder Responder) {
+func (s *Server) Handle(pattern string, handler Handler) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
 	}
-	if responder == nil {
+	if handler == nil {
 		panic("gemini: nil responder")
 	}
 	if s.responders == nil {
-		s.responders = map[responderKey]Responder{}
+		s.responders = map[handlerKey]Handler{}
 		s.hosts = map[string]bool{}
 	}
 
 	split := strings.SplitN(pattern, "://", 2)
-	var key responderKey
+	var key handlerKey
 	if len(split) == 2 {
 		key.scheme = split[0]
 		key.hostname = split[1]
@@ -77,13 +78,13 @@ func (s *Server) Handle(pattern string, responder Responder) {
 	if _, ok := s.responders[key]; ok {
 		panic("gemini: multiple registrations for " + pattern)
 	}
-	s.responders[key] = responder
+	s.responders[key] = handler
 	s.hosts[key.hostname] = true
 }
 
-// HandleFunc registers a responder function for the given pattern.
-func (s *Server) HandleFunc(pattern string, responder func(*ResponseWriter, *Request)) {
-	s.Handle(pattern, ResponderFunc(responder))
+// HandleFunc registers the handler function for the given pattern.
+func (s *Server) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
+	s.Handle(pattern, HandlerFunc(handler))
 }
 
 // ListenAndServe listens for requests at the server's configured address.
@@ -225,20 +226,20 @@ func (s *Server) respond(conn net.Conn) {
 		return
 	}
 
-	resp.Respond(w, req)
+	resp.ServeGemini(w, req)
 }
 
-func (s *Server) responder(r *Request) Responder {
-	if h, ok := s.responders[responderKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
+func (s *Server) responder(r *Request) Handler {
+	if h, ok := s.responders[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
 	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
 	if len(wildcard) == 2 {
-		if h, ok := s.responders[responderKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
+		if h, ok := s.responders[handlerKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
 			return h
 		}
 	}
-	if h, ok := s.responders[responderKey{r.URL.Scheme, "*"}]; ok {
+	if h, ok := s.responders[handlerKey{r.URL.Scheme, "*"}]; ok {
 		return h
 	}
 	return nil
@@ -252,15 +253,20 @@ func (s *Server) logf(format string, args ...interface{}) {
 	}
 }
 
-// A Responder responds to a Gemini request.
-type Responder interface {
-	// Respond accepts a Request and constructs a Response.
-	Respond(*ResponseWriter, *Request)
+// A Handler responds to a Gemini request.
+//
+// ServeGemini should write the response header and data to the ResponseWriter
+// and then return.
+type Handler interface {
+	ServeGemini(*ResponseWriter, *Request)
 }
 
-// ResponderFunc is a wrapper around a bare function that implements Responder.
-type ResponderFunc func(*ResponseWriter, *Request)
+// The HandlerFunc type is an adapter to allow the use of ordinary functions
+// as Gemini handlers. If f is a function with the appropriate signature,
+// HandlerFunc(f) is a Handler that calls f.
+type HandlerFunc func(*ResponseWriter, *Request)
 
-func (f ResponderFunc) Respond(w *ResponseWriter, r *Request) {
+// ServeGemini calls f(w, r).
+func (f HandlerFunc) ServeGemini(w *ResponseWriter, r *Request) {
 	f(w, r)
 }

@@ -50,7 +50,7 @@ type ServeMux struct {
 }
 
 type muxEntry struct {
-	r       Responder
+	r       Handler
 	pattern string
 }
 
@@ -78,7 +78,7 @@ func cleanPath(p string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
-func (mux *ServeMux) match(path string) Responder {
+func (mux *ServeMux) match(path string) Handler {
 	// Check for exact match first.
 	v, ok := mux.m[path]
 	if ok {
@@ -130,9 +130,9 @@ func (mux *ServeMux) shouldRedirectRLocked(path string) bool {
 	return false
 }
 
-// Respond dispatches the request to the responder whose
+// ServeGemini dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
+func (mux *ServeMux) ServeGemini(w *ResponseWriter, r *Request) {
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
@@ -157,19 +157,19 @@ func (mux *ServeMux) Respond(w *ResponseWriter, r *Request) {
 		w.Status(StatusNotFound)
 		return
 	}
-	resp.Respond(w, r)
+	resp.ServeGemini(w, r)
 }
 
-// Handle registers the responder for the given pattern.
-// If a responder already exists for pattern, Handle panics.
-func (mux *ServeMux) Handle(pattern string, responder Responder) {
+// Handle registers the handler for the given pattern.
+// If a handler already exists for pattern, Handle panics.
+func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
 	if pattern == "" {
 		panic("gemini: invalid pattern")
 	}
-	if responder == nil {
+	if handler == nil {
 		panic("gemini: nil responder")
 	}
 	if _, exist := mux.m[pattern]; exist {
@@ -179,7 +179,7 @@ func (mux *ServeMux) Handle(pattern string, responder Responder) {
 	if mux.m == nil {
 		mux.m = make(map[string]muxEntry)
 	}
-	e := muxEntry{responder, pattern}
+	e := muxEntry{handler, pattern}
 	mux.m[pattern] = e
 	if pattern[len(pattern)-1] == '/' {
 		mux.es = appendSorted(mux.es, e)
@@ -201,10 +201,10 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	return es
 }
 
-// HandleFunc registers the responder function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, responder func(*ResponseWriter, *Request)) {
-	if responder == nil {
+// HandleFunc registers the handler function for the given pattern.
+func (mux *ServeMux) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
+	if handler == nil {
 		panic("gemini: nil responder")
 	}
-	mux.Handle(pattern, ResponderFunc(responder))
+	mux.Handle(pattern, HandlerFunc(handler))
 }
