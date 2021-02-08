@@ -134,7 +134,6 @@ type ResponseWriter struct {
 	b           *bufio.Writer
 	status      Status
 	meta        string
-	setHeader   bool
 	wroteHeader bool
 	bodyAllowed bool
 }
