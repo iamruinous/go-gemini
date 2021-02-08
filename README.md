@@ -4,7 +4,7 @@
 
 Package gemini implements the [Gemini protocol](https://gemini.circumlunar.space) in Go.
 
-It aims to provide an API similar to that of net/http to make it easy to develop Gemini clients and servers.
+It provides an API similar to that of net/http to make it easy to develop Gemini clients and servers.
 
 ## Usage
 
