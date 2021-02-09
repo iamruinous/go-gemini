@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -44,11 +43,14 @@ func (c *Client) Get(url string) (*Response, error) {
 // Do performs a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
 	// Extract hostname
-	colonPos := strings.LastIndex(req.Host, ":")
-	if colonPos == -1 {
-		colonPos = len(req.Host)
+	hostname, port, err := net.SplitHostPort(req.Host)
+	if err != nil {
+		return nil, err
 	}
-	hostname := req.Host[:colonPos]
+	punycode, err := punycodeHostname(hostname)
+	if err != nil {
+		return nil, err
+	}
 
 	// Connect to the host
 	config := &tls.Config{
@@ -61,11 +63,11 @@ func (c *Client) Do(req *Request) (*Response, error) {
 			return &tls.Certificate{}, nil
 		},
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			return c.verifyConnection(req, cs)
+			return c.verifyConnection(hostname, punycode, cs)
 		},
-		ServerName: hostname,
+		ServerName: punycode,
 	}
-	// Set connection context
+
 	ctx := req.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -76,7 +78,8 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		Timeout: c.Timeout,
 	}
 
-	netConn, err := dialer.DialContext(ctx, "tcp", req.Host)
+	address := net.JoinHostPort(punycode, port)
+	netConn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return nil, err
 	}
@@ -129,17 +132,13 @@ func (c *Client) do(conn *tls.Conn, req *Request) (*Response, error) {
 	return resp, nil
 }
 
-func (c *Client) verifyConnection(req *Request, cs tls.ConnectionState) error {
-	// Verify the hostname
-	var hostname string
-	if host, _, err := net.SplitHostPort(req.Host); err == nil {
-		hostname = host
-	} else {
-		hostname = req.Host
-	}
+func (c *Client) verifyConnection(hostname, punycode string, cs tls.ConnectionState) error {
 	cert := cs.PeerCertificates[0]
-	if err := verifyHostname(cert, hostname); err != nil {
-		return err
+	// Try punycode and then hostname
+	if err := verifyHostname(cert, punycode); err != nil {
+		if err := verifyHostname(cert, hostname); err != nil {
+			return err
+		}
 	}
 	// Check expiration date
 	if !time.Now().Before(cert.NotAfter) {
