@@ -95,7 +95,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 		return resp, err
 	}
 
-	switch resp.Status.Class() {
+	switch gemini.StatusClass(resp.Status) {
 	case gemini.StatusClassInput:
 		input, ok := getInput(resp.Meta, resp.Status == gemini.StatusSensitiveInput)
 		if !ok {
@@ -148,7 +148,7 @@ func main() {
 	defer resp.Body.Close()
 
 	// Handle response
-	if resp.Status.Class() == gemini.StatusClassSuccess {
+	if gemini.StatusClass(resp.Status) == gemini.StatusClassSuccess {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)

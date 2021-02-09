@@ -10,7 +10,7 @@ import (
 // Response is a Gemini response.
 type Response struct {
 	// Status contains the response status code.
-	Status Status
+	Status int
 
 	// Meta contains more information related to the response status.
 	// For successful responses, Meta should contain the media type of the response.
@@ -43,11 +43,11 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp.Status = Status(status)
+	resp.Status = status
 
 	// Disregard invalid status codes
 	const minStatus, maxStatus = 1, 6
-	statusClass := resp.Status.Class()
+	statusClass := resp.Status / 10
 	if statusClass < minStatus || statusClass > maxStatus {
 		return nil, ErrInvalidResponse
 	}
@@ -83,7 +83,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 
-	if resp.Status.Class() == StatusClassSuccess {
+	if resp.Status/10 == StatusClassSuccess {
 		resp.Body = newReadCloserBody(br, rc)
 	} else {
 		resp.Body = nopReadCloser{}
@@ -132,7 +132,7 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 // ResponseWriter is used to construct a Gemini response.
 type ResponseWriter struct {
 	b           *bufio.Writer
-	status      Status
+	status      int
 	meta        string
 	wroteHeader bool
 	bodyAllowed bool
@@ -146,16 +146,16 @@ func NewResponseWriter(w io.Writer) *ResponseWriter {
 }
 
 // Header sets the response header.
-func (w *ResponseWriter) Header(status Status, meta string) {
+func (w *ResponseWriter) Header(status int, meta string) {
 	w.status = status
 	w.meta = meta
 }
 
 // Status sets the response status code.
-// It also sets the response meta to status.Meta().
-func (w *ResponseWriter) Status(status Status) {
+// It also sets the response meta to Meta(status).
+func (w *ResponseWriter) Status(status int) {
 	w.status = status
-	w.meta = status.Meta()
+	w.meta = Meta(status)
 }
 
 // Meta sets the response meta.
@@ -183,14 +183,14 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *ResponseWriter) writeHeader(defaultStatus Status) {
+func (w *ResponseWriter) writeHeader(defaultStatus int) {
 	status := w.status
 	if status == 0 {
 		status = defaultStatus
 	}
 
 	meta := w.meta
-	if status.Class() == StatusClassSuccess {
+	if status/10 == StatusClassSuccess {
 		w.bodyAllowed = true
 
 		if meta == "" {
@@ -198,7 +198,7 @@ func (w *ResponseWriter) writeHeader(defaultStatus Status) {
 		}
 	}
 
-	w.b.WriteString(strconv.Itoa(int(status)))
+	w.b.WriteString(strconv.Itoa(status))
 	w.b.WriteByte(' ')
 	w.b.WriteString(meta)
 	w.b.Write(crlf)
