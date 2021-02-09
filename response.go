@@ -129,8 +129,39 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 	return b.ReadCloser.Read(p)
 }
 
-// ResponseWriter is used to construct a Gemini response.
-type ResponseWriter struct {
+// A ResponseWriter interface is used by a Gemini handler
+// to construct a Gemini response.
+type ResponseWriter interface {
+	// Header sets the response header.
+	Header(status int, meta string)
+
+	// Status sets the response status code.
+	// It also sets the response meta to Meta(status).
+	Status(status int)
+
+	// Meta sets the response meta.
+	//
+	// For successful responses, meta should contain the media type of the response.
+	// For failure responses, meta should contain a short description of the failure.
+	// The response meta should not be greater than 1024 bytes.
+	Meta(meta string)
+
+	// Write writes data to the connection as part of the response body.
+	// If the response status does not allow for a response body, Write returns
+	// ErrBodyNotAllowed.
+	//
+	// Write writes the response header if it has not already been written.
+	// It writes a successful status code if one is not set.
+	Write([]byte) (int, error)
+
+	// Flush writes any buffered data to the underlying io.Writer.
+	//
+	// Flush writes the response header if it has not already been written.
+	// It writes a failure status code if one is not set.
+	Flush() error
+}
+
+type responseWriter struct {
 	b           *bufio.Writer
 	status      int
 	meta        string
@@ -139,41 +170,27 @@ type ResponseWriter struct {
 }
 
 // NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
-func NewResponseWriter(w io.Writer) *ResponseWriter {
-	return &ResponseWriter{
+func NewResponseWriter(w io.Writer) ResponseWriter {
+	return &responseWriter{
 		b: bufio.NewWriter(w),
 	}
 }
 
-// Header sets the response header.
-func (w *ResponseWriter) Header(status int, meta string) {
+func (w *responseWriter) Header(status int, meta string) {
 	w.status = status
 	w.meta = meta
 }
 
-// Status sets the response status code.
-// It also sets the response meta to Meta(status).
-func (w *ResponseWriter) Status(status int) {
+func (w *responseWriter) Status(status int) {
 	w.status = status
 	w.meta = Meta(status)
 }
 
-// Meta sets the response meta.
-//
-// For successful responses, meta should contain the media type of the response.
-// For failure responses, meta should contain a short description of the failure.
-// The response meta should not be greater than 1024 bytes.
-func (w *ResponseWriter) Meta(meta string) {
+func (w *responseWriter) Meta(meta string) {
 	w.meta = meta
 }
 
-// Write writes data to the connection as part of the response body.
-// If the response status does not allow for a response body, Write returns
-// ErrBodyNotAllowed.
-//
-// Write writes the response header if it has not already been written.
-// It writes a successful status code if one is not set.
-func (w *ResponseWriter) Write(b []byte) (int, error) {
+func (w *responseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
 		w.writeHeader(StatusSuccess)
 	}
@@ -183,7 +200,7 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *ResponseWriter) writeHeader(defaultStatus int) {
+func (w *responseWriter) writeHeader(defaultStatus int) {
 	status := w.status
 	if status == 0 {
 		status = defaultStatus
@@ -205,11 +222,7 @@ func (w *ResponseWriter) writeHeader(defaultStatus int) {
 	w.wroteHeader = true
 }
 
-// Flush writes any buffered data to the underlying io.Writer.
-//
-// Flush writes the response header if it has not already been written.
-// It writes a failure status code if one is not set.
-func (w *ResponseWriter) Flush() error {
+func (w *responseWriter) Flush() error {
 	if !w.wroteHeader {
 		w.writeHeader(StatusTemporaryFailure)
 	}

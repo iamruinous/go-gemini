@@ -83,7 +83,7 @@ func (s *Server) Handle(pattern string, handler Handler) {
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (s *Server) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
+func (s *Server) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 	s.Handle(pattern, HandlerFunc(handler))
 }
 
@@ -258,15 +258,15 @@ func (s *Server) logf(format string, args ...interface{}) {
 // ServeGemini should write the response header and data to the ResponseWriter
 // and then return.
 type Handler interface {
-	ServeGemini(*ResponseWriter, *Request)
+	ServeGemini(ResponseWriter, *Request)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions
 // as Gemini handlers. If f is a function with the appropriate signature,
 // HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(*ResponseWriter, *Request)
+type HandlerFunc func(ResponseWriter, *Request)
 
 // ServeGemini calls f(w, r).
-func (f HandlerFunc) ServeGemini(w *ResponseWriter, r *Request) {
+func (f HandlerFunc) ServeGemini(w ResponseWriter, r *Request) {
 	f(w, r)
 }

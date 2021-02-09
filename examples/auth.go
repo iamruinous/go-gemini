@@ -54,7 +54,7 @@ func fingerprint(cert *x509.Certificate) string {
 	return string(b[:])
 }
 
-func profile(w *gemini.ResponseWriter, r *gemini.Request) {
+func profile(w gemini.ResponseWriter, r *gemini.Request) {
 	if r.Certificate == nil {
 		w.Status(gemini.StatusCertificateRequired)
 		return
@@ -69,7 +69,7 @@ func profile(w *gemini.ResponseWriter, r *gemini.Request) {
 	fmt.Fprintln(w, "=> /username Change username")
 }
 
-func changeUsername(w *gemini.ResponseWriter, r *gemini.Request) {
+func changeUsername(w gemini.ResponseWriter, r *gemini.Request) {
 	if r.Certificate == nil {
 		w.Status(gemini.StatusCertificateRequired)
 		return

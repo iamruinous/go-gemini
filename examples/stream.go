@@ -38,7 +38,7 @@ func main() {
 }
 
 // stream writes an infinite stream to w.
-func stream(w *gemini.ResponseWriter, r *gemini.Request) {
+func stream(w gemini.ResponseWriter, r *gemini.Request) {
 	ch := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 

@@ -26,7 +26,7 @@ type fsHandler struct {
 	FS
 }
 
-func (fsh fsHandler) ServeGemini(w *ResponseWriter, r *Request) {
+func (fsh fsHandler) ServeGemini(w ResponseWriter, r *Request) {
 	p := path.Clean(r.URL.Path)
 	f, err := fsh.Open(p)
 	if err != nil {
@@ -73,7 +73,7 @@ func (d Dir) Open(name string) (File, error) {
 // or directory.
 //
 // TODO: Use io/fs.FS when available.
-func ServeFile(w *ResponseWriter, fs FS, name string) {
+func ServeFile(w ResponseWriter, fs FS, name string) {
 	f, err := fs.Open(name)
 	if err != nil {
 		w.Status(StatusNotFound)

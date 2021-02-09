@@ -132,7 +132,7 @@ func (mux *ServeMux) shouldRedirectRLocked(path string) bool {
 
 // ServeGemini dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) ServeGemini(w *ResponseWriter, r *Request) {
+func (mux *ServeMux) ServeGemini(w ResponseWriter, r *Request) {
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
@@ -202,7 +202,7 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(*ResponseWriter, *Request)) {
+func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 	if handler == nil {
 		panic("gemini: nil responder")
 	}
