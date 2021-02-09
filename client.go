@@ -42,7 +42,21 @@ func (c *Client) Get(url string) (*Response, error) {
 
 // Do performs a Gemini request and returns a Gemini response.
 func (c *Client) Do(req *Request) (*Response, error) {
-	// Extract hostname
+	// Punycode request URL
+	if punycode, err := punycodeHost(req.URL.Host); err != nil {
+		return nil, err
+	} else {
+		// Make a copy of the request
+		_req := *req
+		req = &_req
+		_url := *req.URL
+		req.URL = &_url
+
+		// Set the host
+		req.URL.Host = punycode
+	}
+
+	// Extract hostname and punycode it
 	hostname, port, err := net.SplitHostPort(req.Host)
 	if err != nil {
 		return nil, err

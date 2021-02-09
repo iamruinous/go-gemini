@@ -16,6 +16,7 @@ func isASCII(s string) bool {
 	return true
 }
 
+// punycodeHostname returns the punycoded version of hostname.
 func punycodeHostname(hostname string) (string, error) {
 	if net.ParseIP(hostname) != nil {
 		return hostname, nil
@@ -24,4 +25,22 @@ func punycodeHostname(hostname string) (string, error) {
 		return hostname, nil
 	}
 	return idna.Lookup.ToASCII(hostname)
+}
+
+// punycodeHost returns the punycoded version of host.
+// host may contain a port.
+func punycodeHost(host string) (string, error) {
+	hostname, port, err := net.SplitHostPort(host)
+	if err != nil {
+		hostname = host
+		port = ""
+	}
+	hostname, err = punycodeHostname(hostname)
+	if err != nil {
+		return "", err
+	}
+	if port == "" {
+		return hostname, nil
+	}
+	return net.JoinHostPort(hostname, port), nil
 }
