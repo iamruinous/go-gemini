@@ -36,7 +36,7 @@ func init() {
 		log.Fatal(err)
 	}
 
-	hostsfile, err = tofu.NewHostsFile(path)
+	hostsfile, err = tofu.OpenHostsFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
