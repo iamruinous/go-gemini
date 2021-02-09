@@ -27,13 +27,13 @@ Servers should be configured with certificates:
 
 Servers can accept requests for multiple hosts and schemes:
 
-	server.RegisterFunc("example.com", func(w *gemini.ResponseWriter, r *gemini.Request) {
+	server.RegisterFunc("example.com", func(w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Welcome to example.com")
 	})
-	server.RegisterFunc("example.org", func(w *gemini.ResponseWriter, r *gemini.Request) {
+	server.RegisterFunc("example.org", func(w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Welcome to example.org")
 	})
-	server.RegisterFunc("http://example.net", func(w *gemini.ResponseWriter, r *gemini.Request) {
+	server.RegisterFunc("http://example.net", func(w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Proxied content from http://example.net")
 	})
 
