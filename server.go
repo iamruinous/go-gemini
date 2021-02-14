@@ -220,6 +220,9 @@ func (s *Server) respond(conn net.Conn) {
 		}
 	}
 
+	// Store remote address
+	req.RemoteAddr = conn.RemoteAddr()
+
 	resp := s.responder(req)
 	if resp == nil {
 		w.Status(StatusNotFound)
