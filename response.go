@@ -55,13 +55,6 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	}
 	resp.Status = status
 
-	// Disregard invalid status codes
-	const minStatus, maxStatus = 1, 6
-	statusClass := StatusClass(status)
-	if statusClass < minStatus || statusClass > maxStatus {
-		return nil, ErrInvalidResponse
-	}
-
 	// Read one space
 	if b, err := br.ReadByte(); err != nil {
 		return nil, err
@@ -81,7 +74,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 	// Default mime type of text/gemini; charset=utf-8
-	if statusClass == StatusSuccess && meta == "" {
+	if StatusClass(status) == StatusSuccess && meta == "" {
 		meta = "text/gemini; charset=utf-8"
 	}
 	resp.Meta = meta
@@ -93,7 +86,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 
-	if statusClass == StatusSuccess {
+	if StatusClass(status) == StatusSuccess {
 		resp.Body = newReadCloserBody(br, rc)
 	} else {
 		resp.Body = nopReadCloser{}
