@@ -1,6 +1,6 @@
 package gemini
 
-// Status codes.
+// Gemini status codes.
 const (
 	StatusInput                    = 10
 	StatusSensitiveInput           = 11
@@ -23,7 +23,7 @@ const (
 )
 
 // StatusClass returns the status class for this status code.
-// 1x becomes 10, 2x becomes 20, etc.
+// 1x becomes 10, 2x becomes 20, and so on.
 func StatusClass(status int) int {
 	return (status / 10) * 10
 }

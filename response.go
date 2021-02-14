@@ -7,7 +7,11 @@ import (
 	"strconv"
 )
 
-// Response is a Gemini response.
+// Response represents the response from a Gemini request.
+//
+// The Client returns Responses from servers once the response
+// header has been received. The response body is streamed on demand
+// as the Body field is read.
 type Response struct {
 	// Status contains the response status code.
 	Status int
@@ -19,13 +23,19 @@ type Response struct {
 	Meta string
 
 	// Body represents the response body.
-	// Body is guaranteed to always be non-nil.
 	//
-	// The response body is streamed on demand as the Body field is read.
+	// The response body is streamed on demand as the Body field
+	// is read. If the network connection fails or the server
+	// terminates the response, Body.Read calls return an error.
+	//
+	// The Gemini client guarantees that Body is always
+	// non-nil, even on responses without a body or responses with
+	// a zero-length body. It is the caller's responsibility to
+	// close Body.
 	Body io.ReadCloser
 
-	// TLS contains information about the TLS connection on which the response
-	// was received.
+	// TLS contains information about the TLS connection on which the
+	// response was received. It is nil for unencrypted responses.
 	TLS *tls.ConnectionState
 }
 
