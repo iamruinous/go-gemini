@@ -22,19 +22,10 @@ const (
 	StatusCertificateNotValid      = 62
 )
 
-// Status code categories.
-const (
-	StatusClassInput               = 1
-	StatusClassSuccess             = 2
-	StatusClassRedirect            = 3
-	StatusClassTemporaryFailure    = 4
-	StatusClassPermanentFailure    = 5
-	StatusClassCertificateRequired = 6
-)
-
 // StatusClass returns the status class for this status code.
+// 1x becomes 10, 2x becomes 20, etc.
 func StatusClass(status int) int {
-	return status / 10
+	return (status / 10) * 10
 }
 
 // Meta returns a description of the status code appropriate for use in a response.
