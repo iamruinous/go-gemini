@@ -230,14 +230,6 @@ func (srv *Server) respond(conn net.Conn) {
 	if tlsConn, ok := conn.(*tls.Conn); ok {
 		state := tlsConn.ConnectionState()
 		req.TLS = &state
-		if len(req.TLS.PeerCertificates) > 0 {
-			peerCert := req.TLS.PeerCertificates[0]
-			// Store the TLS certificate
-			req.Certificate = &tls.Certificate{
-				Certificate: [][]byte{peerCert.Raw},
-				Leaf:        peerCert,
-			}
-		}
 	}
 
 	// Store remote address
@@ -289,7 +281,7 @@ func (srv *Server) logf(format string, args ...interface{}) {
 // If ServeGemini panics, the server (the caller of ServeGemini) assumes that
 // the effect of the panic was isolated to the active request. It recovers
 // the panic, logs a stack trace to the server error log, and closes the
-// newtwork connection. To abort a handler so the client sees an interrupted
+// network connection. To abort a handler so the client sees an interrupted
 // response but the server doesn't log an error, panic with the value
 // ErrAbortHandler.
 type Handler interface {

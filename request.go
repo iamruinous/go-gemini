@@ -13,8 +13,6 @@ import (
 // by a client.
 //
 // The field semantics differ slightly between client and server usage.
-// In addition to the notes on the fields below, see the documentation
-// for Request.Write and TODO: RoundTripper.
 type Request struct {
 	// URL specifies the URL being requested (for server
 	// requests) or the URL to access (for client requests).
@@ -25,10 +23,9 @@ type Request struct {
 	// This field is ignored by the Gemini server.
 	Host string
 
-	// Certificate specifies the TLS certificate to use for the request.
-	//
-	// On the server side, if the client provided a certificate then
-	// Certificate.Leaf is guaranteed to be non-nil.
+	// For client requests, Certificate optionally specifies the
+	// TLS certificate to present to the other side of the connection.
+	// This field is ignored by the Gemini server.
 	Certificate *tls.Certificate
 
 	// RemoteAddr allows Gemini servers and other software to record
@@ -49,13 +46,18 @@ type Request struct {
 	// This field is ignored by the Gemini client.
 	TLS *tls.ConnectionState
 
-	// Context specifies the context to use for client requests.
+	// Context specifies the context to use for outgoing requests.
+	// The context controls the entire lifetime of a request and its
+	// response: obtaining a connection, sending the request, and
+	// reading the response header and body.
 	// If Context is nil, the background context will be used.
 	// This field is ignored by the Gemini server.
 	Context context.Context
 }
 
 // NewRequest returns a new request. The host is inferred from the URL.
+//
+// The returned Request is suitable for use with Client.Do.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
