@@ -96,7 +96,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 	}
 
 	switch gemini.StatusClass(resp.Status) {
-	case gemini.StatusClassInput:
+	case gemini.StatusInput:
 		input, ok := getInput(resp.Meta, resp.Status == gemini.StatusSensitiveInput)
 		if !ok {
 			break
@@ -105,7 +105,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 		req.URL.RawQuery = gemini.QueryEscape(input)
 		return do(req, via)
 
-	case gemini.StatusClassRedirect:
+	case gemini.StatusRedirect:
 		via = append(via, req)
 		if len(via) > 5 {
 			return resp, errors.New("too many redirects")
@@ -148,7 +148,7 @@ func main() {
 	defer resp.Body.Close()
 
 	// Handle response
-	if gemini.StatusClass(resp.Status) == gemini.StatusClassSuccess {
+	if gemini.StatusClass(resp.Status) == gemini.StatusSuccess {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)
