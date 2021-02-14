@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Client is a Gemini client.
+// A Client is a Gemini client. Its zero value is a usable client.
 type Client struct {
 	// TrustCertificate is called to determine whether the client
 	// should trust the certificate provided by the server.
@@ -25,7 +25,7 @@ type Client struct {
 	// Timeout specifies a time limit for requests made by this
 	// Client. The timeout includes connection time and reading
 	// the response body. The timer remains running after
-	// Get and Do return and will interrupt reading of the Response.Body.
+	// Get or Do return and will interrupt reading of the Response.Body.
 	//
 	// A Timeout of zero means no timeout.
 	Timeout time.Duration

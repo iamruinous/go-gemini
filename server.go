@@ -11,34 +11,42 @@ import (
 	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
-// Server is a Gemini server.
+// A Server defines parameters for running a Gemini server. The zero value for
+// Server is a valid configuration.
 type Server struct {
-	// Addr specifies the address that the server should listen on.
-	// If Addr is empty, the server will listen on the address ":1965".
+	// Addr optionally specifies the TCP address for the server to listen on,
+	// in the form "host:port". If empty, ":1965" (port 1965) is used.
+	// See net.Dial for details of the address format.
 	Addr string
 
-	// ReadTimeout is the maximum duration for reading a request.
+	// ReadTimeout is the maximum duration for reading the entire
+	// request.
+	//
+	// A ReadTimeout of zero means no timeout.
 	ReadTimeout time.Duration
 
 	// WriteTimeout is the maximum duration before timing out
 	// writes of the response.
+	//
+	// A WriteTimeout of zero means no timeout.
 	WriteTimeout time.Duration
 
-	// Certificates contains the certificates used by the server.
+	// Certificates contains one or more certificates to present to the
+	// other side of the connection.
 	Certificates certificate.Dir
 
 	// GetCertificate, if not nil, will be called to retrieve a new certificate
 	// if the current one is expired or missing.
 	GetCertificate func(hostname string) (tls.Certificate, error)
 
-	// ErrorLog specifies an optional logger for errors accepting connections
-	// and file system errors.
+	// ErrorLog specifies an optional logger for errors accepting connections,
+	// unexpected behavior from handlers, and underlying file system errors.
 	// If nil, logging is done via the log package's standard logger.
 	ErrorLog *log.Logger
 
-	// registered responders
-	responders map[handlerKey]Handler
-	hosts      map[string]bool
+	// registered handlers
+	handlers map[handlerKey]Handler
+	hosts    map[string]bool
 }
 
 type handlerKey struct {
@@ -53,16 +61,16 @@ type handlerKey struct {
 // If no scheme is specified, a scheme of "gemini://" is implied.
 // Wildcard patterns are supported (e.g. "*.example.com").
 // To handle any hostname, use the wildcard pattern "*".
-func (s *Server) Handle(pattern string, handler Handler) {
+func (srv *Server) Handle(pattern string, handler Handler) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
 	}
 	if handler == nil {
 		panic("gemini: nil responder")
 	}
-	if s.responders == nil {
-		s.responders = map[handlerKey]Handler{}
-		s.hosts = map[string]bool{}
+	if srv.handlers == nil {
+		srv.handlers = map[handlerKey]Handler{}
+		srv.hosts = map[string]bool{}
 	}
 
 	split := strings.SplitN(pattern, "://", 2)
@@ -75,21 +83,29 @@ func (s *Server) Handle(pattern string, handler Handler) {
 		key.hostname = split[0]
 	}
 
-	if _, ok := s.responders[key]; ok {
+	if _, ok := srv.handlers[key]; ok {
 		panic("gemini: multiple registrations for " + pattern)
 	}
-	s.responders[key] = handler
-	s.hosts[key.hostname] = true
+	srv.handlers[key] = handler
+	srv.hosts[key.hostname] = true
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (s *Server) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-	s.Handle(pattern, HandlerFunc(handler))
+func (srv *Server) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
+	srv.Handle(pattern, HandlerFunc(handler))
 }
 
 // ListenAndServe listens for requests at the server's configured address.
-func (s *Server) ListenAndServe() error {
-	addr := s.Addr
+// ListenAndServe listens on the TCP network address srv.Addr and then calls
+// Serve to handle requests on incoming connections.
+//
+// If srv.Addr is blank, ":1965" is used.
+//
+// TODO:
+// ListenAndServe always returns a non-nil error. After Shutdown or Close, the
+// returned error is ErrServerClosed.
+func (srv *Server) ListenAndServe() error {
+	addr := srv.Addr
 	if addr == "" {
 		addr = ":1965"
 	}
@@ -100,15 +116,21 @@ func (s *Server) ListenAndServe() error {
 	}
 	defer ln.Close()
 
-	return s.Serve(tls.NewListener(ln, &tls.Config{
+	return srv.Serve(tls.NewListener(ln, &tls.Config{
 		ClientAuth:     tls.RequestClientCert,
 		MinVersion:     tls.VersionTLS12,
-		GetCertificate: s.getCertificate,
+		GetCertificate: srv.getCertificate,
 	}))
 }
 
-// Serve listens for requests on the provided listener.
-func (s *Server) Serve(l net.Listener) error {
+// Serve accepts incoming connections on the Listener l, creating a new
+// service goroutine for each. The service goroutines read requests and
+// then calls the appropriate Handler to reply to them.
+//
+// TODO:
+// Serve always returns a non-nil error and closes l. After Shutdown or Close,
+// the returned error is ErrServerClosed.
+func (srv *Server) Serve(l net.Listener) error {
 	var tempDelay time.Duration // how long to sleep on accept failure
 
 	for {
@@ -124,7 +146,7 @@ func (s *Server) Serve(l net.Listener) error {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				s.logf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
+				srv.logf("gemini: Accept error: %v; retrying in %v", err, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -134,26 +156,26 @@ func (s *Server) Serve(l net.Listener) error {
 		}
 
 		tempDelay = 0
-		go s.respond(rw)
+		go srv.respond(rw)
 	}
 }
 
 // getCertificate retrieves a certificate for the given client hello.
-func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	cert, err := s.lookupCertificate(h.ServerName, h.ServerName)
+func (srv *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	cert, err := srv.lookupCertificate(h.ServerName, h.ServerName)
 	if err != nil {
 		// Try wildcard
 		wildcard := strings.SplitN(h.ServerName, ".", 2)
 		if len(wildcard) == 2 {
 			// Use the wildcard pattern as the hostname.
 			hostname := "*." + wildcard[1]
-			cert, err = s.lookupCertificate(hostname, hostname)
+			cert, err = srv.lookupCertificate(hostname, hostname)
 		}
 		// Try "*" wildcard
 		if err != nil {
 			// Use the server name as the hostname
 			// since "*" is not a valid hostname.
-			cert, err = s.lookupCertificate("*", h.ServerName)
+			cert, err = srv.lookupCertificate("*", h.ServerName)
 		}
 	}
 	return cert, err
@@ -163,18 +185,18 @@ func (s *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error
 // if and only if the provided pattern is registered.
 // If no certificate is found in the certificate store or the certificate
 // is expired, it calls GetCertificate to retrieve a new certificate.
-func (s *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
-	if _, ok := s.hosts[pattern]; !ok {
+func (srv *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
+	if _, ok := srv.hosts[pattern]; !ok {
 		return nil, errors.New("hostname not registered")
 	}
 
-	cert, ok := s.Certificates.Lookup(hostname)
+	cert, ok := srv.Certificates.Lookup(hostname)
 	if !ok || cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
-		if s.GetCertificate != nil {
-			cert, err := s.GetCertificate(hostname)
+		if srv.GetCertificate != nil {
+			cert, err := srv.GetCertificate(hostname)
 			if err == nil {
-				if err := s.Certificates.Add(hostname, cert); err != nil {
-					s.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
+				if err := srv.Certificates.Add(hostname, cert); err != nil {
+					srv.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
 				}
 			}
 			return &cert, err
@@ -186,19 +208,17 @@ func (s *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, 
 }
 
 // respond responds to a connection.
-func (s *Server) respond(conn net.Conn) {
+func (srv *Server) respond(conn net.Conn) {
 	defer conn.Close()
-	if d := s.ReadTimeout; d != 0 {
-		_ = conn.SetReadDeadline(time.Now().Add(d))
+	if d := srv.ReadTimeout; d != 0 {
+		conn.SetReadDeadline(time.Now().Add(d))
 	}
-	if d := s.WriteTimeout; d != 0 {
-		_ = conn.SetWriteDeadline(time.Now().Add(d))
+	if d := srv.WriteTimeout; d != 0 {
+		conn.SetWriteDeadline(time.Now().Add(d))
 	}
 
 	w := NewResponseWriter(conn)
-	defer func() {
-		_ = w.Flush()
-	}()
+	defer w.Flush()
 
 	req, err := ReadRequest(conn)
 	if err != nil {
@@ -223,7 +243,7 @@ func (s *Server) respond(conn net.Conn) {
 	// Store remote address
 	req.RemoteAddr = conn.RemoteAddr()
 
-	resp := s.responder(req)
+	resp := srv.responder(req)
 	if resp == nil {
 		w.Status(StatusNotFound)
 		return
@@ -232,25 +252,25 @@ func (s *Server) respond(conn net.Conn) {
 	resp.ServeGemini(w, req)
 }
 
-func (s *Server) responder(r *Request) Handler {
-	if h, ok := s.responders[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
+func (srv *Server) responder(r *Request) Handler {
+	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
 	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
 	if len(wildcard) == 2 {
-		if h, ok := s.responders[handlerKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
+		if h, ok := srv.handlers[handlerKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
 			return h
 		}
 	}
-	if h, ok := s.responders[handlerKey{r.URL.Scheme, "*"}]; ok {
+	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, "*"}]; ok {
 		return h
 	}
 	return nil
 }
 
-func (s *Server) logf(format string, args ...interface{}) {
-	if s.ErrorLog != nil {
-		s.ErrorLog.Printf(format, args...)
+func (srv *Server) logf(format string, args ...interface{}) {
+	if srv.ErrorLog != nil {
+		srv.ErrorLog.Printf(format, args...)
 	} else {
 		log.Printf(format, args...)
 	}
@@ -259,7 +279,19 @@ func (s *Server) logf(format string, args ...interface{}) {
 // A Handler responds to a Gemini request.
 //
 // ServeGemini should write the response header and data to the ResponseWriter
-// and then return.
+// and then return. Returning signals that the request is finished; it is not
+// valid to use the ResponseWriter after or concurrently with the completion
+// of the ServeGemini call.
+//
+// Handlers should not modify the provided Request.
+//
+// TODO:
+// If ServeGemini panics, the server (the caller of ServeGemini) assumes that
+// the effect of the panic was isolated to the active request. It recovers
+// the panic, logs a stack trace to the server error log, and closes the
+// newtwork connection. To abort a handler so the client sees an interrupted
+// response but the server doesn't log an error, panic with the value
+// ErrAbortHandler.
 type Handler interface {
 	ServeGemini(ResponseWriter, *Request)
 }

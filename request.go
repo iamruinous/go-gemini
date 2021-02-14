@@ -9,15 +9,20 @@ import (
 	"net/url"
 )
 
-// Request represents a Gemini request.
+// A Request represents a Gemini request received by a server or to be sent
+// by a client.
+//
+// The field semantics differ slightly between client and server usage.
+// In addition to the notes on the fields below, see the documentation
+// for Request.Write and TODO: RoundTripper.
 type Request struct {
-	// URL specifies the URL being requested.
+	// URL specifies the URL being requested (for server
+	// requests) or the URL to access (for client requests).
 	URL *url.URL
 
-	// For client requests, Host specifies the host on which the URL is sought.
+	// For client requests, Host specifies the server to connect to.
 	// Host must contain a port.
-	//
-	// This field is ignored by the server.
+	// This field is ignored by the Gemini server.
 	Host string
 
 	// Certificate specifies the TLS certificate to use for the request.
@@ -26,20 +31,27 @@ type Request struct {
 	// Certificate.Leaf is guaranteed to be non-nil.
 	Certificate *tls.Certificate
 
-	// RemoteAddr allows servers and other software to record the network
-	// address that sent the request.
-	//
-	// This field is ignored by the client.
+	// RemoteAddr allows Gemini servers and other software to record
+	// the network address that sent the request, usually for
+	// logging. This field is not filled in by ReadRequest and
+	// has no defined format. The Gemini server in this package
+	// sets RemoteAddr to an "IP:port" address before invoking a
+	// handler.
+	// This field is ignored by the Gemini client.
 	RemoteAddr net.Addr
 
-	// TLS allows servers and other software to record information about the TLS
-	// connection on which the request was received.
-	//
-	// This field is ignored by the client.
+	// TLS allows Gemini servers and other software to record
+	// information about the TLS connection on which the request
+	// was received. This field is not filled in by ReadRequest.
+	// The Gemini server in this package sets the field for
+	// TLS-enabled connections before invoking a handler;
+	// otherwise it leaves the field nil.
+	// This field is ignored by the Gemini client.
 	TLS *tls.ConnectionState
 
 	// Context specifies the context to use for client requests.
 	// If Context is nil, the background context will be used.
+	// This field is ignored by the Gemini server.
 	Context context.Context
 }
 
@@ -68,10 +80,14 @@ func NewRequestFromURL(url *url.URL) *Request {
 	}
 }
 
-// ReadRequest reads a Gemini request from the provided io.Reader
+// ReadRequest reads and parses an incoming request from r.
+//
+// ReadRequest is a low-level function and should only be used
+// for specialized applications; most code should use the Server
+// to read requests and handle them via the Handler interface.
 func ReadRequest(r io.Reader) (*Request, error) {
 	// Read URL
-	br := bufio.NewReader(r)
+	br := bufio.NewReaderSize(r, 1026)
 	rawurl, err := br.ReadString('\r')
 	if err != nil {
 		return nil, err
@@ -99,7 +115,8 @@ func ReadRequest(r io.Reader) (*Request, error) {
 	return &Request{URL: u}, nil
 }
 
-// Write writes the Gemini request to the provided buffered writer.
+// Write writes a Gemini request in wire format.
+// This method consults the request URL only.
 func (r *Request) Write(w *bufio.Writer) error {
 	url := r.URL.String()
 	// User is invalid
