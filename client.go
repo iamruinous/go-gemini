@@ -31,7 +31,15 @@ type Client struct {
 	Timeout time.Duration
 }
 
-// Get performs a Gemini request for the given URL.
+// Get sends a Gemini request for the given URL.
+//
+// An error is returned if there was a Gemini protocol error.
+// A non-2x status code doesn't cause an error.
+//
+// If the returned error is nil, the Response will contain a non-nil Body
+// which the user is expected to close.
+//
+// For more control over requests, use NewRequest and Client.Do.
 func (c *Client) Get(url string) (*Response, error) {
 	req, err := NewRequest(url)
 	if err != nil {
@@ -40,7 +48,16 @@ func (c *Client) Get(url string) (*Response, error) {
 	return c.Do(req)
 }
 
-// Do performs a Gemini request and returns a Gemini response.
+// Do sends a Gemini request and returns a Gemini response, following
+// policy as configured on the client.
+//
+// An error is returned if there was a Gemini protocol error.
+// A non-2x status code doesn't cause an error.
+//
+// If the returned error is nil, the Response will contain a non-nil Body
+// which the user is expected to close.
+//
+// Generally Get will be used instead of Do.
 func (c *Client) Do(req *Request) (*Response, error) {
 	// Punycode request URL
 	if punycode, err := punycodeHost(req.URL.Host); err != nil {
