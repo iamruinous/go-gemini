@@ -28,7 +28,8 @@ func StatusClass(status int) int {
 	return (status / 10) * 10
 }
 
-// Meta returns a description of the status code appropriate for use in a response.
+// Meta returns a description of the provided status code appropriate
+// for use in a response.
 //
 // Meta returns an empty string for input, success, and redirect status codes.
 func Meta(status int) string {
