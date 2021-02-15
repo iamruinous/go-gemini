@@ -18,8 +18,12 @@ type Request struct {
 	// requests) or the URL to access (for client requests).
 	URL *url.URL
 
-	// For client requests, Host specifies the server to connect to.
-	// Host must contain a port.
+	// For client requests, Host optionally specifies the server to
+	// connect to. It must be of the form "host:port".
+	// If empty, the value of URL.Host is used.
+	// For international domain names, Host may be in Punycode or
+	// Unicode form. Use golang.org/x/net/idna to convert it to
+	// either format if needed.
 	// This field is ignored by the Gemini server.
 	Host string
 
@@ -55,7 +59,7 @@ type Request struct {
 	Context context.Context
 }
 
-// NewRequest returns a new request. The host is inferred from the URL.
+// NewRequest returns a new request.
 //
 // The returned Request is suitable for use with Client.Do.
 func NewRequest(rawurl string) (*Request, error) {
@@ -67,18 +71,12 @@ func NewRequest(rawurl string) (*Request, error) {
 }
 
 // NewRequestFromURL returns a new request for the given URL.
-// The host is inferred from the URL.
 //
 // Callers should be careful that the URL query is properly escaped.
 // See the documentation for QueryEscape for more information.
 func NewRequestFromURL(url *url.URL) *Request {
-	host := url.Host
-	if url.Port() == "" {
-		host += ":1965"
-	}
 	return &Request{
-		URL:  url,
-		Host: host,
+		URL: url,
 	}
 }
 

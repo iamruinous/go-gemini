@@ -59,10 +59,20 @@ func (c *Client) Get(url string) (*Response, error) {
 //
 // Generally Get will be used instead of Do.
 func (c *Client) Do(req *Request) (*Response, error) {
-	// Punycode request URL
-	if punycode, err := punycodeHost(req.URL.Host); err != nil {
+	// Punycode request URL host
+	hostname, port, err := net.SplitHostPort(req.URL.Host)
+	if err != nil {
+		// Likely no port
+		hostname = req.URL.Host
+		port = "1965"
+	}
+	punycode, err := punycodeHostname(hostname)
+	if err != nil {
 		return nil, err
-	} else {
+	}
+	if hostname != punycode {
+		hostname = punycode
+
 		// Make a copy of the request
 		_req := *req
 		req = &_req
@@ -70,17 +80,21 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		req.URL = &_url
 
 		// Set the host
-		req.URL.Host = punycode
+		req.URL.Host = net.JoinHostPort(hostname, port)
 	}
 
-	// Extract hostname and punycode it
-	hostname, port, err := net.SplitHostPort(req.Host)
-	if err != nil {
-		return nil, err
-	}
-	punycode, err := punycodeHostname(hostname)
-	if err != nil {
-		return nil, err
+	// Use request host if provided
+	if req.Host != "" {
+		hostname, port, err = net.SplitHostPort(req.Host)
+		if err != nil {
+			// Port is required
+			return nil, err
+		}
+		// Punycode hostname
+		hostname, err = punycodeHostname(hostname)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Connect to the host
@@ -96,7 +110,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			return c.verifyConnection(hostname, punycode, cs)
 		},
-		ServerName: punycode,
+		ServerName: hostname,
 	}
 
 	ctx := req.Context
@@ -109,7 +123,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 		Timeout: c.Timeout,
 	}
 
-	address := net.JoinHostPort(punycode, port)
+	address := net.JoinHostPort(hostname, port)
 	netConn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return nil, err
