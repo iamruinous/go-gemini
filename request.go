@@ -62,22 +62,15 @@ type Request struct {
 // NewRequest returns a new request.
 //
 // The returned Request is suitable for use with Client.Do.
+//
+// Callers should be careful that the URL query is properly escaped.
+// See the documentation for QueryEscape for more information.
 func NewRequest(rawurl string) (*Request, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, err
 	}
-	return NewRequestFromURL(u), nil
-}
-
-// NewRequestFromURL returns a new request for the given URL.
-//
-// Callers should be careful that the URL query is properly escaped.
-// See the documentation for QueryEscape for more information.
-func NewRequestFromURL(url *url.URL) *Request {
-	return &Request{
-		URL: url,
-	}
+	return &Request{URL: u}, nil
 }
 
 // ReadRequest reads and parses an incoming request from r.
