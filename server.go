@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -348,6 +349,15 @@ func (srv *Server) deleteConn(conn *net.Conn) {
 func (srv *Server) respond(conn net.Conn) {
 	defer conn.Close()
 
+	defer func() {
+		if err := recover(); err != nil && err != ErrAbortHandler {
+			const size = 64 << 10
+			buf := make([]byte, size)
+			buf = buf[:runtime.Stack(buf, false)]
+			srv.logf("gemini: panic serving %v: %v\n%s", conn.RemoteAddr(), err, buf)
+		}
+	}()
+
 	srv.trackConn(&conn)
 	defer srv.deleteConn(&conn)
 
@@ -359,11 +369,11 @@ func (srv *Server) respond(conn net.Conn) {
 	}
 
 	w := NewResponseWriter(conn)
-	defer w.Flush()
 
 	req, err := ReadRequest(conn)
 	if err != nil {
 		w.Status(StatusBadRequest)
+		w.Flush()
 		return
 	}
 
@@ -379,10 +389,12 @@ func (srv *Server) respond(conn net.Conn) {
 	resp := srv.responder(req)
 	if resp == nil {
 		w.Status(StatusNotFound)
+		w.Flush()
 		return
 	}
 
 	resp.ServeGemini(w, req)
+	w.Flush()
 }
 
 func (srv *Server) responder(r *Request) Handler {
@@ -418,7 +430,6 @@ func (srv *Server) logf(format string, args ...interface{}) {
 //
 // Handlers should not modify the provided Request.
 //
-// TODO:
 // If ServeGemini panics, the server (the caller of ServeGemini) assumes that
 // the effect of the panic was isolated to the active request. It recovers
 // the panic, logs a stack trace to the server error log, and closes the
