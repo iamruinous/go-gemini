@@ -87,6 +87,7 @@ func NewRequestFromURL(url *url.URL) *Request {
 // to read requests and handle them via the Handler interface.
 func ReadRequest(r io.Reader) (*Request, error) {
 	// Read URL
+	r = io.LimitReader(r, 1026)
 	br := bufio.NewReaderSize(r, 1026)
 	rawurl, err := br.ReadString('\r')
 	if err != nil {
