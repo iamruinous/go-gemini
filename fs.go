@@ -13,58 +13,75 @@ func init() {
 	mime.AddExtensionType(".gemini", "text/gemini")
 }
 
-// FileServer returns a handler that serves Gemini requests with the contents
-// of the provided file system.
-// The returned handler cleans paths before handling them.
-func FileServer(fsys FS) Handler {
-	return fsHandler{fsys}
-}
-
-type fsHandler struct {
-	FS
-}
-
-func (fsh fsHandler) ServeGemini(w ResponseWriter, r *Request) {
-	p := path.Clean(r.URL.Path)
-	f, err := fsh.Open(p)
-	if err != nil {
-		w.Status(StatusNotFound)
-		return
-	}
-	// Detect mimetype
-	ext := path.Ext(p)
-	mimetype := mime.TypeByExtension(ext)
-	w.Meta(mimetype)
-	// Copy file to response writer
-	_, _ = io.Copy(w, f)
-}
-
-// FS represents a file system.
-type FS interface {
+// A FileSystem implements access to a collection of named files. The elements
+// in a file path are separated by slash ('/', U+002F) characters, regardless
+// of host operating system convention.
+type FileSystem interface {
 	Open(name string) (File, error)
 }
 
-// File represents a file.
+// A File is returned by a FileSystem's Open method and can be served by the
+// FileServer implementation.
+//
+// The methods should behave the same as those on an *os.File.
 type File interface {
 	Stat() (os.FileInfo, error)
 	Read([]byte) (int, error)
 	Close() error
 }
 
-// Dir implements FS using the native filesystem restricted to a specific directory.
+// A Dir implements FileSystem using the native file system restricted
+// to a specific directory tree.
+//
+// While the FileSystem.Open method takes '/'-separated paths, a Dir's string
+// value is a filename on the native file system, not a URL, so it is separated
+// by filepath.Separator, which isn't necessarily '/'.
+//
+// Note that Dir could expose sensitive files and directories. Dir will follow
+// symlinks pointing out of the directory tree, which can be especially
+// dangerous if serving from a directory in which users are able to create
+// arbitrary symlinks. Dir will also allow access to files and directories
+// starting with a period, which could expose sensitive directories like .git
+// or sensitive files like .htpasswd. To exclude files with a leading period,
+// remove the files/directories from the server or create a custom FileSystem
+// implementation.
+//
+// An empty Dir is treated as ".".
 type Dir string
 
-// Open tries to open the file with the given name.
-// If the file is a directory, it tries to open the index file in that directory.
+// Open implements FileSystem using os.Open, opening files for reading
+// rooted and relative to the directory d.
 func (d Dir) Open(name string) (File, error) {
-	p := path.Join(string(d), name)
-	return openFile(p)
+	return os.Open(path.Join(string(d), name))
+}
+
+// FileServer returns a handler that serves Gemini requests with the contents
+// of the provided file system.
+//
+// To use the operating system's file system implementation, use gemini.Dir:
+//
+//     gemini.FileServer(gemini.Dir("/tmp"))
+func FileServer(fsys FileSystem) Handler {
+	return fileServer{fsys}
+}
+
+type fileServer struct {
+	FileSystem
+}
+
+func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
+	ServeFile(w, fs, r.URL.Path)
 }
 
 // ServeFile responds to the request with the contents of the named file
 // or directory.
-func ServeFile(w ResponseWriter, fs FS, name string) {
-	f, err := fs.Open(name)
+//
+// If the provided file or directory name is a relative path, it is interpreted
+// relative to the current directory and may ascend to parent directories. If
+// the provided name is constructed from user input, it should be sanitized
+// before calling ServeFile.
+func ServeFile(w ResponseWriter, fsys FileSystem, name string) {
+	f, err := openFile(fsys, name)
 	if err != nil {
 		w.Status(StatusNotFound)
 		return
@@ -77,29 +94,34 @@ func ServeFile(w ResponseWriter, fs FS, name string) {
 	_, _ = io.Copy(w, f)
 }
 
-func openFile(p string) (File, error) {
-	f, err := os.OpenFile(p, os.O_RDONLY, 0644)
+func openFile(fsys FileSystem, name string) (File, error) {
+	f, err := fsys.Open(name)
 	if err != nil {
 		return nil, err
 	}
 
-	if stat, err := f.Stat(); err == nil {
-		if stat.IsDir() {
-			f, err := os.Open(path.Join(p, "index.gmi"))
-			if err != nil {
-				return nil, err
-			}
-			stat, err := f.Stat()
-			if err != nil {
-				return nil, err
-			}
-			if stat.Mode().IsRegular() {
-				return f, nil
-			}
-			return nil, os.ErrNotExist
-		} else if !stat.Mode().IsRegular() {
-			return nil, os.ErrNotExist
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if stat.Mode().IsRegular() {
+		return f, nil
+	}
+
+	if stat.IsDir() {
+		// Try opening index.gmi
+		f, err := fsys.Open(path.Join(name, "index.gmi"))
+		if err != nil {
+			return nil, err
+		}
+		stat, err := f.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if stat.Mode().IsRegular() {
+			return f, nil
 		}
 	}
-	return f, nil
+
+	return nil, os.ErrNotExist
 }
