@@ -170,7 +170,7 @@ func (mux *ServeMux) Handle(pattern string, handler Handler) {
 		panic("gemini: invalid pattern")
 	}
 	if handler == nil {
-		panic("gemini: nil responder")
+		panic("gemini: nil handler")
 	}
 	if _, exist := mux.m[pattern]; exist {
 		panic("gemini: multiple registrations for " + pattern)
@@ -204,7 +204,7 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 // HandleFunc registers the handler function for the given pattern.
 func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 	if handler == nil {
-		panic("gemini: nil responder")
+		panic("gemini: nil handler")
 	}
 	mux.Handle(pattern, HandlerFunc(handler))
 }

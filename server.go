@@ -78,7 +78,7 @@ func (srv *Server) Handle(pattern string, handler Handler) {
 		panic("gemini: invalid pattern")
 	}
 	if handler == nil {
-		panic("gemini: nil responder")
+		panic("gemini: nil handler")
 	}
 	if srv.handlers == nil {
 		srv.handlers = map[handlerKey]Handler{}
@@ -386,18 +386,18 @@ func (srv *Server) respond(conn net.Conn) {
 	// Store remote address
 	req.RemoteAddr = conn.RemoteAddr()
 
-	resp := srv.responder(req)
-	if resp == nil {
+	h := srv.handler(req)
+	if h == nil {
 		w.Status(StatusNotFound)
 		w.Flush()
 		return
 	}
 
-	resp.ServeGemini(w, req)
+	h.ServeGemini(w, req)
 	w.Flush()
 }
 
-func (srv *Server) responder(r *Request) Handler {
+func (srv *Server) handler(r *Request) Handler {
 	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
