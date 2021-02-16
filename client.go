@@ -179,11 +179,9 @@ func (c *Client) do(conn *tls.Conn, req *Request) (*Response, error) {
 
 func (c *Client) verifyConnection(hostname, punycode string, cs tls.ConnectionState) error {
 	cert := cs.PeerCertificates[0]
-	// Try punycode and then hostname
+	// Verify punycoded hostname
 	if err := verifyHostname(cert, punycode); err != nil {
-		if err := verifyHostname(cert, hostname); err != nil {
-			return err
-		}
+		return err
 	}
 	// Check expiration date
 	if !time.Now().Before(cert.NotAfter) {
