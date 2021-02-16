@@ -10,7 +10,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -149,7 +149,7 @@ func main() {
 
 	// Handle response
 	if gemini.StatusClass(resp.Status) == gemini.StatusSuccess {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
