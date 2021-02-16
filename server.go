@@ -117,6 +117,10 @@ func (srv *Server) HandleFunc(pattern string, handler func(ResponseWriter, *Requ
 // ListenAndServe always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
 func (srv *Server) ListenAndServe() error {
+	if atomic.LoadInt32(&srv.done) == 1 {
+		return ErrServerClosed
+	}
+
 	addr := srv.Addr
 	if addr == "" {
 		addr = ":1965"
