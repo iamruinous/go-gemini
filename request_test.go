@@ -47,14 +47,6 @@ func TestReadRequest(t *testing.T) {
 			Err: io.EOF,
 		},
 		{
-			Raw: "gemini://user:password@example.com\r\n",
-			Err: ErrInvalidURL,
-		},
-		{
-			Raw: "https://user:password@example.net\r\n",
-			Err: ErrInvalidURL,
-		},
-		{
 			// 1030 bytes
 			Raw: maxURL + "xxxxxx",
 			Err: io.EOF,
@@ -120,14 +112,6 @@ func TestWriteRequest(t *testing.T) {
 		{
 			Req: newRequest(maxURL + "x"),
 			Err: ErrInvalidRequest,
-		},
-		{
-			Req: newRequest("gemini://user:password@example.org"),
-			Err: ErrInvalidURL,
-		},
-		{
-			Req: newRequest("https://user:password@example.org"),
-			Err: ErrInvalidURL,
 		},
 	}
 
