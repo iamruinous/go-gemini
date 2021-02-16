@@ -51,6 +51,7 @@ type Server struct {
 	// registered handlers
 	handlers map[handlerKey]Handler
 	hosts    map[string]bool
+	hmu      sync.Mutex
 
 	listeners map[*net.Listener]struct{}
 	conns     map[*net.Conn]struct{}
@@ -71,8 +72,8 @@ type handlerKey struct {
 // Wildcard patterns are supported (e.g. "*.example.com").
 // To handle any hostname, use the wildcard pattern "*".
 func (srv *Server) Handle(pattern string, handler Handler) {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
+	srv.hmu.Lock()
+	defer srv.hmu.Unlock()
 
 	if pattern == "" {
 		panic("gemini: invalid pattern")
@@ -309,7 +310,10 @@ func (srv *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, err
 // If no certificate is found in the certificate store or the certificate
 // is expired, it calls GetCertificate to retrieve a new certificate.
 func (srv *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
-	if _, ok := srv.hosts[pattern]; !ok {
+	srv.hmu.Lock()
+	_, ok := srv.hosts[pattern]
+	srv.hmu.Unlock()
+	if !ok {
 		return nil, errors.New("hostname not registered")
 	}
 
@@ -398,6 +402,8 @@ func (srv *Server) respond(conn net.Conn) {
 }
 
 func (srv *Server) handler(r *Request) Handler {
+	srv.hmu.Lock()
+	defer srv.hmu.Unlock()
 	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
 		return h
 	}
