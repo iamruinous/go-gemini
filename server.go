@@ -163,12 +163,12 @@ func (srv *Server) deleteListener(l *net.Listener) {
 func (srv *Server) Serve(l net.Listener) error {
 	defer l.Close()
 
+	srv.trackListener(&l)
+	defer srv.deleteListener(&l)
+
 	if atomic.LoadInt32(&srv.done) == 1 {
 		return ErrServerClosed
 	}
-
-	srv.trackListener(&l)
-	defer srv.deleteListener(&l)
 
 	var tempDelay time.Duration // how long to sleep on accept failure
 
