@@ -1,6 +1,6 @@
 # go-gemini
 
-[![godocs.io](https://godocs.io/git.sr.ht/~adnano/go-gemini?status.svg)](https://godocs.io/git.sr.ht/~adnano/go-gemini)
+[![godocs.io](https://godocs.io/git.sr.ht/~adnano/go-gemini?status.svg)](https://godocs.io/git.sr.ht/~adnano/go-gemini) [![builds.sr.ht status](https://builds.sr.ht/~adnano/go-gemini.svg)](https://builds.sr.ht/~adnano/go-gemini?)
 
 Package gemini implements the [Gemini protocol](https://gemini.circumlunar.space) in Go.
 
