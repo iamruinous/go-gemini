@@ -51,7 +51,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	}
 	status, err := strconv.Atoi(string(statusB))
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidResponse
 	}
 	resp.Status = status
 
