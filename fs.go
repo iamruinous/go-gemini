@@ -32,7 +32,7 @@ type fileServer struct {
 }
 
 func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
-	ServeFile(w, fs, r.URL.Path)
+	ServeFile(w, fs, path.Clean(r.URL.Path))
 }
 
 // ServeFile responds to the request with the contents of the named file
