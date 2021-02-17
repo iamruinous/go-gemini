@@ -85,7 +85,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 			}
 		} else {
 			// Remove trailing slash
-			if name[len(name)-1] == '/' {
+			if url[len(url)-1] == '/' {
 				w.Header(StatusPermanentRedirect, "../"+path.Base(url))
 				return
 			}
