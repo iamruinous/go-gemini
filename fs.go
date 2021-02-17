@@ -32,7 +32,7 @@ type fileServer struct {
 }
 
 func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
-	ServeFile(w, fs, path.Clean(r.URL.Path))
+	serveFile(w, r, fs, path.Clean(r.URL.Path), true)
 }
 
 // ServeFile responds to the request with the contents of the named file
@@ -42,7 +42,19 @@ func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
 // relative to the current directory and may ascend to parent directories. If
 // the provided name is constructed from user input, it should be sanitized
 // before calling ServeFile.
-func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
+func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
+	serveFile(w, r, fsys, name, false)
+}
+
+func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
+	const indexPage = "/index.gmi"
+
+	// Redirect .../index.gmi to .../
+	if strings.HasSuffix(r.URL.Path, indexPage) {
+		w.Header(StatusPermanentRedirect, "./")
+		return
+	}
+
 	if name == "/" {
 		name = "."
 	} else {
@@ -62,9 +74,34 @@ func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
 		return
 	}
 
+	// Redirect to canonical path
+	if redirect {
+		url := r.URL.Path
+		if stat.IsDir() {
+			// Add trailing slash
+			if url[len(url)-1] != '/' {
+				w.Header(StatusPermanentRedirect, path.Base(url)+"/")
+				return
+			}
+		} else {
+			// Remove trailing slash
+			if name[len(name)-1] == '/' {
+				w.Header(StatusPermanentRedirect, "../"+path.Base(url))
+				return
+			}
+		}
+	}
+
 	if stat.IsDir() {
-		// Try opening index file
-		index, err := fsys.Open(path.Join(name, "index.gmi"))
+		// Redirect if the directory name doesn't end in a slash
+		url := r.URL.Path
+		if url[len(url)-1] != '/' {
+			w.Header(StatusRedirect, path.Base(url)+"/")
+			return
+		}
+
+		// Use contents of index.gmi if present
+		index, err := fsys.Open(path.Join(name, indexPage))
 		if err == nil {
 			defer index.Close()
 			istat, err := index.Stat()
