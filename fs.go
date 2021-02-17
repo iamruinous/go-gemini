@@ -35,6 +35,24 @@ func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
 	serveFile(w, r, fs, path.Clean(r.URL.Path), true)
 }
 
+// ServeContent replies to the request using the content in the
+// provided Reader. The main benefit of ServeContent over io.Copy
+// is that it sets the MIME type of the response.
+//
+// ServeContent tries to deduce the type from name's file extension.
+// The name is otherwise unused; it is never sent in the response.
+func ServeContent(w ResponseWriter, r *Request, name string, content io.Reader) {
+	serveContent(w, name, content)
+}
+
+func serveContent(w ResponseWriter, name string, content io.Reader) {
+	// Detect mimetype from file extension
+	ext := path.Ext(name)
+	mimetype := mime.TypeByExtension(ext)
+	w.Meta(mimetype)
+	io.Copy(w, content)
+}
+
 // ServeFile responds to the request with the contents of the named file
 // or directory.
 //
@@ -118,11 +136,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		return
 	}
 
-	// Detect mimetype from file extension
-	ext := path.Ext(name)
-	mimetype := mime.TypeByExtension(ext)
-	w.Meta(mimetype)
-	io.Copy(w, f)
+	serveContent(w, name, f)
 }
 
 func dirList(w ResponseWriter, f fs.File) {
