@@ -139,7 +139,7 @@ type ResponseWriter interface {
 	Header(status int, meta string)
 
 	// Status sets the response status code.
-	// It also sets the response meta to Meta(status).
+	// It also sets the response meta to StatusText(status).
 	Status(status int)
 
 	// Meta sets the response meta.
@@ -195,7 +195,7 @@ func (w *responseWriter) Header(status int, meta string) {
 
 func (w *responseWriter) Status(status int) {
 	w.status = status
-	w.meta = Meta(status)
+	w.meta = StatusText(status)
 }
 
 func (w *responseWriter) Meta(meta string) {

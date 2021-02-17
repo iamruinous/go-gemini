@@ -28,12 +28,20 @@ func StatusClass(status int) int {
 	return (status / 10) * 10
 }
 
-// Meta returns a description of the provided status code appropriate
-// for use in a response.
-//
-// Meta returns an empty string for input, success, and redirect status codes.
-func Meta(status int) string {
+// StatusText returns a text for the provided status code.
+// It returns the empty string if the status code is unknown.
+func StatusText(status int) string {
 	switch status {
+	case StatusInput:
+		return "Input"
+	case StatusSensitiveInput:
+		return "Sensitive input"
+	case StatusSuccess:
+		return "Success"
+	case StatusRedirect:
+		return "Reidrect"
+	case StatusPermanentRedirect:
+		return "Permanent redirect"
 	case StatusTemporaryFailure:
 		return "Temporary failure"
 	case StatusServerUnavailable:
