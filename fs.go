@@ -46,7 +46,7 @@ func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
 	if name == "/" {
 		name = "."
 	} else {
-		name = strings.TrimPrefix(name, "/")
+		name = strings.Trim(name, "/")
 	}
 
 	f, err := fsys.Open(name)
