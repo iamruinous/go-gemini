@@ -41,7 +41,7 @@ func main() {
 func stream(w gemini.ResponseWriter, r *gemini.Request) {
 	flusher, ok := w.(gemini.Flusher)
 	if !ok {
-		w.Status(gemini.StatusTemporaryFailure)
+		w.WriteHeader(gemini.StatusTemporaryFailure, "Internal error")
 		return
 	}
 

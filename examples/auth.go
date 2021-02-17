@@ -56,7 +56,7 @@ func fingerprint(cert *x509.Certificate) string {
 
 func profile(w gemini.ResponseWriter, r *gemini.Request) {
 	if len(r.TLS.PeerCertificates) == 0 {
-		w.Status(gemini.StatusCertificateRequired)
+		w.WriteHeader(gemini.StatusCertificateRequired, "Certificate required")
 		return
 	}
 	fingerprint := fingerprint(r.TLS.PeerCertificates[0])
@@ -71,13 +71,13 @@ func profile(w gemini.ResponseWriter, r *gemini.Request) {
 
 func changeUsername(w gemini.ResponseWriter, r *gemini.Request) {
 	if len(r.TLS.PeerCertificates) == 0 {
-		w.Status(gemini.StatusCertificateRequired)
+		w.WriteHeader(gemini.StatusCertificateRequired, "Certificate required")
 		return
 	}
 
 	username, err := gemini.QueryUnescape(r.URL.RawQuery)
 	if err != nil || username == "" {
-		w.Header(gemini.StatusInput, "Username")
+		w.WriteHeader(gemini.StatusInput, "Username")
 		return
 	}
 	fingerprint := fingerprint(r.TLS.PeerCertificates[0])
@@ -87,5 +87,5 @@ func changeUsername(w gemini.ResponseWriter, r *gemini.Request) {
 		users[fingerprint] = user
 	}
 	user.Name = username
-	w.Header(gemini.StatusRedirect, "/")
+	w.WriteHeader(gemini.StatusRedirect, "/")
 }
