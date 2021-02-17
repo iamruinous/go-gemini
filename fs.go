@@ -1,10 +1,14 @@
 package gemini
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"mime"
+	"net/url"
 	"path"
+	"sort"
+	"strings"
 )
 
 func init() {
@@ -39,20 +43,6 @@ func (fs fileServer) ServeGemini(w ResponseWriter, r *Request) {
 // the provided name is constructed from user input, it should be sanitized
 // before calling ServeFile.
 func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
-	f, err := openFile(fsys, name)
-	if err != nil {
-		w.Status(StatusNotFound)
-		return
-	}
-	// Detect mimetype
-	ext := path.Ext(name)
-	mimetype := mime.TypeByExtension(ext)
-	w.Meta(mimetype)
-	// Copy file to response writer
-	_, _ = io.Copy(w, f)
-}
-
-func openFile(fsys fs.FS, name string) (fs.File, error) {
 	if name == "/" {
 		name = "."
 	} else {
@@ -61,31 +51,68 @@ func openFile(fsys fs.FS, name string) (fs.File, error) {
 
 	f, err := fsys.Open(name)
 	if err != nil {
-		return nil, err
+		w.Status(StatusNotFound)
+		return
 	}
+	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {
-		return nil, err
-	}
-	if stat.Mode().IsRegular() {
-		return f, nil
+		w.Status(StatusTemporaryFailure)
+		return
 	}
 
 	if stat.IsDir() {
-		// Try opening index.gmi
-		f, err := fsys.Open(path.Join(name, "index.gmi"))
-		if err != nil {
-			return nil, err
-		}
-		stat, err := f.Stat()
-		if err != nil {
-			return nil, err
-		}
-		if stat.Mode().IsRegular() {
-			return f, nil
+		// Try opening index file
+		index, err := fsys.Open(path.Join(name, "index.gmi"))
+		if err == nil {
+			defer index.Close()
+			istat, err := index.Stat()
+			if err == nil {
+				f = index
+				stat = istat
+			}
 		}
 	}
 
-	return nil, fs.ErrNotExist
+	if stat.IsDir() {
+		// Failed to find index file
+		dirList(w, f)
+		return
+	}
+
+	// Detect mimetype from file extension
+	ext := path.Ext(name)
+	mimetype := mime.TypeByExtension(ext)
+	w.Meta(mimetype)
+	io.Copy(w, f)
+}
+
+func dirList(w ResponseWriter, f fs.File) {
+	var entries []fs.DirEntry
+	var err error
+	d, ok := f.(fs.ReadDirFile)
+	if ok {
+		entries, err = d.ReadDir(-1)
+	}
+	if !ok || err != nil {
+		w.Header(StatusTemporaryFailure, "Error reading directory")
+		return
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			name += "/"
+		}
+		link := LineLink{
+			Name: name,
+			URL:  (&url.URL{Path: name}).EscapedPath(),
+		}
+		fmt.Fprintln(w, link.String())
+	}
 }
