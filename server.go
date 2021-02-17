@@ -380,7 +380,7 @@ func (srv *Server) respond(conn net.Conn) {
 
 	req, err := ReadRequest(conn)
 	if err != nil {
-		w.Status(StatusBadRequest)
+		w.WriteHeader(StatusBadRequest, "Bad request")
 		w.Flush()
 		return
 	}
@@ -396,7 +396,7 @@ func (srv *Server) respond(conn net.Conn) {
 
 	h := srv.handler(req)
 	if h == nil {
-		w.Status(StatusNotFound)
+		w.WriteHeader(StatusNotFound, "Not found")
 		w.Flush()
 		return
 	}

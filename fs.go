@@ -49,7 +49,7 @@ func serveContent(w ResponseWriter, name string, content io.Reader) {
 	// Detect mimetype from file extension
 	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
-	w.Meta(mimetype)
+	w.MediaType(mimetype)
 	io.Copy(w, content)
 }
 
@@ -80,7 +80,7 @@ func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
 		// here and ".." may not be wanted.
 		// Note that name might not contain "..", for example if code (still
 		// incorrectly) used filepath.Join(myDir, r.URL.Path).
-		w.Header(StatusBadRequest, "invalid URL path")
+		w.WriteHeader(StatusBadRequest, "invalid URL path")
 		return
 	}
 	serveFile(w, r, fsys, name, false)
@@ -105,7 +105,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 
 	// Redirect .../index.gmi to .../
 	if strings.HasSuffix(r.URL.Path, indexPage) {
-		w.Header(StatusPermanentRedirect, "./")
+		w.WriteHeader(StatusPermanentRedirect, "./")
 		return
 	}
 
@@ -117,14 +117,14 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 
 	f, err := fsys.Open(name)
 	if err != nil {
-		w.Status(StatusNotFound)
+		w.WriteHeader(StatusNotFound, "Not found")
 		return
 	}
 	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {
-		w.Status(StatusTemporaryFailure)
+		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 		return
 	}
 
@@ -134,13 +134,13 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		if stat.IsDir() {
 			// Add trailing slash
 			if url[len(url)-1] != '/' {
-				w.Header(StatusPermanentRedirect, path.Base(url)+"/")
+				w.WriteHeader(StatusPermanentRedirect, path.Base(url)+"/")
 				return
 			}
 		} else {
 			// Remove trailing slash
 			if url[len(url)-1] == '/' {
-				w.Header(StatusPermanentRedirect, "../"+path.Base(url))
+				w.WriteHeader(StatusPermanentRedirect, "../"+path.Base(url))
 				return
 			}
 		}
@@ -150,7 +150,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		// Redirect if the directory name doesn't end in a slash
 		url := r.URL.Path
 		if url[len(url)-1] != '/' {
-			w.Header(StatusRedirect, path.Base(url)+"/")
+			w.WriteHeader(StatusRedirect, path.Base(url)+"/")
 			return
 		}
 
@@ -183,7 +183,7 @@ func dirList(w ResponseWriter, f fs.File) {
 		entries, err = d.ReadDir(-1)
 	}
 	if !ok || err != nil {
-		w.Header(StatusTemporaryFailure, "Error reading directory")
+		w.WriteHeader(StatusTemporaryFailure, "Error reading directory")
 		return
 	}
 

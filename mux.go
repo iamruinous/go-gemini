@@ -138,14 +138,14 @@ func (mux *ServeMux) ServeGemini(w ResponseWriter, r *Request) {
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
 	if u, ok := mux.redirectToPathSlash(path, r.URL); ok {
-		w.Header(StatusRedirect, u.String())
+		w.WriteHeader(StatusRedirect, u.String())
 		return
 	}
 
 	if path != r.URL.Path {
 		u := *r.URL
 		u.Path = path
-		w.Header(StatusRedirect, u.String())
+		w.WriteHeader(StatusRedirect, u.String())
 		return
 	}
 
@@ -154,7 +154,7 @@ func (mux *ServeMux) ServeGemini(w ResponseWriter, r *Request) {
 
 	resp := mux.match(path)
 	if resp == nil {
-		w.Status(StatusNotFound)
+		w.WriteHeader(StatusNotFound, "Not found")
 		return
 	}
 	resp.ServeGemini(w, r)

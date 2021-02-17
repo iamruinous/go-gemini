@@ -7,6 +7,9 @@ import (
 	"strconv"
 )
 
+// The default media type for responses.
+const defaultMediaType = "text/gemini; charset=utf-8"
+
 // Response represents the response from a Gemini request.
 //
 // The Client returns Responses from servers once the response
@@ -73,9 +76,9 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	if len(meta) > 1024 {
 		return nil, ErrInvalidResponse
 	}
-	// Default mime type of text/gemini; charset=utf-8
 	if StatusClass(status) == StatusSuccess && meta == "" {
-		meta = "text/gemini; charset=utf-8"
+		// Use default media type
+		meta = defaultMediaType
 	}
 	resp.Meta = meta
 
@@ -132,30 +135,39 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 	return b.ReadCloser.Read(p)
 }
 
-// A ResponseWriter interface is used by a Gemini handler
-// to construct a Gemini response.
+// A ResponseWriter interface is used by a Gemini handler to construct
+// a Gemini response.
+//
+// A ResponseWriter may not be used after the Handler.ServeGemini method
+// has returned.
 type ResponseWriter interface {
-	// Header sets the response header.
-	Header(status int, meta string)
-
-	// Status sets the response status code.
-	// It also sets the response meta to StatusText(status).
-	Status(status int)
-
-	// Meta sets the response meta.
+	// MediaType sets the media type that will be sent by Write for a
+	// successful response. If no media type is set, a default of
+	// "text/gemini; charset=utf-8" will be used.
 	//
-	// For successful responses, meta should contain the media type of the response.
-	// For failure responses, meta should contain a short description of the failure.
-	// The response meta should not be greater than 1024 bytes.
-	Meta(meta string)
+	// Setting the media type after a call to Write or WriteHeader has
+	// no effect.
+	MediaType(string)
 
-	// Write writes data to the connection as part of the response body.
-	// If the response status does not allow for a response body, Write returns
-	// ErrBodyNotAllowed.
+	// Write writes the data to the connection as part of a Gemini response.
 	//
-	// Write writes the response header if it has not already been written.
-	// It writes a successful status code if one is not set.
+	// If WriteHeader has not yet been called, Write calls WriteHeader with
+	// StatusSuccess and the media type set in MediaType before writing the data.
+	// If no media type was set, Write uses a default media type of
+	// "text/gemini; charset=utf-8".
 	Write([]byte) (int, error)
+
+	// WriteHeader sends a Gemini response header with the provided
+	// status code and meta.
+	//
+	// If WriteHeader is not called explicitly, the first call to Write
+	// will trigger an implicit call to WriteHeader with a successful
+	// status code and the media type set in MediaType.
+	//
+	// The provided code must be a valid Gemini status code.
+	// The provided meta must not be longer than 1024 bytes.
+	// Only one header may be written.
+	WriteHeader(statusCode int, meta string)
 }
 
 // The Flusher interface is implemented by ResponseWriters that allow a
@@ -171,8 +183,7 @@ type Flusher interface {
 
 type responseWriter struct {
 	b           *bufio.Writer
-	status      int
-	meta        string
+	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
 }
@@ -188,23 +199,18 @@ func newResponseWriter(w io.Writer) *responseWriter {
 	}
 }
 
-func (w *responseWriter) Header(status int, meta string) {
-	w.status = status
-	w.meta = meta
-}
-
-func (w *responseWriter) Status(status int) {
-	w.status = status
-	w.meta = StatusText(status)
-}
-
-func (w *responseWriter) Meta(meta string) {
-	w.meta = meta
+func (w *responseWriter) MediaType(mediatype string) {
+	w.mediatype = mediatype
 }
 
 func (w *responseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
-		w.writeHeader(StatusSuccess)
+		meta := w.mediatype
+		if meta == "" {
+			// Use default media type
+			meta = defaultMediaType
+		}
+		w.WriteHeader(StatusSuccess, meta)
 	}
 	if !w.bodyAllowed {
 		return 0, ErrBodyNotAllowed
@@ -212,22 +218,12 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *responseWriter) writeHeader(defaultStatus int) {
-	status := w.status
-	if status == 0 {
-		status = defaultStatus
-	}
-
-	meta := w.meta
-	if StatusClass(status) == StatusSuccess {
+func (w *responseWriter) WriteHeader(statusCode int, meta string) {
+	if StatusClass(statusCode) == StatusSuccess {
 		w.bodyAllowed = true
-
-		if meta == "" {
-			meta = "text/gemini"
-		}
 	}
 
-	w.b.WriteString(strconv.Itoa(status))
+	w.b.WriteString(strconv.Itoa(statusCode))
 	w.b.WriteByte(' ')
 	w.b.WriteString(meta)
 	w.b.Write(crlf)
@@ -236,7 +232,7 @@ func (w *responseWriter) writeHeader(defaultStatus int) {
 
 func (w *responseWriter) Flush() error {
 	if !w.wroteHeader {
-		w.writeHeader(StatusTemporaryFailure)
+		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 	}
 	// Write errors from writeHeader will be returned here.
 	return w.b.Flush()
