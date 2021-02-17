@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509/pkix"
 	"log"
+	"os"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -32,7 +33,7 @@ func main() {
 	}
 
 	var mux gemini.ServeMux
-	mux.Handle("/", gemini.FileServer(gemini.Dir("/var/www")))
+	mux.Handle("/", gemini.FileServer(os.DirFS("/var/www")))
 
 	server.Handle("localhost", &mux)
 	if err := server.ListenAndServe(); err != nil {
