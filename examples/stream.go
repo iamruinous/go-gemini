@@ -39,6 +39,12 @@ func main() {
 
 // stream writes an infinite stream to w.
 func stream(w gemini.ResponseWriter, r *gemini.Request) {
+	flusher, ok := w.(gemini.Flusher)
+	if !ok {
+		w.Status(gemini.StatusTemporaryFailure)
+		return
+	}
+
 	ch := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -63,7 +69,7 @@ func stream(w gemini.ResponseWriter, r *gemini.Request) {
 			break
 		}
 		fmt.Fprintln(w, s)
-		if err := w.Flush(); err != nil {
+		if err := flusher.Flush(); err != nil {
 			cancel()
 			return
 		}

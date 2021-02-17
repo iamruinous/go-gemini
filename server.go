@@ -376,7 +376,7 @@ func (srv *Server) respond(conn net.Conn) {
 		conn.SetWriteDeadline(time.Now().Add(d))
 	}
 
-	w := NewResponseWriter(conn)
+	w := newResponseWriter(conn)
 
 	req, err := ReadRequest(conn)
 	if err != nil {

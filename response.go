@@ -156,11 +156,16 @@ type ResponseWriter interface {
 	// Write writes the response header if it has not already been written.
 	// It writes a successful status code if one is not set.
 	Write([]byte) (int, error)
+}
 
-	// Flush writes any buffered data to the underlying io.Writer.
-	//
-	// Flush writes the response header if it has not already been written.
-	// It writes a failure status code if one is not set.
+// The Flusher interface is implemented by ResponseWriters that allow a
+// Gemini handler to flush buffered data to the client.
+//
+// The default Gemini ResponseWriter implementation supports Flusher,
+// but ResponseWriter wrappers may not. Handlers should always test
+// for this ability at runtime.
+type Flusher interface {
+	// Flush sends any buffered data to the client.
 	Flush() error
 }
 
@@ -174,6 +179,10 @@ type responseWriter struct {
 
 // NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
 func NewResponseWriter(w io.Writer) ResponseWriter {
+	return newResponseWriter(w)
+}
+
+func newResponseWriter(w io.Writer) *responseWriter {
 	return &responseWriter{
 		b: bufio.NewWriter(w),
 	}
