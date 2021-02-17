@@ -22,16 +22,16 @@ const (
 	StatusCertificateNotValid      = 62
 )
 
-// StatusClass returns the status class for this status code.
+// StatusClass returns the status class for the provided status code.
 // 1x becomes 10, 2x becomes 20, and so on.
-func StatusClass(status int) int {
-	return (status / 10) * 10
+func StatusClass(code int) int {
+	return (code / 10) * 10
 }
 
 // StatusText returns a text for the provided status code.
 // It returns the empty string if the status code is unknown.
-func StatusText(status int) string {
-	switch status {
+func StatusText(code int) string {
+	switch code {
 	case StatusInput:
 		return "Input"
 	case StatusSensitiveInput:
@@ -39,7 +39,7 @@ func StatusText(status int) string {
 	case StatusSuccess:
 		return "Success"
 	case StatusRedirect:
-		return "Reidrect"
+		return "Redirect"
 	case StatusPermanentRedirect:
 		return "Permanent redirect"
 	case StatusTemporaryFailure:
