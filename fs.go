@@ -60,9 +60,45 @@ func serveContent(w ResponseWriter, name string, content io.Reader) {
 // relative to the current directory and may ascend to parent directories. If
 // the provided name is constructed from user input, it should be sanitized
 // before calling ServeFile.
+//
+// As a precaution, ServeFile will reject requests where r.URL.Path contains a
+// ".." path element; this protects against callers who might unsafely use
+// filepath.Join on r.URL.Path without sanitizing it and then use that
+// filepath.Join result as the name argument.
+//
+// As another special case, ServeFile redirects any request where r.URL.Path
+// ends in "/index.gmi" to the same path, without the final "index.gmi". To
+// avoid such redirects either modify the path or use ServeContent.
+//
+// Outside of those two special cases, ServeFile does not use r.URL.Path for
+// selecting the file or directory to serve; only the file or directory
+// provided in the name argument is used.
 func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
+	if containsDotDot(r.URL.Path) {
+		// Too many programs use r.URL.Path to construct the argument to
+		// serveFile. Reject the request under the assumption that happened
+		// here and ".." may not be wanted.
+		// Note that name might not contain "..", for example if code (still
+		// incorrectly) used filepath.Join(myDir, r.URL.Path).
+		w.Header(StatusBadRequest, "invalid URL path")
+		return
+	}
 	serveFile(w, r, fsys, name, false)
 }
+
+func containsDotDot(v string) bool {
+	if !strings.Contains(v, "..") {
+		return false
+	}
+	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
+		if ent == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
 func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
 	const indexPage = "/index.gmi"
