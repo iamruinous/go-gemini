@@ -23,6 +23,9 @@ type Server struct {
 	// See net.Dial for details of the address format.
 	Addr string
 
+	// The Handler to invoke.
+	Handler Handler
+
 	// ReadTimeout is the maximum duration for reading the entire
 	// request.
 	//
@@ -48,64 +51,10 @@ type Server struct {
 	// If nil, logging is done via the log package's standard logger.
 	ErrorLog *log.Logger
 
-	// registered handlers
-	handlers map[handlerKey]Handler
-	hosts    map[string]bool
-	hmu      sync.Mutex
-
 	listeners map[*net.Listener]struct{}
 	conns     map[*net.Conn]struct{}
 	done      int32
 	mu        sync.Mutex
-}
-
-type handlerKey struct {
-	scheme   string
-	hostname string
-}
-
-// Handle registers the handler for the given pattern.
-// If a handler already exists for pattern, Handle panics.
-//
-// The pattern must be in the form of "hostname" or "scheme://hostname".
-// If no scheme is specified, a scheme of "gemini://" is implied.
-// Wildcard patterns are supported (e.g. "*.example.com").
-// To handle any hostname, use the wildcard pattern "*".
-func (srv *Server) Handle(pattern string, handler Handler) {
-	srv.hmu.Lock()
-	defer srv.hmu.Unlock()
-
-	if pattern == "" {
-		panic("gemini: invalid pattern")
-	}
-	if handler == nil {
-		panic("gemini: nil handler")
-	}
-	if srv.handlers == nil {
-		srv.handlers = map[handlerKey]Handler{}
-		srv.hosts = map[string]bool{}
-	}
-
-	split := strings.SplitN(pattern, "://", 2)
-	var key handlerKey
-	if len(split) == 2 {
-		key.scheme = split[0]
-		key.hostname = split[1]
-	} else {
-		key.scheme = "gemini"
-		key.hostname = split[0]
-	}
-
-	if _, ok := srv.handlers[key]; ok {
-		panic("gemini: multiple registrations for " + pattern)
-	}
-	srv.handlers[key] = handler
-	srv.hosts[key.hostname] = true
-}
-
-// HandleFunc registers the handler function for the given pattern.
-func (srv *Server) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
-	srv.Handle(pattern, HandlerFunc(handler))
 }
 
 // ListenAndServe listens for requests at the server's configured address.
@@ -314,9 +263,7 @@ func (srv *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, err
 // If no certificate is found in the certificate store or the certificate
 // is expired, it calls GetCertificate to retrieve a new certificate.
 func (srv *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
-	srv.hmu.Lock()
-	_, ok := srv.hosts[pattern]
-	srv.hmu.Unlock()
+	_, ok := srv.Certificates.Lookup(pattern)
 	if !ok {
 		return nil, errors.New("hostname not registered")
 	}
@@ -394,7 +341,7 @@ func (srv *Server) respond(conn net.Conn) {
 	// Store remote address
 	req.RemoteAddr = conn.RemoteAddr()
 
-	h := srv.handler(req)
+	h := srv.Handler
 	if h == nil {
 		w.WriteHeader(StatusNotFound, "Not found")
 		w.Flush()
@@ -403,24 +350,6 @@ func (srv *Server) respond(conn net.Conn) {
 
 	h.ServeGemini(w, req)
 	w.Flush()
-}
-
-func (srv *Server) handler(r *Request) Handler {
-	srv.hmu.Lock()
-	defer srv.hmu.Unlock()
-	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, r.URL.Hostname()}]; ok {
-		return h
-	}
-	wildcard := strings.SplitN(r.URL.Hostname(), ".", 2)
-	if len(wildcard) == 2 {
-		if h, ok := srv.handlers[handlerKey{r.URL.Scheme, "*." + wildcard[1]}]; ok {
-			return h
-		}
-	}
-	if h, ok := srv.handlers[handlerKey{r.URL.Scheme, "*"}]; ok {
-		return h
-	}
-	return nil
 }
 
 func (srv *Server) logf(format string, args ...interface{}) {
