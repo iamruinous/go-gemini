@@ -31,7 +31,10 @@ func main() {
 		})
 	}
 
-	server.HandleFunc("localhost", stream)
+	var mux gemini.ServeMux
+	mux.HandleFunc("/", stream)
+	server.Handler = &mux
+
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

@@ -33,9 +33,9 @@ func main() {
 	}
 
 	var mux gemini.ServeMux
-	mux.Handle("/", gemini.FileServer(os.DirFS("/var/www")))
+	mux.Handle("localhost", gemini.FileServer(os.DirFS("/var/www")))
+	server.Handler = &mux
 
-	server.Handle("localhost", &mux)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
