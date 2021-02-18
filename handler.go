@@ -39,13 +39,13 @@ func (f HandlerFunc) ServeGemini(w ResponseWriter, r *Request) {
 //
 // The provided code should be in the 3x range and is usually
 // StatusRedirect or StatusPermanentRedirect.
-func RedirectHandler(url string, code int) Handler {
-	return &redirectHandler{url, code}
+func RedirectHandler(code int, url string) Handler {
+	return &redirectHandler{code, url}
 }
 
 type redirectHandler struct {
-	url  string
 	code int
+	url  string
 }
 
 func (h *redirectHandler) ServeGemini(w ResponseWriter, r *Request) {
