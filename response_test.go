@@ -6,13 +6,14 @@ import (
 	"testing"
 )
 
-func TestReadResponse(t *testing.T) {
+func TestReadWriteResponse(t *testing.T) {
 	tests := []struct {
-		Raw    string
-		Status int
-		Meta   string
-		Body   string
-		Err    error
+		Raw       string
+		Status    int
+		Meta      string
+		Body      string
+		Err       error
+		SkipWrite bool
 	}{
 		{
 			Raw:    "20 text/gemini\r\nHello, world!\nWelcome to my capsule.",
@@ -31,9 +32,10 @@ func TestReadResponse(t *testing.T) {
 			Meta:   "/redirect",
 		},
 		{
-			Raw:    "31 /redirect\r\nThis body is ignored.",
-			Status: 31,
-			Meta:   "/redirect",
+			Raw:       "31 /redirect\r\nThis body is ignored.",
+			Status:    31,
+			Meta:      "/redirect",
+			SkipWrite: true, // skip write test since result won't match Raw
 		},
 		{
 			Raw:    "99 Unknown status code\r\n",
@@ -98,6 +100,28 @@ func TestReadResponse(t *testing.T) {
 		body := string(b)
 		if body != test.Body {
 			t.Errorf("expected body = %#v, got %#v", test.Body, body)
+		}
+	}
+
+	for _, test := range tests {
+		if test.Err != nil || test.SkipWrite {
+			continue
+		}
+		resp := &Response{
+			Status: test.Status,
+			Meta:   test.Meta,
+			Body:   io.NopCloser(strings.NewReader(test.Body)),
+		}
+
+		var b strings.Builder
+		if err := resp.Write(&b); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		got := b.String()
+		if got != test.Raw {
+			t.Errorf("expected %#v, got %#v", test.Raw, got)
 		}
 	}
 }

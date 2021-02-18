@@ -3,6 +3,7 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"strconv"
 )
@@ -133,6 +134,24 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 		return n, err
 	}
 	return b.ReadCloser.Read(p)
+}
+
+// Write writes r to w in the Gemini response format, including the
+// header and body.
+//
+// This method consults the Status, Meta, and Body fields of the response.
+// The Response Body is closed after it is sent.
+func (r *Response) Write(w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "%02d %s\r\n", r.Status, r.Meta); err != nil {
+		return err
+	}
+	if r.Body != nil {
+		defer r.Body.Close()
+		if _, err := io.Copy(w, r.Body); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // A ResponseWriter interface is used by a Gemini handler to construct
