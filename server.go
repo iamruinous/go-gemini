@@ -430,32 +430,3 @@ func (srv *Server) logf(format string, args ...interface{}) {
 		log.Printf(format, args...)
 	}
 }
-
-// A Handler responds to a Gemini request.
-//
-// ServeGemini should write the response header and data to the ResponseWriter
-// and then return. Returning signals that the request is finished; it is not
-// valid to use the ResponseWriter after or concurrently with the completion
-// of the ServeGemini call.
-//
-// Handlers should not modify the provided Request.
-//
-// If ServeGemini panics, the server (the caller of ServeGemini) assumes that
-// the effect of the panic was isolated to the active request. It recovers
-// the panic, logs a stack trace to the server error log, and closes the
-// network connection. To abort a handler so the client sees an interrupted
-// response but the server doesn't log an error, panic with the value
-// ErrAbortHandler.
-type Handler interface {
-	ServeGemini(ResponseWriter, *Request)
-}
-
-// The HandlerFunc type is an adapter to allow the use of ordinary functions
-// as Gemini handlers. If f is a function with the appropriate signature,
-// HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
-
-// ServeGemini calls f(w, r).
-func (f HandlerFunc) ServeGemini(w ResponseWriter, r *Request) {
-	f(w, r)
-}
