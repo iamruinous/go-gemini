@@ -219,6 +219,10 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *responseWriter) WriteHeader(statusCode int, meta string) {
+	if w.wroteHeader {
+		return
+	}
+
 	if StatusClass(statusCode) == StatusSuccess {
 		w.bodyAllowed = true
 	}
