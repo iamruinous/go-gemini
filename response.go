@@ -167,7 +167,7 @@ type ResponseWriter interface {
 	// The provided code must be a valid Gemini status code.
 	// The provided meta must not be longer than 1024 bytes.
 	// Only one header may be written.
-	WriteHeader(statusCode int, meta string)
+	WriteHeader(status int, meta string)
 }
 
 // The Flusher interface is implemented by ResponseWriters that allow a
@@ -218,16 +218,16 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *responseWriter) WriteHeader(statusCode int, meta string) {
+func (w *responseWriter) WriteHeader(status int, meta string) {
 	if w.wroteHeader {
 		return
 	}
 
-	if StatusClass(statusCode) == StatusSuccess {
+	if StatusClass(status) == StatusSuccess {
 		w.bodyAllowed = true
 	}
 
-	w.b.WriteString(strconv.Itoa(statusCode))
+	w.b.WriteString(strconv.Itoa(status))
 	w.b.WriteByte(' ')
 	w.b.WriteString(meta)
 	w.b.Write(crlf)
