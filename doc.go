@@ -1,5 +1,5 @@
 /*
-Package gemini implements the Gemini protocol.
+Package gemini provides Gemini client and server implementations.
 
 Client is a Gemini client.
 
@@ -25,17 +25,20 @@ Servers should be configured with certificates:
 		// handle error
 	}
 
-Servers can accept requests for multiple hosts and schemes:
+ServeMux is a Gemini request multiplexer.
+ServeMux can handle requests for multiple hosts and schemes.
 
-	server.RegisterFunc("example.com", func(w gemini.ResponseWriter, r *gemini.Request) {
+	mux := &gemini.ServeMux{}
+	mux.HandleFunc("example.com", func(w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Welcome to example.com")
 	})
-	server.RegisterFunc("example.org", func(w gemini.ResponseWriter, r *gemini.Request) {
-		fmt.Fprint(w, "Welcome to example.org")
+	mux.HandleFunc("example.org/about.gmi", func(w gemini.ResponseWriter, r *gemini.Request) {
+		fmt.Fprint(w, "About example.org")
 	})
-	server.RegisterFunc("http://example.net", func(w gemini.ResponseWriter, r *gemini.Request) {
+	mux.HandleFunc("http://example.net", func(w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Proxied content from http://example.net")
 	})
+	server.Handler = mux
 
 To start the server, call ListenAndServe:
 
