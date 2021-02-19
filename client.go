@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -157,9 +156,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 
 func (c *Client) do(conn *tls.Conn, req *Request) (*Response, error) {
 	// Write the request
-	w := bufio.NewWriter(conn)
-
-	err := req.Write(w)
+	err := req.Write(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}

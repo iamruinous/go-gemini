@@ -107,16 +107,17 @@ func ReadRequest(r io.Reader) (*Request, error) {
 
 // Write writes a Gemini request in wire format.
 // This method consults the request URL only.
-func (r *Request) Write(w *bufio.Writer) error {
+func (r *Request) Write(w io.Writer) error {
+	bw := bufio.NewWriterSize(w, 1026)
 	url := r.URL.String()
 	if len(url) > 1024 {
 		return ErrInvalidRequest
 	}
-	if _, err := w.WriteString(url); err != nil {
+	if _, err := bw.WriteString(url); err != nil {
 		return err
 	}
-	if _, err := w.Write(crlf); err != nil {
+	if _, err := bw.Write(crlf); err != nil {
 		return err
 	}
-	return w.Flush()
+	return bw.Flush()
 }
