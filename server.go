@@ -7,12 +7,9 @@ import (
 	"log"
 	"net"
 	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"git.sr.ht/~adnano/go-gemini/certificate"
 )
 
 // A Server defines parameters for running a Gemini server. The zero value for
@@ -38,13 +35,9 @@ type Server struct {
 	// A WriteTimeout of zero means no timeout.
 	WriteTimeout time.Duration
 
-	// Certificates contains one or more certificates to present to the
-	// other side of the connection.
-	Certificates certificate.Dir
-
 	// GetCertificate, if not nil, will be called to retrieve a new certificate
 	// if the current one is expired or missing.
-	GetCertificate func(hostname string) (tls.Certificate, error)
+	GetCertificate func(hostname string) (*tls.Certificate, error)
 
 	// ErrorLog specifies an optional logger for errors accepting connections,
 	// unexpected behavior from handlers, and underlying file system errors.
@@ -237,52 +230,11 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 	}
 }
 
-// getCertificate retrieves a certificate for the given client hello.
 func (srv *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	cert, err := srv.lookupCertificate(h.ServerName, h.ServerName)
-	if err != nil {
-		// Try wildcard
-		wildcard := strings.SplitN(h.ServerName, ".", 2)
-		if len(wildcard) == 2 {
-			// Use the wildcard pattern as the hostname.
-			hostname := "*." + wildcard[1]
-			cert, err = srv.lookupCertificate(hostname, hostname)
-		}
-		// Try "*" wildcard
-		if err != nil {
-			// Use the server name as the hostname
-			// since "*" is not a valid hostname.
-			cert, err = srv.lookupCertificate("*", h.ServerName)
-		}
+	if srv.GetCertificate == nil {
+		return nil, errors.New("gemini: GetCertificate is nil")
 	}
-	return cert, err
-}
-
-// lookupCertificate retrieves the certificate for the given hostname,
-// if and only if the provided pattern is registered.
-// If no certificate is found in the certificate store or the certificate
-// is expired, it calls GetCertificate to retrieve a new certificate.
-func (srv *Server) lookupCertificate(pattern, hostname string) (*tls.Certificate, error) {
-	_, ok := srv.Certificates.Lookup(pattern)
-	if !ok {
-		return nil, errors.New("hostname not registered")
-	}
-
-	cert, ok := srv.Certificates.Lookup(hostname)
-	if !ok || cert.Leaf != nil && cert.Leaf.NotAfter.Before(time.Now()) {
-		if srv.GetCertificate != nil {
-			cert, err := srv.GetCertificate(hostname)
-			if err == nil {
-				if err := srv.Certificates.Add(hostname, cert); err != nil {
-					srv.logf("gemini: Failed to write new certificate for %s: %s", hostname, err)
-				}
-			}
-			return &cert, err
-		}
-		return nil, errors.New("no certificate")
-	}
-
-	return &cert, nil
+	return srv.GetCertificate(h.ServerName)
 }
 
 func (srv *Server) trackConn(conn *net.Conn) {
