@@ -219,6 +219,9 @@ func (mux *ServeMux) ServeGemini(w ResponseWriter, r *Request) {
 // Handle registers the handler for the given pattern.
 // If a handler already exists for pattern, Handle panics.
 func (mux *ServeMux) Handle(pattern string, handler Handler) {
+	if pattern == "" {
+		panic("gemini: invalid pattern")
+	}
 	if handler == nil {
 		panic("gemini: nil handler")
 	}
