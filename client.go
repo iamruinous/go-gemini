@@ -164,10 +164,6 @@ func (c *Client) do(conn *tls.Conn, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
-	if err := w.Flush(); err != nil {
-		return nil, err
-	}
-
 	// Read the response
 	resp, err := ReadResponse(conn)
 	if err != nil {
