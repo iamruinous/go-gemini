@@ -118,5 +118,5 @@ func (r *Request) Write(w *bufio.Writer) error {
 	if _, err := w.Write(crlf); err != nil {
 		return err
 	}
-	return nil
+	return w.Flush()
 }
