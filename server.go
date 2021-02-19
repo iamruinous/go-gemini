@@ -35,8 +35,11 @@ type Server struct {
 	// A WriteTimeout of zero means no timeout.
 	WriteTimeout time.Duration
 
-	// GetCertificate, if not nil, will be called to retrieve a new certificate
-	// if the current one is expired or missing.
+	// GetCertificate returns a TLS certificate based on the given
+	// hostname.
+	//
+	// If GetCertificate is nil or returns nil, then no certificate
+	// will be used and the connection will be aborted.
 	GetCertificate func(hostname string) (*tls.Certificate, error)
 
 	// ErrorLog specifies an optional logger for errors accepting connections,
