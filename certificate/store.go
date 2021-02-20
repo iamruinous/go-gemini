@@ -90,6 +90,10 @@ func (s *Store) GetCertificate(scope string) (*tls.Certificate, error) {
 		}
 	}
 	if !ok {
+		// Try "*"
+		_, ok = s.Lookup("*")
+	}
+	if !ok {
 		return nil, errors.New("unrecognized scope")
 	}
 
