@@ -5,8 +5,6 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509/pkix"
 	"log"
 	"os"
 	"time"
@@ -16,17 +14,7 @@ import (
 )
 
 func main() {
-	certificates := &certificate.Store{
-		CreateCertificate: func(hostname string) (tls.Certificate, error) {
-			return certificate.Create(certificate.CreateOptions{
-				Subject: pkix.Name{
-					CommonName: hostname,
-				},
-				DNSNames: []string{hostname},
-				Duration: 365 * 24 * time.Hour,
-			})
-		},
-	}
+	certificates := &certificate.Store{}
 	certificates.Register("localhost")
 	if err := certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)

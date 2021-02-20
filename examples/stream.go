@@ -6,8 +6,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509/pkix"
 	"fmt"
 	"log"
 	"time"
@@ -17,23 +15,21 @@ import (
 )
 
 func main() {
-	var server gemini.Server
-	if err := server.Certificates.Load("/var/lib/gemini/certs"); err != nil {
+	certificates := &certificate.Store{}
+	certificates.Register("localhost")
+	if err := certificates.Load("/var/lib/gemini/certs"); err != nil {
 		log.Fatal(err)
 	}
-	server.GetCertificate = func(hostname string) (tls.Certificate, error) {
-		return certificate.Create(certificate.CreateOptions{
-			Subject: pkix.Name{
-				CommonName: hostname,
-			},
-			DNSNames: []string{hostname},
-			Duration: 365 * 24 * time.Hour,
-		})
-	}
 
-	var mux gemini.ServeMux
+	mux := &gemini.ServeMux{}
 	mux.HandleFunc("/", stream)
-	server.Handler = &mux
+
+	server := &gemini.Server{
+		Handler:        mux,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   1 * time.Minute,
+		GetCertificate: certificates.GetCertificate,
+	}
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
@@ -41,7 +37,7 @@ func main() {
 }
 
 // stream writes an infinite stream to w.
-func stream(w gemini.ResponseWriter, r *gemini.Request) {
+func stream(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 	flusher, ok := w.(gemini.Flusher)
 	if !ok {
 		w.WriteHeader(gemini.StatusTemporaryFailure, "Internal error")
@@ -49,7 +45,7 @@ func stream(w gemini.ResponseWriter, r *gemini.Request) {
 	}
 
 	ch := make(chan string)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	go func(ctx context.Context) {
 		for {
