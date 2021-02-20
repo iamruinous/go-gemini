@@ -20,7 +20,6 @@ import (
 
 	"git.sr.ht/~adnano/go-gemini"
 	"git.sr.ht/~adnano/go-gemini/tofu"
-	"git.sr.ht/~adnano/go-xdg"
 )
 
 var (
@@ -29,9 +28,16 @@ var (
 	scanner   *bufio.Scanner
 )
 
+func xdgDataHome() string {
+	if s, ok := os.LookupEnv("XDG_DATA_HOME"); ok {
+		return s
+	}
+	return filepath.Join(os.Getenv("HOME"), ".local", "share")
+}
+
 func init() {
 	// Load known hosts file
-	path := filepath.Join(xdg.DataHome(), "gemini", "known_hosts")
+	path := filepath.Join(xdgDataHome(), "gemini", "known_hosts")
 	err := hosts.Load(path)
 	if err != nil {
 		log.Fatal(err)
