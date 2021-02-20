@@ -3,6 +3,7 @@ package certificate
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -17,7 +18,8 @@ import (
 // Store is safe for concurrent use by multiple goroutines.
 type Store struct {
 	// CreateCertificate, if not nil, is called to create a new certificate
-	// to replace a missing or expired certificate.
+	// to replace a missing or expired certificate. If CreateCertificate
+	// is nil, a certificate with a duration of 1 year will be created.
 	CreateCertificate func(scope string) (tls.Certificate, error)
 
 	certs map[string]tls.Certificate
@@ -92,22 +94,31 @@ func (s *Store) GetCertificate(scope string) (*tls.Certificate, error) {
 	}
 
 	// If the certificate is empty or expired, generate a new one.
-	// TODO: Add sane defaults for certificate generation
 	if cert.Leaf == nil || cert.Leaf.NotAfter.Before(time.Now()) {
-		if s.CreateCertificate != nil {
-			cert, err := s.CreateCertificate(scope)
-			if err != nil {
-				return nil, err
-			}
-			if err := s.Add(scope, cert); err != nil {
-				return nil, fmt.Errorf("failed to write new certificate for %s: %w", scope, err)
-			}
-			return &cert, nil
+		var err error
+		cert, err = s.createCertificate(scope)
+		if err != nil {
+			return nil, err
 		}
-		return nil, errors.New("no suitable certificate found")
+		if err := s.Add(scope, cert); err != nil {
+			return nil, fmt.Errorf("failed to add certificate for %s: %w", scope, err)
+		}
 	}
 
 	return &cert, nil
+}
+
+func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
+	if s.CreateCertificate != nil {
+		return s.CreateCertificate(scope)
+	}
+	return Create(CreateOptions{
+		DNSNames: []string{scope},
+		Subject: pkix.Name{
+			CommonName: scope,
+		},
+		Duration: 365 * 24 * time.Hour,
+	})
 }
 
 // Load loads certificates from the provided path.
