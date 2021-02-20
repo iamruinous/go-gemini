@@ -1,13 +1,14 @@
 package gemini
 
 import (
+	"context"
 	"net/url"
 	"testing"
 )
 
 type nopHandler struct{}
 
-func (*nopHandler) ServeGemini(ResponseWriter, *Request) {}
+func (*nopHandler) ServeGemini(context.Context, ResponseWriter, *Request) {}
 
 func TestServeMuxMatch(t *testing.T) {
 	type Match struct {

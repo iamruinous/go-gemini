@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"context"
 	"net/url"
 	"strings"
 )
@@ -21,17 +22,17 @@ import (
 // response but the server doesn't log an error, panic with the value
 // ErrAbortHandler.
 type Handler interface {
-	ServeGemini(ResponseWriter, *Request)
+	ServeGemini(context.Context, ResponseWriter, *Request)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions
 // as Gemini handlers. If f is a function with the appropriate signature,
 // HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(ResponseWriter, *Request)
+type HandlerFunc func(context.Context, ResponseWriter, *Request)
 
-// ServeGemini calls f(w, r).
-func (f HandlerFunc) ServeGemini(w ResponseWriter, r *Request) {
-	f(w, r)
+// ServeGemini calls f(ctx, w, r).
+func (f HandlerFunc) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
+	f(ctx, w, r)
 }
 
 // RedirectHandler returns a request handler that redirects each request it
@@ -48,12 +49,12 @@ type redirectHandler struct {
 	url  string
 }
 
-func (h *redirectHandler) ServeGemini(w ResponseWriter, r *Request) {
+func (h *redirectHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	w.WriteHeader(h.code, h.url)
 }
 
 // NotFound replies to the request with a Gemini 51 not found error.
-func NotFound(w ResponseWriter, r *Request) {
+func NotFound(ctx context.Context, w ResponseWriter, r *Request) {
 	w.WriteHeader(StatusNotFound, "Not found")
 }
 
@@ -73,7 +74,7 @@ func StripPrefix(prefix string, h Handler) Handler {
 	if prefix == "" {
 		return h
 	}
-	return HandlerFunc(func(w ResponseWriter, r *Request) {
+	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
 		p := strings.TrimPrefix(r.URL.Path, prefix)
 		rp := strings.TrimPrefix(r.URL.RawPath, prefix)
 		if len(p) < len(r.URL.Path) && (r.URL.RawPath == "" || len(rp) < len(r.URL.RawPath)) {
@@ -83,9 +84,9 @@ func StripPrefix(prefix string, h Handler) Handler {
 			*r2.URL = *r.URL
 			r2.URL.Path = p
 			r2.URL.RawPath = rp
-			h.ServeGemini(w, r2)
+			h.ServeGemini(ctx, w, r2)
 		} else {
-			NotFound(w, r)
+			NotFound(ctx, w, r)
 		}
 	})
 }

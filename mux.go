@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"path"
@@ -211,9 +212,9 @@ func (mux *ServeMux) Handler(r *Request) Handler {
 
 // ServeGemini dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) ServeGemini(w ResponseWriter, r *Request) {
+func (mux *ServeMux) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	h := mux.Handler(r)
-	h.ServeGemini(w, r)
+	h.ServeGemini(ctx, w, r)
 }
 
 // Handle registers the handler for the given pattern.
@@ -293,7 +294,7 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
+func (mux *ServeMux) HandleFunc(pattern string, handler func(context.Context, ResponseWriter, *Request)) {
 	if handler == nil {
 		panic("gemini: nil handler")
 	}

@@ -303,7 +303,9 @@ func (srv *Server) respond(conn net.Conn) {
 		return
 	}
 
-	h.ServeGemini(w, req)
+	// TODO: Allow configuring the server context
+	ctx := context.Background()
+	h.ServeGemini(ctx, w, req)
 	w.Flush()
 }
 

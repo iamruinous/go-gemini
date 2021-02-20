@@ -27,7 +27,7 @@ type timeoutHandler struct {
 	dt time.Duration
 }
 
-func (t *timeoutHandler) ServeGemini(w ResponseWriter, r *Request) {
+func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	ctx, cancel := context.WithTimeout(context.TODO(), t.dt)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func (t *timeoutHandler) ServeGemini(w ResponseWriter, r *Request) {
 				panicChan <- p
 			}
 		}()
-		t.h.ServeGemini(tw, r)
+		t.h.ServeGemini(ctx, tw, r)
 		close(done)
 	}()
 
