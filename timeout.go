@@ -66,7 +66,7 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 type timeoutWriter struct {
 	mu          sync.Mutex
 	b           bytes.Buffer
-	status      int
+	status      Status
 	meta        string
 	mediatype   string
 	wroteHeader bool
@@ -91,7 +91,7 @@ func (w *timeoutWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *timeoutWriter) WriteHeader(status int, meta string) {
+func (w *timeoutWriter) WriteHeader(status Status, meta string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.timedOut {
@@ -100,7 +100,7 @@ func (w *timeoutWriter) WriteHeader(status int, meta string) {
 	w.writeHeaderLocked(status, meta)
 }
 
-func (w *timeoutWriter) writeHeaderLocked(status int, meta string) {
+func (w *timeoutWriter) writeHeaderLocked(status Status, meta string) {
 	if w.wroteHeader {
 		return
 	}

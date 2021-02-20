@@ -38,19 +38,19 @@ func (f HandlerFunc) ServeGemini(ctx context.Context, w ResponseWriter, r *Reque
 // RedirectHandler returns a request handler that redirects each request it
 // receives to the given url using the given status code.
 //
-// The provided code should be in the 3x range and is usually
+// The provided status code should be in the 3x range and is usually
 // StatusRedirect or StatusPermanentRedirect.
-func RedirectHandler(code int, url string) Handler {
-	return &redirectHandler{code, url}
+func RedirectHandler(status Status, url string) Handler {
+	return &redirectHandler{status, url}
 }
 
 type redirectHandler struct {
-	code int
-	url  string
+	status Status
+	url    string
 }
 
 func (h *redirectHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
-	w.WriteHeader(h.code, h.url)
+	w.WriteHeader(h.status, h.url)
 }
 
 // NotFound replies to the request with a Gemini 51 not found error.

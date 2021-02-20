@@ -9,7 +9,7 @@ import (
 func TestReadWriteResponse(t *testing.T) {
 	tests := []struct {
 		Raw       string
-		Status    int
+		Status    Status
 		Meta      string
 		Body      string
 		Err       error

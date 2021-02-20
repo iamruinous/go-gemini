@@ -1,37 +1,40 @@
 package gemini
 
+// Status represents a Gemini status code.
+type Status int
+
 // Gemini status codes.
 const (
-	StatusInput                    = 10
-	StatusSensitiveInput           = 11
-	StatusSuccess                  = 20
-	StatusRedirect                 = 30
-	StatusPermanentRedirect        = 31
-	StatusTemporaryFailure         = 40
-	StatusServerUnavailable        = 41
-	StatusCGIError                 = 42
-	StatusProxyError               = 43
-	StatusSlowDown                 = 44
-	StatusPermanentFailure         = 50
-	StatusNotFound                 = 51
-	StatusGone                     = 52
-	StatusProxyRequestRefused      = 53
-	StatusBadRequest               = 59
-	StatusCertificateRequired      = 60
-	StatusCertificateNotAuthorized = 61
-	StatusCertificateNotValid      = 62
+	StatusInput                    Status = 10
+	StatusSensitiveInput           Status = 11
+	StatusSuccess                  Status = 20
+	StatusRedirect                 Status = 30
+	StatusPermanentRedirect        Status = 31
+	StatusTemporaryFailure         Status = 40
+	StatusServerUnavailable        Status = 41
+	StatusCGIError                 Status = 42
+	StatusProxyError               Status = 43
+	StatusSlowDown                 Status = 44
+	StatusPermanentFailure         Status = 50
+	StatusNotFound                 Status = 51
+	StatusGone                     Status = 52
+	StatusProxyRequestRefused      Status = 53
+	StatusBadRequest               Status = 59
+	StatusCertificateRequired      Status = 60
+	StatusCertificateNotAuthorized Status = 61
+	StatusCertificateNotValid      Status = 62
 )
 
-// StatusClass returns the status class for the provided status code.
+// Class returns the status class for the status code.
 // 1x becomes 10, 2x becomes 20, and so on.
-func StatusClass(code int) int {
-	return (code / 10) * 10
+func (s Status) Class() Status {
+	return (s / 10) * 10
 }
 
-// StatusText returns a text for the provided status code.
+// String returns a text for the status code.
 // It returns the empty string if the status code is unknown.
-func StatusText(code int) string {
-	switch code {
+func (s Status) String() string {
+	switch s {
 	case StatusInput:
 		return "Input"
 	case StatusSensitiveInput:

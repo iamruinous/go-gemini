@@ -18,7 +18,7 @@ const defaultMediaType = "text/gemini; charset=utf-8"
 // as the Body field is read.
 type Response struct {
 	// Status contains the response status code.
-	Status int
+	Status Status
 
 	// Meta contains more information related to the response status.
 	// For successful responses, Meta should contain the media type of the response.
@@ -57,7 +57,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	if err != nil {
 		return nil, ErrInvalidResponse
 	}
-	resp.Status = status
+	resp.Status = Status(status)
 
 	// Read one space
 	if b, err := br.ReadByte(); err != nil {
@@ -77,7 +77,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	if len(meta) > 1024 {
 		return nil, ErrInvalidResponse
 	}
-	if StatusClass(status) == StatusSuccess && meta == "" {
+	if resp.Status.Class() == StatusSuccess && meta == "" {
 		// Use default media type
 		meta = defaultMediaType
 	}
@@ -90,7 +90,7 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 
-	if StatusClass(status) == StatusSuccess {
+	if resp.Status.Class() == StatusSuccess {
 		resp.Body = newReadCloserBody(br, rc)
 	} else {
 		resp.Body = nopReadCloser{}
@@ -186,7 +186,7 @@ type ResponseWriter interface {
 	// The provided code must be a valid Gemini status code.
 	// The provided meta must not be longer than 1024 bytes.
 	// Only one header may be written.
-	WriteHeader(status int, meta string)
+	WriteHeader(status Status, meta string)
 }
 
 // The Flusher interface is implemented by ResponseWriters that allow a
@@ -237,16 +237,16 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *responseWriter) WriteHeader(status int, meta string) {
+func (w *responseWriter) WriteHeader(status Status, meta string) {
 	if w.wroteHeader {
 		return
 	}
 
-	if StatusClass(status) == StatusSuccess {
+	if status.Class() == StatusSuccess {
 		w.bodyAllowed = true
 	}
 
-	w.b.WriteString(strconv.Itoa(status))
+	w.b.WriteString(strconv.Itoa(int(status)))
 	w.b.WriteByte(' ')
 	w.b.WriteString(meta)
 	w.b.Write(crlf)
