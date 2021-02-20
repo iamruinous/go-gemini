@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"io"
+	"net"
 	"net/url"
 )
 
@@ -32,12 +33,9 @@ type Request struct {
 
 	// RemoteAddr allows Gemini servers and other software to record
 	// the network address that sent the request, usually for
-	// logging. This field is not filled in by ReadRequest and
-	// has no defined format. The Gemini server in this package
-	// sets RemoteAddr to an "IP:port" address before invoking a
-	// handler.
+	// logging. This field is not filled in by ReadRequest.
 	// This field is ignored by the Gemini client.
-	RemoteAddr string
+	RemoteAddr net.Addr
 
 	// TLS allows Gemini servers and other software to record
 	// information about the TLS connection on which the request
