@@ -291,6 +291,7 @@ func (srv *Server) respond(conn net.Conn) {
 	if tlsConn, ok := conn.(*tls.Conn); ok {
 		state := tlsConn.ConnectionState()
 		req.TLS = &state
+		req.Host = state.ServerName
 	}
 
 	// Store remote address

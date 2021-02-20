@@ -23,7 +23,9 @@ type Request struct {
 	// For international domain names, Host may be in Punycode or
 	// Unicode form. Use golang.org/x/net/idna to convert it to
 	// either format if needed.
-	// This field is ignored by the Gemini server.
+	//
+	// For server requests, Host specifies the host on which the URL
+	// is sought.
 	Host string
 
 	// For client requests, Certificate optionally specifies the
