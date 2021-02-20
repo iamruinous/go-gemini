@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -90,7 +91,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 	client := gemini.Client{
 		TrustCertificate: trustCertificate,
 	}
-	resp, err := client.Do(req)
+	resp, err := client.Do(context.Background(), req)
 	if err != nil {
 		return resp, err
 	}
