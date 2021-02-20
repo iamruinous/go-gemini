@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"io"
-	"net"
 	"net/url"
 )
 
@@ -39,7 +38,7 @@ type Request struct {
 	// sets RemoteAddr to an "IP:port" address before invoking a
 	// handler.
 	// This field is ignored by the Gemini client.
-	RemoteAddr net.Addr
+	RemoteAddr string
 
 	// TLS allows Gemini servers and other software to record
 	// information about the TLS connection on which the request

@@ -294,7 +294,7 @@ func (srv *Server) respond(conn net.Conn) {
 	}
 
 	// Store remote address
-	req.RemoteAddr = conn.RemoteAddr()
+	req.RemoteAddr = conn.RemoteAddr().String()
 
 	h := srv.Handler
 	if h == nil {
