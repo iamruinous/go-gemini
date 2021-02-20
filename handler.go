@@ -53,15 +53,12 @@ func (h *redirectHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *
 	w.WriteHeader(h.status, h.url)
 }
 
-// NotFound replies to the request with a Gemini 51 not found error.
-func NotFound(ctx context.Context, w ResponseWriter, r *Request) {
-	w.WriteHeader(StatusNotFound, "Not found")
-}
-
 // NotFoundHandler returns a simple request handler that replies to each
 // request with a “51 Not found” reply.
 func NotFoundHandler() Handler {
-	return HandlerFunc(NotFound)
+	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
+		w.WriteHeader(StatusNotFound, "Not found")
+	})
 }
 
 // StripPrefix returns a handler that serves Gemini requests by removing the
@@ -86,7 +83,7 @@ func StripPrefix(prefix string, h Handler) Handler {
 			r2.URL.RawPath = rp
 			h.ServeGemini(ctx, w, r2)
 		} else {
-			NotFound(ctx, w, r)
+			w.WriteHeader(StatusNotFound, "Not found")
 		}
 	})
 }
