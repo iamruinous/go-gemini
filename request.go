@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"bufio"
-	"context"
 	"crypto/tls"
 	"io"
 	"net/url"
@@ -48,14 +47,6 @@ type Request struct {
 	// otherwise it leaves the field nil.
 	// This field is ignored by the Gemini client.
 	TLS *tls.ConnectionState
-
-	// Context specifies the context to use for outgoing requests.
-	// The context controls the entire lifetime of a request and its
-	// response: obtaining a connection, sending the request, and
-	// reading the response header and body.
-	// If Context is nil, the background context will be used.
-	// This field is ignored by the Gemini server.
-	Context context.Context
 }
 
 // NewRequest returns a new request.

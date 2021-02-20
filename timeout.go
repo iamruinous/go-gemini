@@ -28,13 +28,8 @@ type timeoutHandler struct {
 }
 
 func (t *timeoutHandler) ServeGemini(w ResponseWriter, r *Request) {
-	ctx := r.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	var cancelCtx func()
-	ctx, cancelCtx = context.WithTimeout(ctx, t.dt)
-	defer cancelCtx()
+	ctx, cancel := context.WithTimeout(context.TODO(), t.dt)
+	defer cancel()
 
 	done := make(chan struct{})
 	tw := &timeoutWriter{}
