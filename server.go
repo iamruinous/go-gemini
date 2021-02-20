@@ -47,6 +47,10 @@ type Server struct {
 	// If nil, logging is done via the log package's standard logger.
 	ErrorLog *log.Logger
 
+	// Context is the base context to use.
+	// If nil, context.Background is used.
+	Context context.Context
+
 	listeners map[*net.Listener]struct{}
 	conns     map[*net.Conn]struct{}
 	done      int32
@@ -304,10 +308,16 @@ func (srv *Server) respond(conn net.Conn) {
 		return
 	}
 
-	// TODO: Allow configuring the server context
-	ctx := context.Background()
+	ctx := srv.context()
 	h.ServeGemini(ctx, w, req)
 	w.Flush()
+}
+
+func (srv *Server) context() context.Context {
+	if srv.Context != nil {
+		return srv.Context
+	}
+	return context.Background()
 }
 
 func (srv *Server) logf(format string, args ...interface{}) {
