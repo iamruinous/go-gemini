@@ -185,13 +185,13 @@ func (mux *ServeMux) Handler(r *Request) Handler {
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
 	if u, ok := mux.redirectToPathSlash(muxKey{scheme, host, path}, r.URL); ok {
-		return RedirectHandler(StatusPermanentRedirect, u.String())
+		return StatusHandler(StatusPermanentRedirect, u.String())
 	}
 
 	if path != r.URL.Path {
 		u := *r.URL
 		u.Path = path
-		return RedirectHandler(StatusPermanentRedirect, u.String())
+		return StatusHandler(StatusPermanentRedirect, u.String())
 	}
 
 	mux.mu.RLock()
