@@ -86,8 +86,9 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	if req.Host != "" {
 		hostname, port, err = net.SplitHostPort(req.Host)
 		if err != nil {
-			// Port is required
-			return nil, err
+			// Likely no port
+			hostname = req.Host
+			port = "1965"
 		}
 		// Punycode hostname
 		hostname, err = punycodeHostname(hostname)

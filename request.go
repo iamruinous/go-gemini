@@ -19,7 +19,7 @@ type Request struct {
 	URL *url.URL
 
 	// For client requests, Host optionally specifies the server to
-	// connect to. It must be of the form "host:port".
+	// connect to. It may be of the form "host" or "host:port".
 	// If empty, the value of URL.Host is used.
 	// For international domain names, Host may be in Punycode or
 	// Unicode form. Use golang.org/x/net/idna to convert it to
