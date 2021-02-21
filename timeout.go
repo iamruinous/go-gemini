@@ -13,8 +13,6 @@ import (
 // if a call runs for longer than its time limit, the handler responds with a
 // 40 Temporary Failure error. After such a timeout, writes by h to its
 // ResponseWriter will return ErrHandlerTimeout.
-//
-// TimeoutHandler does not support the Hijacker or Flusher interfaces.
 func TimeoutHandler(h Handler, dt time.Duration) Handler {
 	return &timeoutHandler{
 		h:  h,
@@ -107,4 +105,8 @@ func (w *timeoutWriter) writeHeaderLocked(status Status, meta string) {
 	w.status = status
 	w.meta = meta
 	w.wroteHeader = true
+}
+
+func (w *timeoutWriter) Flush() error {
+	return nil
 }

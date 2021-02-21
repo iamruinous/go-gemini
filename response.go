@@ -187,15 +187,7 @@ type ResponseWriter interface {
 	// The provided meta must not be longer than 1024 bytes.
 	// Only one header may be written.
 	WriteHeader(status Status, meta string)
-}
 
-// The Flusher interface is implemented by ResponseWriters that allow a
-// Gemini handler to flush buffered data to the client.
-//
-// The default Gemini ResponseWriter implementation supports Flusher,
-// but ResponseWriter wrappers may not. Handlers should always test
-// for this ability at runtime.
-type Flusher interface {
 	// Flush sends any buffered data to the client.
 	Flush() error
 }
