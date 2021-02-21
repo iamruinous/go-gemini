@@ -20,29 +20,31 @@ Server is a Gemini server.
 
 Servers should be configured with certificates:
 
-	err := server.Certificates.Load("/var/lib/gemini/certs")
+	certificates := &certificate.Store{}
+	err := certificates.Load("/var/lib/gemini/certs")
 	if err != nil {
 		// handle error
 	}
+	server.GetCertificate = certificates.GetCertificate
 
 ServeMux is a Gemini request multiplexer.
 ServeMux can handle requests for multiple hosts and schemes.
 
 	mux := &gemini.ServeMux{}
-	mux.HandleFunc("example.com", func(w gemini.ResponseWriter, r *gemini.Request) {
+	mux.HandleFunc("example.com", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Welcome to example.com")
 	})
-	mux.HandleFunc("example.org/about.gmi", func(w gemini.ResponseWriter, r *gemini.Request) {
+	mux.HandleFunc("example.org/about.gmi", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "About example.org")
 	})
-	mux.HandleFunc("http://example.net", func(w gemini.ResponseWriter, r *gemini.Request) {
+	mux.HandleFunc("http://example.net", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Proxied content from http://example.net")
 	})
 	server.Handler = mux
 
 To start the server, call ListenAndServe:
 
-	err := server.ListenAndServe()
+	err := server.ListenAndServe(context.Background())
 	if err != nil {
 		// handle error
 	}
