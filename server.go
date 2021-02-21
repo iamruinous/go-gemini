@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -48,9 +49,15 @@ type Server struct {
 	listeners map[*net.Listener]context.CancelFunc
 	conns     map[*net.Conn]context.CancelFunc
 	doneChan  chan struct{}
-	closed    bool
+	status    int32
 	mu        sync.Mutex
 }
+
+const (
+	serverOk int32 = iota
+	serverShutdown
+	serverClosed
+)
 
 // done returns a channel that's closed when the server has finished closing.
 func (srv *Server) done() chan struct{} {
@@ -66,20 +73,16 @@ func (srv *Server) doneLocked() chan struct{} {
 	return srv.doneChan
 }
 
-func (srv *Server) isClosed() bool {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	return srv.closed
+// rejectingListeners reports whether the server is rejecting new listeners
+// (e.g. after Shutdown or Close has been called).
+func (srv *Server) rejectingListeners() bool {
+	return atomic.LoadInt32(&srv.status) != serverOk
 }
 
-func (srv *Server) tryClose() bool {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	if srv.closed {
-		return false
-	}
-	srv.closed = true
-	return true
+// rejectingConns reports whether the server is rejecting new connections
+// (e.g. after Close has been called).
+func (srv *Server) rejectingConns() bool {
+	return atomic.LoadInt32(&srv.status) == serverClosed
 }
 
 // tryFinishShutdown closes srv.done() if there are no active listeners or requests.
@@ -99,7 +102,7 @@ func (srv *Server) tryFinishShutdown() {
 // Close immediately closes all active net.Listeners and connections.
 // For a graceful shutdown, use Shutdown.
 func (srv *Server) Close() error {
-	if !srv.tryClose() {
+	if !atomic.CompareAndSwapInt32(&srv.status, serverOk, serverClosed) {
 		return ErrServerClosed
 	}
 
@@ -133,9 +136,10 @@ func (srv *Server) Close() error {
 // Once Shutdown has been called on a server, it may not be reused;
 // future calls to methods such as Serve will return ErrServerClosed.
 func (srv *Server) Shutdown(ctx context.Context) error {
-	if !srv.tryClose() {
+	if !atomic.CompareAndSwapInt32(&srv.status, serverOk, serverShutdown) {
 		return ErrServerClosed
 	}
+	defer atomic.StoreInt32(&srv.status, serverClosed)
 
 	// Close active listeners.
 	srv.mu.Lock()
@@ -162,7 +166,7 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 // ListenAndServe always returns a non-nil error. After Shutdown or Close, the
 // returned error is ErrServerClosed.
 func (srv *Server) ListenAndServe(ctx context.Context) error {
-	if srv.isClosed() {
+	if srv.rejectingListeners() {
 		return ErrServerClosed
 	}
 
@@ -192,11 +196,11 @@ func (srv *Server) getCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, err
 }
 
 func (srv *Server) trackListener(l *net.Listener, cancel context.CancelFunc) bool {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	if srv.closed {
+	if srv.rejectingListeners() {
 		return false
 	}
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 	if srv.listeners == nil {
 		srv.listeners = make(map[*net.Listener]context.CancelFunc)
 	}
@@ -235,7 +239,7 @@ func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 
 	select {
 	case <-lnctx.Done():
-		if srv.isClosed() {
+		if srv.rejectingListeners() {
 			return ErrServerClosed
 		}
 		return lnctx.Err()
@@ -271,11 +275,11 @@ func (srv *Server) serve(ctx context.Context, l net.Listener) error {
 }
 
 func (srv *Server) trackConn(conn *net.Conn, cancel context.CancelFunc) bool {
-	srv.mu.Lock()
-	defer srv.mu.Unlock()
-	if srv.closed {
+	if srv.rejectingConns() {
 		return false
 	}
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
 	if srv.conns == nil {
 		srv.conns = make(map[*net.Conn]context.CancelFunc)
 	}
@@ -291,6 +295,7 @@ func (srv *Server) deleteConn(conn *net.Conn) {
 
 // ServeConn serves a Gemini response over the provided connection.
 // It closes the connection when the response has been completed.
+// Note that ServeConn will succeed even if a Shutdown is in progress.
 func (srv *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	defer conn.Close()
 
@@ -317,6 +322,9 @@ func (srv *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 
 	select {
 	case <-ctx.Done():
+		if srv.rejectingConns() {
+			return ErrServerClosed
+		}
 		return ctx.Err()
 	case err := <-errch:
 		return err
