@@ -41,7 +41,7 @@ func main() {
 		GetCertificate: certificates.GetCertificate,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
+	if err := server.ListenAndServe(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 }
