@@ -71,7 +71,7 @@ type timeoutWriter struct {
 	timedOut    bool
 }
 
-func (w *timeoutWriter) MediaType(mediatype string) {
+func (w *timeoutWriter) SetMediaType(mediatype string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.mediatype = mediatype

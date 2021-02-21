@@ -160,18 +160,18 @@ func (r *Response) Write(w io.Writer) error {
 // A ResponseWriter may not be used after the Handler.ServeGemini method
 // has returned.
 type ResponseWriter interface {
-	// MediaType sets the media type that will be sent by Write for a
+	// SetMediaType sets the media type that will be sent by Write for a
 	// successful response. If no media type is set, a default of
 	// "text/gemini; charset=utf-8" will be used.
 	//
 	// Setting the media type after a call to Write or WriteHeader has
 	// no effect.
-	MediaType(string)
+	SetMediaType(string)
 
 	// Write writes the data to the connection as part of a Gemini response.
 	//
 	// If WriteHeader has not yet been called, Write calls WriteHeader with
-	// StatusSuccess and the media type set in MediaType before writing the data.
+	// StatusSuccess and the media type set in SetMediaType before writing the data.
 	// If no media type was set, Write uses a default media type of
 	// "text/gemini; charset=utf-8".
 	Write([]byte) (int, error)
@@ -181,7 +181,7 @@ type ResponseWriter interface {
 	//
 	// If WriteHeader is not called explicitly, the first call to Write
 	// will trigger an implicit call to WriteHeader with a successful
-	// status code and the media type set in MediaType.
+	// status code and the media type set in SetMediaType.
 	//
 	// The provided code must be a valid Gemini status code.
 	// The provided meta must not be longer than 1024 bytes.
@@ -210,7 +210,7 @@ func newResponseWriter(w io.Writer) *responseWriter {
 	}
 }
 
-func (w *responseWriter) MediaType(mediatype string) {
+func (w *responseWriter) SetMediaType(mediatype string) {
 	w.mediatype = mediatype
 }
 

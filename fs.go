@@ -51,7 +51,7 @@ func serveContent(w ResponseWriter, name string, content io.Reader) {
 	// Detect mimetype from file extension
 	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
-	w.MediaType(mimetype)
+	w.SetMediaType(mimetype)
 	io.Copy(w, content)
 }
 
