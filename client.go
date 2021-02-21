@@ -23,14 +23,6 @@ type Client struct {
 	// See the tofu submodule for an implementation of trust on first use.
 	TrustCertificate func(hostname string, cert *x509.Certificate) error
 
-	// Timeout specifies a time limit for requests made by this
-	// Client. The timeout includes connection time and reading
-	// the response body. The timer remains running after
-	// Get or Do return and will interrupt reading of the Response.Body.
-	//
-	// A Timeout of zero means no timeout.
-	Timeout time.Duration
-
 	// DialContext specifies the dial function for creating TCP connections.
 	// If DialContext is nil, the client dials using package net.
 	DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -101,15 +93,9 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	addr := net.JoinHostPort(host, port)
 
 	// Connect to the host
-	start := time.Now()
 	conn, err := c.dialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, err
-	}
-
-	// Set the connection deadline
-	if c.Timeout != 0 {
-		conn.SetDeadline(start.Add(c.Timeout))
 	}
 
 	// Setup TLS
@@ -173,9 +159,7 @@ func (c *Client) dialContext(ctx context.Context, network, addr string) (net.Con
 	if c.DialContext != nil {
 		return c.DialContext(ctx, network, addr)
 	}
-	return (&net.Dialer{
-		Timeout: c.Timeout,
-	}).DialContext(ctx, network, addr)
+	return (&net.Dialer{}).DialContext(ctx, network, addr)
 }
 
 func (c *Client) verifyConnection(cs tls.ConnectionState, hostname string) error {
