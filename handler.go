@@ -53,9 +53,7 @@ func (h *statusHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Re
 // NotFoundHandler returns a simple request handler that replies to each
 // request with a “51 Not found” reply.
 func NotFoundHandler() Handler {
-	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
-		w.WriteHeader(StatusNotFound, "Not found")
-	})
+	return StatusHandler(StatusNotFound, "Not found")
 }
 
 // StripPrefix returns a handler that serves Gemini requests by removing the
