@@ -205,7 +205,7 @@ func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 		return ErrServerClosed
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	lnctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	srv.trackListener(&l, cancel)
@@ -218,8 +218,8 @@ func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 	}()
 
 	select {
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-lnctx.Done():
+		return lnctx.Err()
 	case err := <-errch:
 		return err
 	}
