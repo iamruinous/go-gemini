@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log"
 	"net"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -297,15 +296,6 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) {
 	srv.trackConn(&conn, cancel)
 	defer srv.tryFinishShutdown()
 	defer srv.deleteConn(&conn)
-
-	defer func() {
-		if err := recover(); err != nil && err != ErrAbortHandler {
-			const size = 64 << 10
-			buf := make([]byte, size)
-			buf = buf[:runtime.Stack(buf, false)]
-			srv.logf("gemini: panic serving %v: %v\n%s", conn.RemoteAddr(), err, buf)
-		}
-	}()
 
 	if d := srv.ReadTimeout; d != 0 {
 		conn.SetReadDeadline(time.Now().Add(d))

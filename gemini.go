@@ -21,12 +21,6 @@ var (
 	// methods after a call to Shutdown or Close.
 	ErrServerClosed = errors.New("gemini: server closed")
 
-	// ErrAbortHandler is a sentinel panic value to abort a handler.
-	// While any panic from ServeGemini aborts the response to the client,
-	// panicking with ErrAbortHandler also suppresses logging of a stack
-	// trace to the server's error log.
-	ErrAbortHandler = errors.New("gemini: abort Handler")
-
 	// ErrHandlerTimeout is returned on ResponseWriter Write calls
 	// in handlers which have timed out.
 	ErrHandlerTimeout = errors.New("gemini: Handler timeout")

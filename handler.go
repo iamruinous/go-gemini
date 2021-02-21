@@ -14,13 +14,6 @@ import (
 // of the ServeGemini call.
 //
 // Handlers should not modify the provided Request.
-//
-// If ServeGemini panics, the server (the caller of ServeGemini) assumes that
-// the effect of the panic was isolated to the active request. It recovers
-// the panic, logs a stack trace to the server error log, and closes the
-// network connection. To abort a handler so the client sees an interrupted
-// response but the server doesn't log an error, panic with the value
-// ErrAbortHandler.
 type Handler interface {
 	ServeGemini(context.Context, ResponseWriter, *Request)
 }
