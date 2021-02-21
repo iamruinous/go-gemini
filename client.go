@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"net"
 	"net/url"
 	"time"
@@ -183,7 +182,7 @@ func (c *Client) verifyConnection(cs tls.ConnectionState, hostname string) error
 	}
 	// Check expiration date
 	if !time.Now().Before(cert.NotAfter) {
-		return errors.New("gemini: certificate expired")
+		return ErrCertificateExpired
 	}
 	// See if the client trusts the certificate
 	if c.TrustCertificate != nil {
