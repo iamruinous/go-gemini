@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -31,8 +32,23 @@ func main() {
 		GetCertificate: certificates.GetCertificate,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	var shutdownOnce sync.Once
+	var wg sync.WaitGroup
+	wg.Add(1)
+	defer wg.Wait()
+	mux.HandleFunc("/shutdown", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
+		fmt.Fprintln(w, "Shutting down...")
+		if flusher, ok := w.(gemini.Flusher); ok {
+			flusher.Flush()
+		}
+		go shutdownOnce.Do(func() {
+			server.Shutdown(context.Background())
+			wg.Done()
+		})
+	})
+
+	if err := server.ListenAndServe(context.Background()); err != nil {
+		log.Println(err)
 	}
 }
 
