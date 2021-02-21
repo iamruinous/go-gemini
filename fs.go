@@ -33,7 +33,7 @@ type fileServer struct {
 }
 
 func (fs fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
-	serveFile(ctx, w, r, fs, path.Clean(r.URL.Path), true)
+	serveFile(w, r, fs, path.Clean(r.URL.Path), true)
 }
 
 // ServeContent replies to the request using the content in the
@@ -42,11 +42,11 @@ func (fs fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Reque
 //
 // ServeContent tries to deduce the type from name's file extension.
 // The name is otherwise unused; it is never sent in the response.
-func ServeContent(ctx context.Context, w ResponseWriter, r *Request, name string, content io.Reader) {
-	serveContent(ctx, w, name, content)
+func ServeContent(w ResponseWriter, r *Request, name string, content io.Reader) {
+	serveContent(w, name, content)
 }
 
-func serveContent(ctx context.Context, w ResponseWriter, name string, content io.Reader) {
+func serveContent(w ResponseWriter, name string, content io.Reader) {
 	// Detect mimetype from file extension
 	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
@@ -74,7 +74,7 @@ func serveContent(ctx context.Context, w ResponseWriter, name string, content io
 // Outside of those two special cases, ServeFile does not use r.URL.Path for
 // selecting the file or directory to serve; only the file or directory
 // provided in the name argument is used.
-func ServeFile(ctx context.Context, w ResponseWriter, r *Request, fsys fs.FS, name string) {
+func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
 	if containsDotDot(r.URL.Path) {
 		// Too many programs use r.URL.Path to construct the argument to
 		// serveFile. Reject the request under the assumption that happened
@@ -84,7 +84,7 @@ func ServeFile(ctx context.Context, w ResponseWriter, r *Request, fsys fs.FS, na
 		w.WriteHeader(StatusBadRequest, "invalid URL path")
 		return
 	}
-	serveFile(ctx, w, r, fsys, name, false)
+	serveFile(w, r, fsys, name, false)
 }
 
 func containsDotDot(v string) bool {
@@ -101,7 +101,7 @@ func containsDotDot(v string) bool {
 
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
-func serveFile(ctx context.Context, w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
+func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
 	const indexPage = "/index.gmi"
 
 	// Redirect .../index.gmi to .../
@@ -173,7 +173,7 @@ func serveFile(ctx context.Context, w ResponseWriter, r *Request, fsys fs.FS, na
 		return
 	}
 
-	serveContent(ctx, w, name, f)
+	serveContent(w, name, f)
 }
 
 func dirList(w ResponseWriter, f fs.File) {
