@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -118,14 +119,14 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 
 	f, err := fsys.Open(name)
 	if err != nil {
-		w.WriteHeader(StatusNotFound, "Not found")
+		w.WriteHeader(toGeminiError(err))
 		return
 	}
 	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {
-		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
+		w.WriteHeader(toGeminiError(err))
 		return
 	}
 
@@ -203,4 +204,14 @@ func dirList(w ResponseWriter, f fs.File) {
 		}
 		fmt.Fprintln(w, link.String())
 	}
+}
+
+func toGeminiError(err error) (status Status, meta string) {
+	if errors.Is(err, fs.ErrNotExist) {
+		return StatusNotFound, "Not found"
+	}
+	if errors.Is(err, fs.ErrPermission) {
+		return StatusNotFound, "Forbidden"
+	}
+	return StatusTemporaryFailure, "Internal server error"
 }
