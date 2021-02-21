@@ -219,6 +219,9 @@ func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 
 	select {
 	case <-lnctx.Done():
+		if atomic.LoadInt32(&srv.closed) == 1 {
+			return ErrServerClosed
+		}
 		return lnctx.Err()
 	case err := <-errch:
 		return err
@@ -234,6 +237,9 @@ func (srv *Server) serve(ctx context.Context, l net.Listener) error {
 		if err != nil {
 			select {
 			case <-ctx.Done():
+				if atomic.LoadInt32(&srv.closed) == 1 {
+					return ErrServerClosed
+				}
 				return ctx.Err()
 			default:
 			}
