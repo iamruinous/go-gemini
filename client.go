@@ -74,15 +74,16 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	if host != punycode {
 		host = punycode
 
-		// Make a copy of the request
-		r2 := new(Request)
-		*r2 = *req
-		r2.URL = new(url.URL)
-		*r2.URL = *req.URL
-		req = r2
+		// Copy the URL and update the host
+		u := new(url.URL)
+		*u = *req.URL
+		u.Host = net.JoinHostPort(host, port)
 
-		// Set the host
-		req.URL.Host = net.JoinHostPort(host, port)
+		// Use the new URL in the request so that the server gets
+		// the punycoded hostname
+		req = &Request{
+			URL: u,
+		}
 	}
 
 	// Use request host if provided
