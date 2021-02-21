@@ -125,9 +125,15 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 		ServerName: host,
 	})
 
+	type result struct {
+		resp *Response
+		err  error
+	}
+
 	res := make(chan result, 1)
 	go func() {
-		res <- c.do(conn, req)
+		resp, err := c.do(conn, req)
+		res <- result{resp, err}
 	}()
 
 	select {
@@ -139,21 +145,16 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	}
 }
 
-type result struct {
-	resp *Response
-	err  error
-}
-
-func (c *Client) do(conn net.Conn, req *Request) result {
+func (c *Client) do(conn net.Conn, req *Request) (*Response, error) {
 	// Write the request
 	if err := req.Write(conn); err != nil {
-		return result{nil, err}
+		return nil, err
 	}
 
 	// Read the response
 	resp, err := ReadResponse(conn)
 	if err != nil {
-		return result{nil, err}
+		return nil, err
 	}
 
 	// Store TLS connection state
@@ -162,7 +163,7 @@ func (c *Client) do(conn net.Conn, req *Request) result {
 		resp.TLS = &state
 	}
 
-	return result{resp, nil}
+	return resp, nil
 }
 
 func (c *Client) dialContext(ctx context.Context, network, addr string) (net.Conn, error) {
