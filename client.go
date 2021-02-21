@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/url"
 	"time"
+	"unicode/utf8"
+
+	"golang.org/x/net/idna"
 )
 
 // A Client is a Gemini client. Its zero value is a usable client.
@@ -201,4 +204,24 @@ func splitHostPort(hostport string) (host, port string) {
 		port = "1965"
 	}
 	return
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// punycodeHostname returns the punycoded version of hostname.
+func punycodeHostname(hostname string) (string, error) {
+	if net.ParseIP(hostname) != nil {
+		return hostname, nil
+	}
+	if isASCII(hostname) {
+		return hostname, nil
+	}
+	return idna.Lookup.ToASCII(hostname)
 }
