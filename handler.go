@@ -31,16 +31,9 @@ func (f HandlerFunc) ServeGemini(ctx context.Context, w ResponseWriter, r *Reque
 // StatusHandler returns a request handler that responds to each request
 // with the provided status code and meta.
 func StatusHandler(status Status, meta string) Handler {
-	return &statusHandler{status, meta}
-}
-
-type statusHandler struct {
-	status Status
-	meta   string
-}
-
-func (h *statusHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
-	w.WriteHeader(h.status, h.meta)
+	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
+		w.WriteHeader(status, meta)
+	})
 }
 
 // NotFoundHandler returns a simple request handler that replies to each
