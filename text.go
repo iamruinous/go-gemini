@@ -9,38 +9,39 @@ import (
 
 // Line represents a line of a Gemini text response.
 type Line interface {
+	// String formats the line for use in a Gemini text response.
 	String() string
 	line() // private function to prevent other packages from implementing Line
 }
 
-// A link line.
+// LineLink is a link line.
 type LineLink struct {
 	URL  string
 	Name string
 }
 
-// A preformatting toggle line.
+// LinePreformattingToggle is a preformatting toggle line.
 type LinePreformattingToggle string
 
-// A preformatted text line.
+// LinePreformattedText is a preformatted text line.
 type LinePreformattedText string
 
-// A first-level heading line.
+// LineHeading1 is a first-level heading line.
 type LineHeading1 string
 
-// A second-level heading line.
+// LineHeading2 is a second-level heading line.
 type LineHeading2 string
 
-// A third-level heading line.
+// LineHeading3 is a third-level heading line.
 type LineHeading3 string
 
-// An unordered list item line.
+// LineListItem is an unordered list item line.
 type LineListItem string
 
-// A quote line.
+// LineQuote is a quote line.
 type LineQuote string
 
-// A text line.
+// LineText is a text line.
 type LineText string
 
 func (l LineLink) String() string {
