@@ -39,33 +39,16 @@ func main() {
 
 // stream writes an infinite stream to w.
 func stream(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
-	ch := make(chan string)
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				ch <- fmt.Sprint(time.Now().UTC())
-			}
-			time.Sleep(time.Second)
-		}
-		// Close channel when finished.
-		// In this example this will never be reached.
-		close(ch)
-	}(ctx)
-
 	for {
-		s, ok := <-ch
-		if !ok {
-			break
+		select {
+		case <-ctx.Done():
+			return
+		default:
 		}
-		fmt.Fprintln(w, s)
+		fmt.Fprintln(w, time.Now().UTC())
 		if err := w.Flush(); err != nil {
-			cancel()
 			return
 		}
+		time.Sleep(time.Second)
 	}
 }
