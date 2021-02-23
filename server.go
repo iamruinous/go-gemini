@@ -38,6 +38,9 @@ type Server struct {
 	//
 	// If GetCertificate is nil or returns nil, then no certificate
 	// will be used and the connection will be aborted.
+	//
+	// See the certificate submodule for a certificate store that creates
+	// and rotates certificates as needed.
 	GetCertificate func(hostname string) (*tls.Certificate, error)
 
 	// ErrorLog specifies an optional logger for errors accepting connections,
