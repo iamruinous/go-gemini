@@ -12,13 +12,12 @@ import (
 	"time"
 )
 
-// A Store maps certificate scopes to certificates.
-// It generate certificates as needed and rotates expired certificates.
+// A Store represents a certificate store.
+// It generates certificates as needed and automatically rotates expired certificates.
 // The zero value for Store is an empty store ready to use.
 //
-// Certificate scopes must be registered with Register before certificate
-// retrieval; otherwise Get will fail. This prevents the Store from
-// creating unnecessary certificates.
+// Certificate scopes must be registered with Register before calling Get or Load.
+// This prevents the Store from creating or loading unnecessary certificates.
 //
 // Store is safe for concurrent use by multiple goroutines.
 type Store struct {
@@ -46,6 +45,7 @@ func (s *Store) Register(scope string) {
 }
 
 // Add adds a certificate with the given scope to the certificate store.
+// If a certificate for the given scope already exists, Add will overwrite it.
 func (s *Store) Add(scope string, cert tls.Certificate) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -75,9 +75,8 @@ func (s *Store) Add(scope string, cert tls.Certificate) error {
 }
 
 // Get retrieves a certificate for the given hostname.
-// It checks to see if the hostname or a matching pattern has been registered.
-// New certificates are generated on demand and expired certificates are
-// replaced with new ones.
+// If no matching scope has been registered, Get returns an error.
+// Get generates new certificates as needed and rotates expired certificates.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -128,11 +127,10 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 
 // Load loads certificates from the provided path.
 // New certificates will be written to this path.
-// Certificates with scopes that have not been registered will be ignored.
-//
 // The path should lead to a directory containing certificates
 // and private keys named "scope.crt" and "scope.key" respectively,
 // where "scope" is the scope of the certificate.
+// Certificates with scopes that have not been registered will be ignored.
 func (s *Store) Load(path string) error {
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
