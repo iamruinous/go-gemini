@@ -84,7 +84,7 @@ func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	cert, ok := s.certs[hostname]
 	if !ok {
 		// Try "*"
-		_, ok = s.certs["*"]
+		cert, ok = s.certs["*"]
 	}
 	if !ok {
 		// Try wildcard
