@@ -11,7 +11,8 @@ import (
 // ServeGemini should write the response header and data to the ResponseWriter
 // and then return. Returning signals that the request is finished; it is not
 // valid to use the ResponseWriter after or concurrently with the completion
-// of the ServeGemini call.
+// of the ServeGemini call. Handlers may also call ResponseWriter.Close to
+// manually close the connection.
 //
 // Handlers should not modify the provided Request.
 type Handler interface {
