@@ -23,9 +23,6 @@ type Request struct {
 	// For international domain names, Host may be in Punycode or
 	// Unicode form. Use golang.org/x/net/idna to convert it to
 	// either format if needed.
-	//
-	// For server requests, Host specifies the host on which the URL
-	// is sought.
 	Host string
 
 	// For client requests, Certificate optionally specifies the
@@ -33,20 +30,7 @@ type Request struct {
 	// This field is ignored by the Gemini server.
 	Certificate *tls.Certificate
 
-	// RemoteAddr allows Gemini servers and other software to record
-	// the network address that sent the request, usually for
-	// logging. This field is not filled in by ReadRequest.
-	// This field is ignored by the Gemini client.
-	RemoteAddr net.Addr
-
-	// TLS allows Gemini servers and other software to record
-	// information about the TLS connection on which the request
-	// was received. This field is not filled in by ReadRequest.
-	// The Gemini server in this package sets the field for
-	// TLS-enabled connections before invoking a handler;
-	// otherwise it leaves the field nil.
-	// This field is ignored by the Gemini client.
-	TLS *tls.ConnectionState
+	conn net.Conn
 }
 
 // NewRequest returns a new request.
@@ -110,4 +94,19 @@ func (r *Request) Write(w io.Writer) error {
 		return err
 	}
 	return bw.Flush()
+}
+
+// Conn returns the network connection on which the request was received.
+func (r *Request) Conn() net.Conn {
+	return r.conn
+}
+
+// TLS returns information about the TLS connection on which the
+// response was received.
+func (r *Request) TLS() *tls.ConnectionState {
+	if tlsConn, ok := r.conn.(*tls.Conn); ok {
+		state := tlsConn.ConnectionState()
+		return &state
+	}
+	return nil
 }

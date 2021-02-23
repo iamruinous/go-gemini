@@ -366,16 +366,7 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
 		w.WriteHeader(StatusBadRequest, "Bad request")
 		return w.Flush()
 	}
-
-	// Store the TLS connection state
-	if tlsConn, ok := conn.(*tls.Conn); ok {
-		state := tlsConn.ConnectionState()
-		req.TLS = &state
-		req.Host = state.ServerName
-	}
-
-	// Store remote address
-	req.RemoteAddr = conn.RemoteAddr()
+	req.conn = conn
 
 	h := srv.Handler
 	if h == nil {
