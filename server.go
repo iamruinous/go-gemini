@@ -46,7 +46,9 @@ type Server struct {
 	// ErrorLog specifies an optional logger for errors accepting connections,
 	// unexpected behavior from handlers, and underlying file system errors.
 	// If nil, logging is done via the log package's standard logger.
-	ErrorLog *log.Logger
+	ErrorLog interface {
+		Printf(format string, v ...interface{})
+	}
 
 	listeners map[*net.Listener]context.CancelFunc
 	conns     map[*net.Conn]context.CancelFunc
