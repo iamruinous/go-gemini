@@ -77,6 +77,8 @@ func (s *Store) Add(scope string, cert tls.Certificate) error {
 // Get retrieves a certificate for the given hostname.
 // If no matching scope has been registered, Get returns an error.
 // Get generates new certificates as needed and rotates expired certificates.
+//
+// Get is suitable for use in a gemini.Server's GetCertificate field.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
