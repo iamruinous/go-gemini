@@ -204,23 +204,29 @@ type ResponseWriter interface {
 
 	// Flush sends any buffered data to the client.
 	Flush() error
+
+	// Close closes the connection.
+	// Any blocked Read or Write operations will be unblocked and return errors.
+	Close() error
 }
 
 type responseWriter struct {
 	b           *bufio.Writer
+	closer      io.Closer
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
 }
 
 // NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
-func NewResponseWriter(w io.Writer) ResponseWriter {
-	return newResponseWriter(w)
+func NewResponseWriter(wc io.WriteCloser) ResponseWriter {
+	return newResponseWriter(wc)
 }
 
-func newResponseWriter(w io.Writer) *responseWriter {
+func newResponseWriter(wc io.WriteCloser) *responseWriter {
 	return &responseWriter{
-		b: bufio.NewWriter(w),
+		b:      bufio.NewWriter(wc),
+		closer: wc,
 	}
 }
 
@@ -265,4 +271,8 @@ func (w *responseWriter) Flush() error {
 	}
 	// Write errors from writeHeader will be returned here.
 	return w.b.Flush()
+}
+
+func (w *responseWriter) Close() error {
+	return w.closer.Close()
 }

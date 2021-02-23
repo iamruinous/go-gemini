@@ -102,3 +102,7 @@ func (w *timeoutWriter) writeHeaderLocked(status Status, meta string) {
 func (w *timeoutWriter) Flush() error {
 	return nil
 }
+
+func (w *timeoutWriter) Close() error {
+	return nil
+}
