@@ -217,7 +217,8 @@ type PersistentHosts struct {
 	writer *HostWriter
 }
 
-// NewPersistentHosts returns a new persistent set of known hosts.
+// NewPersistentHosts returns a new persistent set of known hosts that stores
+// known hosts in hosts and writes new hosts to writer.
 func NewPersistentHosts(hosts *KnownHosts, writer *HostWriter) *PersistentHosts {
 	return &PersistentHosts{
 		hosts,
