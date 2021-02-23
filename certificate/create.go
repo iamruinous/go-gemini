@@ -1,4 +1,4 @@
-// Package certificate provides utility functions for TLS certificates.
+// Package certificate provides functions for creating and storing TLS certificates.
 package certificate
 
 import (
