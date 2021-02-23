@@ -4,7 +4,8 @@ Package gemini provides Gemini client and server implementations.
 Client is a Gemini client.
 
 	client := &gemini.Client{}
-	resp, err := client.Get("gemini://example.com")
+	ctx := context.Background()
+	resp, err := client.Get(ctx, "gemini://example.com")
 	if err != nil {
 		// handle error
 	}
@@ -21,11 +22,12 @@ Server is a Gemini server.
 Servers should be configured with certificates:
 
 	certificates := &certificate.Store{}
+	certificates.Register("localhost")
 	err := certificates.Load("/var/lib/gemini/certs")
 	if err != nil {
 		// handle error
 	}
-	server.GetCertificate = certificates.GetCertificate
+	server.GetCertificate = certificates.Get
 
 ServeMux is a Gemini request multiplexer.
 ServeMux can handle requests for multiple hosts and schemes.
@@ -44,7 +46,8 @@ ServeMux can handle requests for multiple hosts and schemes.
 
 To start the server, call ListenAndServe:
 
-	err := server.ListenAndServe(context.Background())
+	ctx := context.Background()
+	err := server.ListenAndServe(ctx)
 	if err != nil {
 		// handle error
 	}
