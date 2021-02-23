@@ -344,9 +344,24 @@ func (srv *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 }
 
 func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
-	w := newResponseWriter(conn)
+	ctx, cancel := context.WithCancel(ctx)
+	done := ctx.Done()
+	cw := &contextWriter{
+		ctx:    ctx,
+		done:   done,
+		cancel: cancel,
+		wc:     conn,
+	}
+	r := &contextReader{
+		ctx:    ctx,
+		done:   done,
+		cancel: cancel,
+		rc:     conn,
+	}
 
-	req, err := ReadRequest(conn)
+	w := newResponseWriter(cw)
+
+	req, err := ReadRequest(r)
 	if err != nil {
 		w.WriteHeader(StatusBadRequest, "Bad request")
 		return w.Flush()
