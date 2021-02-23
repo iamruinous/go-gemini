@@ -229,8 +229,8 @@ func (srv *Server) deleteListener(l *net.Listener) {
 }
 
 // Serve accepts incoming connections on the Listener l, creating a new
-// service goroutine for each. The service goroutines reads the request and
-// then calls the appropriate Handler to reply to them. If the provided
+// service goroutine for each. The service goroutines read the requests and
+// then call the appropriate Handler to reply to them. If the provided
 // context expires, Serve closes l and returns the context's error.
 //
 // Serve always closes l and returns a non-nil error.

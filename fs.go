@@ -65,8 +65,8 @@ func serveContent(w ResponseWriter, name string, content io.Reader) {
 //
 // As a precaution, ServeFile will reject requests where r.URL.Path contains a
 // ".." path element; this protects against callers who might unsafely use
-// filepath.Join on r.URL.Path without sanitizing it and then use that
-// filepath.Join result as the name argument.
+// path.Join on r.URL.Path without sanitizing it and then use that
+// path.Join result as the name argument.
 //
 // As another special case, ServeFile redirects any request where r.URL.Path
 // ends in "/index.gmi" to the same path, without the final "index.gmi". To
@@ -81,7 +81,7 @@ func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
 		// serveFile. Reject the request under the assumption that happened
 		// here and ".." may not be wanted.
 		// Note that name might not contain "..", for example if code (still
-		// incorrectly) used filepath.Join(myDir, r.URL.Path).
+		// incorrectly) used path.Join(myDir, r.URL.Path).
 		w.WriteHeader(StatusBadRequest, "invalid URL path")
 		return
 	}

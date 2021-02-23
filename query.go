@@ -12,7 +12,8 @@ func QueryEscape(query string) string {
 	return strings.ReplaceAll(url.PathEscape(query), "+", "%2B")
 }
 
-// QueryUnescape is identical to url.PathUnescape.
+// QueryUnescape unescapes a Gemini URL query.
+// It is identical to url.PathUnescape.
 func QueryUnescape(query string) (string, error) {
 	return url.PathUnescape(query)
 }

@@ -10,11 +10,8 @@ import (
 
 // A Request represents a Gemini request received by a server or to be sent
 // by a client.
-//
-// The field semantics differ slightly between client and server usage.
 type Request struct {
-	// URL specifies the URL being requested (for server
-	// requests) or the URL to access (for client requests).
+	// URL specifies the URL being requested.
 	URL *url.URL
 
 	// For client requests, Host optionally specifies the server to
@@ -23,6 +20,7 @@ type Request struct {
 	// For international domain names, Host may be in Punycode or
 	// Unicode form. Use golang.org/x/net/idna to convert it to
 	// either format if needed.
+	// This field is ignored by the Gemini server.
 	Host string
 
 	// For client requests, Certificate optionally specifies the
@@ -34,7 +32,6 @@ type Request struct {
 }
 
 // NewRequest returns a new request.
-//
 // The returned Request is suitable for use with Client.Do.
 //
 // Callers should be careful that the URL query is properly escaped.

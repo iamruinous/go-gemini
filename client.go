@@ -15,10 +15,10 @@ import (
 
 // A Client is a Gemini client. Its zero value is a usable client.
 type Client struct {
-	// TrustCertificate is called to determine whether the client
-	// should trust the certificate provided by the server.
-	// If TrustCertificate is nil, the client will accept any certificate.
-	// If the returned error is not nil, the certificate will not be trusted
+	// TrustCertificate is called to determine whether the client should
+	// trust the certificate provided by the server.
+	// If TrustCertificate is nil or returns nil, the client will accept
+	// any certificate. Otherwise, the certificate will not be trusted
 	// and the request will be aborted.
 	//
 	// See the tofu submodule for an implementation of trust on first use.
@@ -36,8 +36,7 @@ type Client struct {
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
 //
-// If the returned error is nil, the Response will contain a non-nil Body
-// which the user is expected to close.
+// If the returned error is nil, the user is expected to close the Response.
 //
 // For more control over requests, use NewRequest and Client.Do.
 func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
@@ -55,8 +54,7 @@ func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
 //
-// If the returned error is nil, the Response will contain a non-nil Body
-// which the user is expected to close.
+// If the returned error is nil, the user is expected to close the Response.
 //
 // Generally Get will be used instead of Do.
 func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {

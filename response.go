@@ -202,7 +202,7 @@ type responseWriter struct {
 	bodyAllowed bool
 }
 
-// NewResponseWriter returns a ResponseWriter that uses the provided io.Writer.
+// NewResponseWriter returns a ResponseWriter that uses the provided io.WriteCloser.
 func NewResponseWriter(wc io.WriteCloser) ResponseWriter {
 	return newResponseWriter(wc)
 }
@@ -253,7 +253,7 @@ func (w *responseWriter) Flush() error {
 	if !w.wroteHeader {
 		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 	}
-	// Write errors from writeHeader will be returned here.
+	// Write errors from WriteHeader will be returned here.
 	return w.b.Flush()
 }
 
