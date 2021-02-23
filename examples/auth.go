@@ -38,7 +38,7 @@ func main() {
 		Handler:        mux,
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   1 * time.Minute,
-		GetCertificate: certificates.GetCertificate,
+		GetCertificate: certificates.Get,
 	}
 
 	if err := server.ListenAndServe(context.Background()); err != nil {

@@ -29,7 +29,7 @@ func main() {
 		Handler:        mux,
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   1 * time.Minute,
-		GetCertificate: certificates.GetCertificate,
+		GetCertificate: certificates.Get,
 	}
 
 	// Listen for interrupt signal
