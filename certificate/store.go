@@ -12,14 +12,20 @@ import (
 	"time"
 )
 
-// Store represents a certificate store.
+// A Store maps certificate scopes to certificates.
+// It generate certificates as needed and rotates expired certificates.
 // The zero value for Store is an empty store ready to use.
+//
+// Certificate scopes must be registered with Register before certificate
+// retrieval; otherwise Get will fail. This prevents the Store from
+// creating unnecessary certificates.
 //
 // Store is safe for concurrent use by multiple goroutines.
 type Store struct {
 	// CreateCertificate, if not nil, is called to create a new certificate
 	// to replace a missing or expired certificate. If CreateCertificate
 	// is nil, a certificate with a duration of 1 year will be created.
+	// The provided scope is suitable for use in a certificate's DNSNames.
 	CreateCertificate func(scope string) (tls.Certificate, error)
 
 	certs map[string]tls.Certificate
@@ -27,8 +33,9 @@ type Store struct {
 	mu    sync.RWMutex
 }
 
-// Register registers the provided scope in the certificate store.
-// The certificate will be created upon calling GetCertificate.
+// Register registers the provided scope with the certificate store.
+// The scope can either be a hostname or a wildcard pattern (e.g. "*.example.com").
+// To accept all hostnames, use the special pattern "*".
 func (s *Store) Register(scope string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -38,7 +45,7 @@ func (s *Store) Register(scope string) {
 	s.certs[scope] = tls.Certificate{}
 }
 
-// Add adds a certificate for the given scope to the certificate store.
+// Add adds a certificate with the given scope to the certificate store.
 func (s *Store) Add(scope string, cert tls.Certificate) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -56,10 +63,8 @@ func (s *Store) Add(scope string, cert tls.Certificate) error {
 	}
 
 	if s.path != "" {
-		// Escape slash character
-		path := strings.ReplaceAll(scope, "/", ":")
-		certPath := filepath.Join(s.path, path+".crt")
-		keyPath := filepath.Join(s.path, path+".key")
+		certPath := filepath.Join(s.path, scope+".crt")
+		keyPath := filepath.Join(s.path, scope+".key")
 		if err := Write(cert, certPath, keyPath); err != nil {
 			return err
 		}
@@ -69,29 +74,25 @@ func (s *Store) Add(scope string, cert tls.Certificate) error {
 	return nil
 }
 
-// Lookup returns the certificate for the provided scope.
-func (s *Store) Lookup(scope string) (tls.Certificate, bool) {
+// Get retrieves a certificate for the given hostname.
+// It checks to see if the hostname or a matching pattern has been registered.
+// New certificates are generated on demand and expired certificates are
+// replaced with new ones.
+func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	cert, ok := s.certs[scope]
-	return cert, ok
-}
-
-// GetCertificate retrieves the certificate for the given scope.
-// If the retrieved certificate is expired or the scope is registered but
-// has no certificate, it calls CreateCertificate to create a new certificate.
-func (s *Store) GetCertificate(scope string) (*tls.Certificate, error) {
-	cert, ok := s.Lookup(scope)
-	if !ok {
-		// Try wildcard
-		wildcard := strings.SplitN(scope, ".", 2)
-		if len(wildcard) == 2 {
-			cert, ok = s.Lookup("*." + wildcard[1])
-		}
-	}
+	cert, ok := s.certs[hostname]
 	if !ok {
 		// Try "*"
-		_, ok = s.Lookup("*")
+		_, ok = s.certs["*"]
+	}
+	if !ok {
+		// Try wildcard
+		wildcard := strings.SplitN(hostname, ".", 2)
+		if len(wildcard) == 2 {
+			hostname = "*." + wildcard[1]
+			cert, ok = s.certs[hostname]
+		}
 	}
 	if !ok {
 		return nil, errors.New("unrecognized scope")
@@ -100,12 +101,12 @@ func (s *Store) GetCertificate(scope string) (*tls.Certificate, error) {
 	// If the certificate is empty or expired, generate a new one.
 	if cert.Leaf == nil || cert.Leaf.NotAfter.Before(time.Now()) {
 		var err error
-		cert, err = s.createCertificate(scope)
+		cert, err = s.createCertificate(hostname)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.Add(scope, cert); err != nil {
-			return nil, fmt.Errorf("failed to add certificate for %s: %w", scope, err)
+		if err := s.Add(hostname, cert); err != nil {
+			return nil, fmt.Errorf("failed to add certificate for %s: %w", hostname, err)
 		}
 	}
 
@@ -127,6 +128,7 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 
 // Load loads certificates from the provided path.
 // New certificates will be written to this path.
+// Certificates with scopes that have not been registered will be ignored.
 //
 // The path should lead to a directory containing certificates
 // and private keys named "scope.crt" and "scope.key" respectively,
@@ -137,14 +139,16 @@ func (s *Store) Load(path string) error {
 		return err
 	}
 	for _, crtPath := range matches {
+		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
+		if _, ok := s.certs[scope]; !ok {
+			continue
+		}
+
 		keyPath := strings.TrimSuffix(crtPath, ".crt") + ".key"
 		cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 		if err != nil {
 			continue
 		}
-		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
-		// Unescape slash character
-		scope = strings.ReplaceAll(scope, ":", "/")
 		s.Add(scope, cert)
 	}
 	s.SetPath(path)
