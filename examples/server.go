@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
 	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
@@ -31,7 +32,26 @@ func main() {
 		GetCertificate: certificates.GetCertificate,
 	}
 
-	if err := server.ListenAndServe(context.Background()); err != nil {
+	// Listen for interrupt signal
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	errch := make(chan error)
+	go func() {
+		ctx := context.Background()
+		errch <- server.ListenAndServe(ctx)
+	}()
+
+	select {
+	case err := <-errch:
 		log.Fatal(err)
+	case <-c:
+		// Shutdown the server
+		log.Println("Shutting down...")
+		ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+		err := server.Shutdown(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
