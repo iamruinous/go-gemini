@@ -153,11 +153,11 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
+	defer resp.Close()
 
 	// Handle response
 	if resp.Status.Class() == gemini.StatusSuccess {
-		_, err := io.Copy(os.Stdout, resp.Body)
+		_, err := io.Copy(os.Stdout, resp)
 		if err != nil {
 			log.Fatal(err)
 		}
