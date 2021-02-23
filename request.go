@@ -102,7 +102,7 @@ func (r *Request) Conn() net.Conn {
 }
 
 // TLS returns information about the TLS connection on which the
-// response was received.
+// request was received.
 func (r *Request) TLS() *tls.ConnectionState {
 	if tlsConn, ok := r.conn.(*tls.Conn); ok {
 		state := tlsConn.ConnectionState()
