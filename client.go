@@ -30,8 +30,9 @@ type Client struct {
 }
 
 // Get sends a Gemini request for the given URL.
-// If the provided context is canceled or times out, the request
-// is aborted and the context's error is returned.
+// The context controls the entire lifetime of a request and its response:
+// obtaining a connection, sending the request, and reading the response
+// header and body.
 //
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
@@ -48,15 +49,14 @@ func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
 }
 
 // Do sends a Gemini request and returns a Gemini response.
-// If the provided context is canceled or times out, the request
-// is aborted and the context's error is returned.
+// The context controls the entire lifetime of a request and its response:
+// obtaining a connection, sending the request, and reading the response
+// header and body.
 //
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
 //
 // If the returned error is nil, the user is expected to close the Response.
-//
-// Generally Get will be used instead of Do.
 func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	if ctx == nil {
 		panic("nil context")
