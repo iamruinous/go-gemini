@@ -9,7 +9,7 @@ Client is a Gemini client.
 	if err != nil {
 		// handle error
 	}
-	defer resp.Body.Close()
+	defer resp.Close()
 	// ...
 
 Server is a Gemini server.
