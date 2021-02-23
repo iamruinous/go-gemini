@@ -172,7 +172,8 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 
 // ListenAndServe listens for requests at the server's configured address.
 // ListenAndServe listens on the TCP network address srv.Addr and then calls
-// Serve to handle requests on incoming connections.
+// Serve to handle requests on incoming connections. If the provided
+// context expires, ListenAndServe closes l and returns the context's error.
 //
 // If srv.Addr is blank, ":1965" is used.
 //
