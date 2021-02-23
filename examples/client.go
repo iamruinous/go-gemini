@@ -97,7 +97,8 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 	client := gemini.Client{
 		TrustCertificate: trustCertificate,
 	}
-	resp, err := client.Do(context.Background(), req)
+	ctx := context.Background()
+	resp, err := client.Do(ctx, req)
 	if err != nil {
 		return resp, err
 	}
@@ -156,11 +157,10 @@ func main() {
 
 	// Handle response
 	if resp.Status.Class() == gemini.StatusSuccess {
-		body, err := io.ReadAll(resp.Body)
+		_, err := io.Copy(os.Stdout, resp.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Print(string(body))
 	} else {
 		fmt.Printf("%d %s\n", resp.Status, resp.Meta)
 		os.Exit(1)
