@@ -133,9 +133,8 @@ func (srv *Server) Close() error {
 }
 
 // Shutdown gracefully shuts down the server without interrupting any
-// active connections. Shutdown works by first cancelling the contexts
-// of all open listeners and then waiting indefinitely for connections
-// to close.
+// active connections. Shutdown works by first closing all open listeners
+// and then waiting indefinitely for connections to close.
 // If the provided context expires before the shutdown is complete,
 // Shutdown returns the context's error.
 //
@@ -144,7 +143,7 @@ func (srv *Server) Close() error {
 // Shutdown to return.
 //
 // Once Shutdown has been called on a server, it may not be reused;
-// future calls to methods such as Serve will return ErrServerClosed.
+// future calls to methods such as Serve will return an error.
 func (srv *Server) Shutdown(ctx context.Context) error {
 	srv.mu.Lock()
 	{
@@ -178,12 +177,10 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 // If srv.Addr is blank, ":1965" is used.
 //
 // ListenAndServe always returns a non-nil error.
+// After Shutdown or Closed, the returned error is context.Canceled.
 func (srv *Server) ListenAndServe(ctx context.Context) error {
 	if srv.isClosed() {
-		// Cancel context
-		ctx, cancel := context.WithCancel(ctx)
-		cancel()
-		return ctx.Err()
+		return context.Canceled
 	}
 
 	addr := srv.Addr
@@ -231,10 +228,11 @@ func (srv *Server) deleteListener(l *net.Listener) {
 }
 
 // Serve accepts incoming connections on the Listener l, creating a new
-// service goroutine for each. The service goroutines read requests and
+// service goroutine for each. The service goroutines reads the request and
 // then calls the appropriate Handler to reply to them.
 //
-// Serve always returns a non-nil error and closes l.
+// Serve always closes l and returns a non-nil error.
+// After Shutdown or Close, the returned error is context.Canceled.
 func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 	defer l.Close()
 
@@ -242,9 +240,7 @@ func (srv *Server) Serve(ctx context.Context, l net.Listener) error {
 	defer cancel()
 
 	if !srv.trackListener(&l, cancel) {
-		// Cancel context
-		cancel()
-		return lnctx.Err()
+		return context.Canceled
 	}
 	defer srv.tryCloseDone()
 	defer srv.deleteListener(&l)
@@ -317,9 +313,7 @@ func (srv *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	defer cancel()
 
 	if !srv.trackConn(&conn, cancel) {
-		// Cancel context
-		cancel()
-		return ctx.Err()
+		return context.Canceled
 	}
 	defer srv.tryCloseDone()
 	defer srv.deleteConn(&conn)
