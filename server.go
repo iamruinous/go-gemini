@@ -96,8 +96,7 @@ func (srv *Server) tryCloseDoneLocked() {
 	}
 }
 
-// Close immediately closes all active net.Listeners and connections
-// by cancelling their contexts.
+// Close immediately closes all active net.Listeners and connections.
 // For a graceful shutdown, use Shutdown.
 func (srv *Server) Close() error {
 	srv.mu.Lock()
@@ -223,7 +222,8 @@ func (srv *Server) deleteListener(l *net.Listener) {
 
 // Serve accepts incoming connections on the Listener l, creating a new
 // service goroutine for each. The service goroutines reads the request and
-// then calls the appropriate Handler to reply to them.
+// then calls the appropriate Handler to reply to them. If the provided
+// context expires, Serve closes l and returns the context's error.
 //
 // Serve always closes l and returns a non-nil error.
 // After Shutdown or Close, the returned error is context.Canceled.
@@ -299,7 +299,10 @@ func (srv *Server) deleteConn(conn *net.Conn) {
 
 // ServeConn serves a Gemini response over the provided connection.
 // It closes the connection when the response has been completed.
-// Note that ServeConn will succeed even if a call to Shutdown is ongoing.
+// If the provided context expires before the response has completed,
+// ServeConn closes the connection and returns the context's error.
+//
+// Note that ServeConn can be used during a Shutdown.
 func (srv *Server) ServeConn(ctx context.Context, conn net.Conn) error {
 	defer conn.Close()
 
