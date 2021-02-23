@@ -2,8 +2,10 @@ package gemini
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"strconv"
 )
 
@@ -36,6 +38,8 @@ type Response struct {
 	// a zero-length body. It is the caller's responsibility to
 	// close Body.
 	Body io.ReadCloser
+
+	conn net.Conn
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
@@ -145,6 +149,21 @@ func (r *Response) Write(w io.Writer) error {
 		if _, err := io.Copy(w, r.Body); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// Conn returns the network connection on which the response was received.
+func (r *Response) Conn() net.Conn {
+	return r.conn
+}
+
+// TLS returns information about the TLS connection on which the
+// response was received.
+func (r *Response) TLS() *tls.ConnectionState {
+	if tlsConn, ok := r.conn.(*tls.Conn); ok {
+		state := tlsConn.ConnectionState()
+		return &state
 	}
 	return nil
 }

@@ -164,6 +164,7 @@ func (c *Client) do(ctx context.Context, conn net.Conn, req *Request) (*Response
 	if err != nil {
 		return nil, err
 	}
+	resp.conn = conn
 
 	return resp, nil
 }
