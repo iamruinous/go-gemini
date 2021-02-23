@@ -38,9 +38,7 @@ func main() {
 	defer wg.Wait()
 	mux.HandleFunc("/shutdown", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprintln(w, "Shutting down...")
-		if flusher, ok := w.(gemini.Flusher); ok {
-			flusher.Flush()
-		}
+		w.Flush()
 		go shutdownOnce.Do(func() {
 			server.Shutdown(context.Background())
 			wg.Done()
@@ -54,12 +52,6 @@ func main() {
 
 // stream writes an infinite stream to w.
 func stream(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
-	flusher, ok := w.(gemini.Flusher)
-	if !ok {
-		w.WriteHeader(gemini.StatusTemporaryFailure, "Internal error")
-		return
-	}
-
 	ch := make(chan string)
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -84,7 +76,7 @@ func stream(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 			break
 		}
 		fmt.Fprintln(w, s)
-		if err := flusher.Flush(); err != nil {
+		if err := w.Flush(); err != nil {
 			cancel()
 			return
 		}
