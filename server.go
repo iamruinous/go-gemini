@@ -53,12 +53,6 @@ type Server struct {
 	mu        sync.Mutex
 }
 
-const (
-	serverOk int32 = iota
-	serverShutdown
-	serverClosed
-)
-
 func (srv *Server) isClosed() bool {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
