@@ -83,16 +83,16 @@ func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	defer s.mu.RUnlock()
 	cert, ok := s.certs[hostname]
 	if !ok {
-		// Try "*"
-		cert, ok = s.certs["*"]
-	}
-	if !ok {
 		// Try wildcard
 		wildcard := strings.SplitN(hostname, ".", 2)
 		if len(wildcard) == 2 {
 			hostname = "*." + wildcard[1]
 			cert, ok = s.certs[hostname]
 		}
+	}
+	if !ok {
+		// Try "*"
+		cert, ok = s.certs["*"]
 	}
 	if !ok {
 		return nil, errors.New("unrecognized scope")
