@@ -125,22 +125,7 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 
 	res := make(chan result, 1)
 	go func() {
-		ctx, cancel := context.WithCancel(ctx)
-		done := ctx.Done()
-		cw := &contextWriter{
-			ctx:    ctx,
-			done:   done,
-			cancel: cancel,
-			wc:     conn,
-		}
-		cr := &contextReader{
-			ctx:    ctx,
-			done:   done,
-			cancel: cancel,
-			rc:     conn,
-		}
-
-		resp, err := c.do(cw, cr, req)
+		resp, err := c.do(ctx, conn, req)
 		res <- result{resp, err}
 	}()
 
@@ -153,7 +138,22 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 	}
 }
 
-func (c *Client) do(w io.Writer, rc io.ReadCloser, req *Request) (*Response, error) {
+func (c *Client) do(ctx context.Context, conn net.Conn, req *Request) (*Response, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	done := ctx.Done()
+	w := &contextWriter{
+		ctx:    ctx,
+		done:   done,
+		cancel: cancel,
+		wc:     conn,
+	}
+	rc := &contextReader{
+		ctx:    ctx,
+		done:   done,
+		cancel: cancel,
+		rc:     conn,
+	}
+
 	// Write the request
 	if err := req.Write(w); err != nil {
 		return nil, err
