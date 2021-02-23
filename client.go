@@ -149,12 +149,6 @@ func (c *Client) do(conn net.Conn, req *Request) (*Response, error) {
 		return nil, err
 	}
 
-	// Store TLS connection state
-	if tlsConn, ok := conn.(*tls.Conn); ok {
-		state := tlsConn.ConnectionState()
-		resp.TLS = &state
-	}
-
 	return resp, nil
 }
 

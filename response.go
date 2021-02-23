@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"bufio"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"strconv"
@@ -37,10 +36,6 @@ type Response struct {
 	// a zero-length body. It is the caller's responsibility to
 	// close Body.
 	Body io.ReadCloser
-
-	// TLS contains information about the TLS connection on which the
-	// response was received. It is nil for unencrypted responses.
-	TLS *tls.ConnectionState
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
