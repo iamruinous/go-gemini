@@ -96,7 +96,7 @@ func TestReadWriteResponse(t *testing.T) {
 		if resp.Meta != test.Meta {
 			t.Errorf("expected meta = %s, got %s", test.Meta, resp.Meta)
 		}
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(resp.body)
 		body := string(b)
 		if body != test.Body {
 			t.Errorf("expected body = %#v, got %#v", test.Body, body)
@@ -107,14 +107,12 @@ func TestReadWriteResponse(t *testing.T) {
 		if test.Err != nil || test.SkipWrite {
 			continue
 		}
-		resp := &Response{
-			Status: test.Status,
-			Meta:   test.Meta,
-			Body:   io.NopCloser(strings.NewReader(test.Body)),
-		}
 
 		var b strings.Builder
-		if err := resp.Write(&b); err != nil {
+		w := NewResponseWriter(nopCloser{&b})
+		w.WriteHeader(test.Status, test.Meta)
+		io.Copy(w, strings.NewReader(test.Body))
+		if err := w.Flush(); err != nil {
 			t.Error(err)
 			continue
 		}
@@ -124,4 +122,16 @@ func TestReadWriteResponse(t *testing.T) {
 			t.Errorf("expected %#v, got %#v", test.Raw, got)
 		}
 	}
+}
+
+type nopCloser struct {
+	io.Writer
+}
+
+func (w nopCloser) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func (nopCloser) Close() error {
+	return nil
 }

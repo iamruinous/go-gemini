@@ -3,7 +3,6 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -16,7 +15,10 @@ const defaultMediaType = "text/gemini; charset=utf-8"
 //
 // The Client returns Responses from servers once the response
 // header has been received. The response body is streamed on demand
-// as the Body field is read.
+// as the response is read. If the network connection fails or the server
+// terminates the response, Read calls return an error.
+//
+// It is the caller's responsibility to close the response.
 type Response struct {
 	// Status contains the response status code.
 	Status Status
@@ -27,18 +29,7 @@ type Response struct {
 	// Meta should not be longer than 1024 bytes.
 	Meta string
 
-	// Body represents the response body.
-	//
-	// The response body is streamed on demand as the Body field
-	// is read. If the network connection fails or the server
-	// terminates the response, Body.Read calls return an error.
-	//
-	// The Gemini client guarantees that Body is always
-	// non-nil, even on responses without a body or responses with
-	// a zero-length body. It is the caller's responsibility to
-	// close Body.
-	Body io.ReadCloser
-
+	body io.ReadCloser
 	conn net.Conn
 }
 
@@ -90,9 +81,9 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	}
 
 	if resp.Status.Class() == StatusSuccess {
-		resp.Body = newReadCloserBody(br, rc)
+		resp.body = newReadCloserBody(br, rc)
 	} else {
-		resp.Body = nopReadCloser{}
+		resp.body = nopReadCloser{}
 		rc.Close()
 	}
 	return resp, nil
@@ -135,22 +126,15 @@ func (b *readCloserBody) Read(p []byte) (n int, err error) {
 	return b.ReadCloser.Read(p)
 }
 
-// Write writes r to w in the Gemini response format, including the
-// header and body.
-//
-// This method consults the Status, Meta, and Body fields of the response.
-// The Response Body is closed after it is sent.
-func (r *Response) Write(w io.Writer) error {
-	if _, err := fmt.Fprintf(w, "%02d %s\r\n", r.Status, r.Meta); err != nil {
-		return err
-	}
-	if r.Body != nil {
-		defer r.Body.Close()
-		if _, err := io.Copy(w, r.Body); err != nil {
-			return err
-		}
-	}
-	return nil
+// Read reads data from the response body.
+// The response body is streamed on demand as Read is called.
+func (r *Response) Read(p []byte) (n int, err error) {
+	return r.body.Read(p)
+}
+
+// Close closes the response body.
+func (r *Response) Close() error {
+	return r.body.Close()
 }
 
 // Conn returns the network connection on which the response was received.
