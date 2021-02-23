@@ -29,6 +29,8 @@ type Client struct {
 }
 
 // Get sends a Gemini request for the given URL.
+// If the provided context is canceled or times out, the request
+// will be aborted and the context's error will be returned.
 //
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
@@ -45,8 +47,9 @@ func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
 	return c.Do(ctx, req)
 }
 
-// Do sends a Gemini request and returns a Gemini response, following
-// policy as configured on the client.
+// Do sends a Gemini request and returns a Gemini response.
+// If the provided context is canceled or times out, the request
+// will be aborted and the context's error will be returned.
 //
 // An error is returned if there was a Gemini protocol error.
 // A non-2x status code doesn't cause an error.
