@@ -31,20 +31,12 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 
 	done := make(chan struct{})
 	tw := &timeoutWriter{}
-	panicChan := make(chan interface{}, 1)
 	go func() {
-		defer func() {
-			if p := recover(); p != nil {
-				panicChan <- p
-			}
-		}()
 		t.h.ServeGemini(ctx, tw, r)
 		close(done)
 	}()
 
 	select {
-	case p := <-panicChan:
-		panic(p)
 	case <-done:
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
