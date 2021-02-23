@@ -150,6 +150,8 @@ func (srv *Server) Shutdown(ctx context.Context) error {
 		srv.closed = true
 		srv.shutdown = true
 
+		srv.tryCloseDoneLocked()
+
 		// Close all active listeners.
 		for _, cancel := range srv.listeners {
 			cancel()
