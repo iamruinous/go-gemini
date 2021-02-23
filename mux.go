@@ -294,9 +294,6 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler func(context.Context, ResponseWriter, *Request)) {
-	if handler == nil {
-		panic("gemini: nil handler")
-	}
-	mux.Handle(pattern, HandlerFunc(handler))
+func (mux *ServeMux) HandleFunc(pattern string, handler HandlerFunc) {
+	mux.Handle(pattern, handler)
 }
