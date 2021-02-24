@@ -3,6 +3,7 @@ package gemini
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -96,22 +97,64 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 	ctx, cancel := context.WithTimeout(ctx, t.dt)
 	defer cancel()
 
-	conn := w.Hijack()
-
-	var b bytes.Buffer
-	w.reset(nopCloser{&b})
+	buf := &bytes.Buffer{}
+	tw := &timeoutWriter{
+		wc: &contextWriter{
+			ctx:    ctx,
+			cancel: cancel,
+			done:   ctx.Done(),
+			wc:     nopCloser{buf},
+		},
+	}
 
 	done := make(chan struct{})
 	go func() {
-		t.h.ServeGemini(ctx, w, r)
+		t.h.ServeGemini(ctx, tw, r)
 		close(done)
 	}()
 
 	select {
 	case <-done:
-		conn.Write(b.Bytes())
+		w.WriteHeader(tw.status, tw.meta)
+		w.Write(buf.Bytes())
 	case <-ctx.Done():
-		w.reset(conn)
 		w.WriteHeader(StatusTemporaryFailure, "Timeout")
 	}
+}
+
+type timeoutWriter struct {
+	ResponseWriter
+	wc          io.WriteCloser
+	status      Status
+	meta        string
+	mediatype   string
+	wroteHeader bool
+}
+
+func (w *timeoutWriter) SetMediaType(mediatype string) {
+	w.mediatype = mediatype
+}
+
+func (w *timeoutWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(StatusSuccess, w.mediatype)
+	}
+	return w.wc.Write(b)
+}
+
+func (w *timeoutWriter) WriteHeader(status Status, meta string) {
+	if w.wroteHeader {
+		return
+	}
+	w.status = status
+	w.meta = meta
+	w.wroteHeader = true
+}
+
+func (w *timeoutWriter) Flush() error {
+	return nil
+}
+
+func (w *timeoutWriter) Close() error {
+	return w.wc.Close()
 }

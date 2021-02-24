@@ -175,8 +175,6 @@ type ResponseWriter interface {
 	// or clear those deadlines as needed.
 	Hijack() net.Conn
 
-	reset(io.WriteCloser)
-
 	// unexported method so we can extend this interface over time
 	// without breaking existing code. Implementers must embed a concrete
 	// type from elsewhere.
@@ -197,14 +195,6 @@ func newResponseWriter(w io.WriteCloser) *responseWriter {
 	return &responseWriter{
 		bw: bufio.NewWriter(w),
 		cl: w,
-	}
-}
-
-func (w *responseWriter) reset(wc io.WriteCloser) {
-	w.bw.Reset(wc)
-	*w = responseWriter{
-		bw: w.bw,
-		cl: wc,
 	}
 }
 
