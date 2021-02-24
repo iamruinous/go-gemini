@@ -52,7 +52,7 @@ type Server struct {
 
 	listeners map[*net.Listener]context.CancelFunc
 	conns     map[*net.Conn]context.CancelFunc
-	closed    bool // true if Closed or Shutdown called
+	closed    bool // true if Close or Shutdown called
 	shutdown  bool // true if Shutdown called
 	doneChan  chan struct{}
 	mu        sync.Mutex
