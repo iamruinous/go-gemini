@@ -8,7 +8,7 @@ import (
 
 type nopHandler struct{}
 
-func (*nopHandler) ServeGemini(context.Context, ResponseWriter, *Request) {}
+func (*nopHandler) ServeGemini(context.Context, *ResponseWriter, *Request) {}
 
 func TestServeMuxMatch(t *testing.T) {
 	type Match struct {

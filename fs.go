@@ -33,7 +33,7 @@ type fileServer struct {
 	fs.FS
 }
 
-func (fs fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
+func (fs fileServer) ServeGemini(ctx context.Context, w *ResponseWriter, r *Request) {
 	serveFile(w, r, fs, path.Clean(r.URL.Path), true)
 }
 
@@ -43,11 +43,11 @@ func (fs fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Reque
 //
 // ServeContent tries to deduce the type from name's file extension.
 // The name is otherwise unused; it is never sent in the response.
-func ServeContent(w ResponseWriter, r *Request, name string, content io.Reader) {
+func ServeContent(w *ResponseWriter, r *Request, name string, content io.Reader) {
 	serveContent(w, name, content)
 }
 
-func serveContent(w ResponseWriter, name string, content io.Reader) {
+func serveContent(w *ResponseWriter, name string, content io.Reader) {
 	// Detect mimetype from file extension
 	ext := path.Ext(name)
 	mimetype := mime.TypeByExtension(ext)
@@ -75,7 +75,7 @@ func serveContent(w ResponseWriter, name string, content io.Reader) {
 // Outside of those two special cases, ServeFile does not use r.URL.Path for
 // selecting the file or directory to serve; only the file or directory
 // provided in the name argument is used.
-func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
+func ServeFile(w *ResponseWriter, r *Request, fsys fs.FS, name string) {
 	if containsDotDot(r.URL.Path) {
 		// Too many programs use r.URL.Path to construct the argument to
 		// serveFile. Reject the request under the assumption that happened
@@ -102,7 +102,7 @@ func containsDotDot(v string) bool {
 
 func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
-func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
+func serveFile(w *ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
 	const indexPage = "/index.gmi"
 
 	// Redirect .../index.gmi to .../
@@ -177,7 +177,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 	serveContent(w, name, f)
 }
 
-func dirList(w ResponseWriter, f fs.File) {
+func dirList(w *ResponseWriter, f fs.File) {
 	var entries []fs.DirEntry
 	var err error
 	d, ok := f.(fs.ReadDirFile)

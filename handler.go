@@ -19,23 +19,23 @@ import (
 //
 // Handlers should not modify the provided Request.
 type Handler interface {
-	ServeGemini(context.Context, ResponseWriter, *Request)
+	ServeGemini(context.Context, *ResponseWriter, *Request)
 }
 
 // The HandlerFunc type is an adapter to allow the use of ordinary functions
 // as Gemini handlers. If f is a function with the appropriate signature,
 // HandlerFunc(f) is a Handler that calls f.
-type HandlerFunc func(context.Context, ResponseWriter, *Request)
+type HandlerFunc func(context.Context, *ResponseWriter, *Request)
 
 // ServeGemini calls f(ctx, w, r).
-func (f HandlerFunc) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
+func (f HandlerFunc) ServeGemini(ctx context.Context, w *ResponseWriter, r *Request) {
 	f(ctx, w, r)
 }
 
 // StatusHandler returns a request handler that responds to each request
 // with the provided status code and meta.
 func StatusHandler(status Status, meta string) Handler {
-	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
+	return HandlerFunc(func(ctx context.Context, w *ResponseWriter, r *Request) {
 		w.WriteHeader(status, meta)
 	})
 }
@@ -56,7 +56,7 @@ func StripPrefix(prefix string, h Handler) Handler {
 	if prefix == "" {
 		return h
 	}
-	return HandlerFunc(func(ctx context.Context, w ResponseWriter, r *Request) {
+	return HandlerFunc(func(ctx context.Context, w *ResponseWriter, r *Request) {
 		p := strings.TrimPrefix(r.URL.Path, prefix)
 		rp := strings.TrimPrefix(r.URL.RawPath, prefix)
 		if len(p) < len(r.URL.Path) && (r.URL.RawPath == "" || len(rp) < len(r.URL.RawPath)) {

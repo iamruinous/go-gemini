@@ -359,7 +359,7 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
 		rc:     conn,
 	}
 
-	w := newResponseWriter(cw)
+	w := NewResponseWriter(cw)
 
 	req, err := ReadRequest(r)
 	if err != nil {
