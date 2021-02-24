@@ -156,13 +156,6 @@ type ResponseWriter interface {
 	// Any blocked Write operations will be unblocked and return errors.
 	Close() error
 
-	// Conn returns the underlying network connection.
-	// To take over the connection, use Hijack.
-	Conn() net.Conn
-
-	// TLS returns information about the underlying TLS connection.
-	TLS() *tls.ConnectionState
-
 	// unexported method so we can extend this interface over time
 	// without breaking existing code. Implementers must embed a concrete
 	// type from elsewhere.
@@ -175,7 +168,6 @@ type responseWriter struct {
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
-	conn        net.Conn
 }
 
 func newResponseWriter(w io.WriteCloser) *responseWriter {
@@ -230,18 +222,6 @@ func (w *responseWriter) Flush() error {
 
 func (w *responseWriter) Close() error {
 	return w.cl.Close()
-}
-
-func (w *responseWriter) Conn() net.Conn {
-	return w.conn
-}
-
-func (w *responseWriter) TLS() *tls.ConnectionState {
-	if tlsConn, ok := w.conn.(*tls.Conn); ok {
-		state := tlsConn.ConnectionState()
-		return &state
-	}
-	return nil
 }
 
 func (w *responseWriter) unexported() {}

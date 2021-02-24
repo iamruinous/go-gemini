@@ -360,13 +360,13 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
 	}
 
 	w := newResponseWriter(cw)
-	w.conn = conn
 
 	req, err := ReadRequest(r)
 	if err != nil {
 		w.WriteHeader(StatusBadRequest, "Bad request")
 		return w.Flush()
 	}
+	req.conn = conn
 
 	h := srv.Handler
 	if h == nil {

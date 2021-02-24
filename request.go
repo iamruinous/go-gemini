@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"io"
+	"net"
 	"net/url"
 )
 
@@ -26,6 +27,8 @@ type Request struct {
 	// TLS certificate to present to the other side of the connection.
 	// This field is ignored by the Gemini server.
 	Certificate *tls.Certificate
+
+	conn net.Conn
 }
 
 // NewRequest returns a new request.
@@ -88,4 +91,19 @@ func (r *Request) Write(w io.Writer) error {
 		return err
 	}
 	return bw.Flush()
+}
+
+// Conn returns the network connection on which the request was received.
+func (r *Request) Conn() net.Conn {
+	return r.conn
+}
+
+// TLS returns information about the TLS connection on which the
+// request was received.
+func (r *Request) TLS() *tls.ConnectionState {
+	if tlsConn, ok := r.conn.(*tls.Conn); ok {
+		state := tlsConn.ConnectionState()
+		return &state
+	}
+	return nil
 }
