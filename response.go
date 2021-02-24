@@ -163,18 +163,6 @@ type ResponseWriter interface {
 	// TLS returns information about the underlying TLS connection.
 	TLS() *tls.ConnectionState
 
-	// Hijack lets the caller take over the connection.
-	// After a call to Hijack the Gemini server library
-	// will not do anything else with the connection.
-	// It becomes the caller's responsibility to manage
-	// and close the connection.
-	//
-	// The returned net.Conn may have read or write deadlines
-	// already set, depending on the configuration of the
-	// Server. It is the caller's responsibility to set
-	// or clear those deadlines as needed.
-	Hijack() net.Conn
-
 	// unexported method so we can extend this interface over time
 	// without breaking existing code. Implementers must embed a concrete
 	// type from elsewhere.
@@ -187,7 +175,6 @@ type responseWriter struct {
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
-	hijacked    bool
 	conn        net.Conn
 }
 
@@ -203,9 +190,6 @@ func (w *responseWriter) SetMediaType(mediatype string) {
 }
 
 func (w *responseWriter) Write(b []byte) (int, error) {
-	if w.hijacked {
-		return 0, ErrHijacked
-	}
 	if !w.wroteHeader {
 		meta := w.mediatype
 		if meta == "" {
@@ -221,9 +205,6 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *responseWriter) WriteHeader(status Status, meta string) {
-	if w.hijacked {
-		return
-	}
 	if w.wroteHeader {
 		return
 	}
@@ -240,9 +221,6 @@ func (w *responseWriter) WriteHeader(status Status, meta string) {
 }
 
 func (w *responseWriter) Flush() error {
-	if w.hijacked {
-		return ErrHijacked
-	}
 	if !w.wroteHeader {
 		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 	}
@@ -251,9 +229,6 @@ func (w *responseWriter) Flush() error {
 }
 
 func (w *responseWriter) Close() error {
-	if w.hijacked {
-		return ErrHijacked
-	}
 	return w.cl.Close()
 }
 
@@ -267,11 +242,6 @@ func (w *responseWriter) TLS() *tls.ConnectionState {
 		return &state
 	}
 	return nil
-}
-
-func (w *responseWriter) Hijack() net.Conn {
-	w.hijacked = true
-	return w.conn
 }
 
 func (w *responseWriter) unexported() {}
