@@ -158,5 +158,3 @@ func (w *timeoutWriter) Flush() error {
 func (w *timeoutWriter) Close() error {
 	return w.wc.Close()
 }
-
-func (w *timeoutWriter) unexported() {}

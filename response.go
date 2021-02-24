@@ -160,11 +160,6 @@ type ResponseWriter interface {
 	// Close closes the connection.
 	// Any blocked Write operations will be unblocked and return errors.
 	Close() error
-
-	// unexported method so we can extend this interface over time
-	// without breaking existing code. Implementers must embed a concrete
-	// type from elsewhere.
-	unexported()
 }
 
 type responseWriter struct {
@@ -228,5 +223,3 @@ func (w *responseWriter) Flush() error {
 func (w *responseWriter) Close() error {
 	return w.cl.Close()
 }
-
-func (w *responseWriter) unexported() {}
