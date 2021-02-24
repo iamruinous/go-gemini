@@ -4,6 +4,12 @@ import (
 	"errors"
 )
 
+func init() {
+	// Add Gemini mime types
+	mime.AddExtensionType(".gmi", "text/gemini")
+	mime.AddExtensionType(".gemini", "text/gemini")
+}
+
 var crlf = []byte("\r\n")
 
 // Errors.

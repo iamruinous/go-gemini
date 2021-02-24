@@ -13,12 +13,6 @@ import (
 	"strings"
 )
 
-func init() {
-	// Add Gemini mime types
-	mime.AddExtensionType(".gmi", "text/gemini")
-	mime.AddExtensionType(".gemini", "text/gemini")
-}
-
 // FileServer returns a handler that serves Gemini requests with the contents
 // of the provided file system.
 //
