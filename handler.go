@@ -123,7 +123,6 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 }
 
 type timeoutWriter struct {
-	ResponseWriter
 	wc          io.WriteCloser
 	status      Status
 	meta        string
@@ -158,3 +157,5 @@ func (w *timeoutWriter) Flush() error {
 func (w *timeoutWriter) Close() error {
 	return w.wc.Close()
 }
+
+func (w *timeoutWriter) unexported() {}
