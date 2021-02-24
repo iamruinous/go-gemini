@@ -366,7 +366,6 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
 		w.WriteHeader(StatusBadRequest, "Bad request")
 		return w.Flush()
 	}
-	req.conn = conn
 
 	h := srv.Handler
 	if h == nil {
