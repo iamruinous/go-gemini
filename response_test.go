@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 )
@@ -83,7 +82,7 @@ func TestReadWriteResponse(t *testing.T) {
 
 	for _, test := range tests {
 		t.Logf("%#v", test.Raw)
-		resp, err := ReadResponse(ioutil.NopCloser(strings.NewReader(test.Raw)))
+		resp, err := ReadResponse(io.NopCloser(strings.NewReader(test.Raw)))
 		if err != test.Err {
 			t.Errorf("expected err = %v, got %v", test.Err, err)
 		}
@@ -97,7 +96,7 @@ func TestReadWriteResponse(t *testing.T) {
 		if resp.meta != test.Meta {
 			t.Errorf("expected meta = %s, got %s", test.Meta, resp.meta)
 		}
-		b, _ := ioutil.ReadAll(resp.body)
+		b, _ := io.ReadAll(resp.body)
 		body := string(b)
 		if body != test.Body {
 			t.Errorf("expected body = %#v, got %#v", test.Body, body)
