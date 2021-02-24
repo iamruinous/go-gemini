@@ -1,11 +1,8 @@
-// +build ignore
-
 package gemini
 
 import (
 	"bytes"
 	"context"
-	"sync"
 	"time"
 )
 
@@ -27,84 +24,26 @@ type timeoutHandler struct {
 	dt time.Duration
 }
 
-func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
+func (t *timeoutHandler) ServeGemini(ctx context.Context, w *ResponseWriter, r *Request) {
 	ctx, cancel := context.WithTimeout(ctx, t.dt)
 	defer cancel()
 
+	conn := w.Hijack()
+
+	var b bytes.Buffer
+	w.reset(nopCloser{&b})
+
 	done := make(chan struct{})
-	tw := &timeoutWriter{}
 	go func() {
-		t.h.ServeGemini(ctx, tw, r)
+		t.h.ServeGemini(ctx, w, r)
 		close(done)
 	}()
 
 	select {
 	case <-done:
-		tw.mu.Lock()
-		defer tw.mu.Unlock()
-		if !tw.wroteHeader {
-			tw.status = StatusSuccess
-		}
-		w.WriteHeader(tw.status, tw.meta)
-		w.Write(tw.b.Bytes())
+		conn.Write(b.Bytes())
 	case <-ctx.Done():
-		tw.mu.Lock()
-		defer tw.mu.Unlock()
+		w.reset(conn)
 		w.WriteHeader(StatusTemporaryFailure, "Timeout")
-		tw.timedOut = true
 	}
-}
-
-type timeoutWriter struct {
-	mu          sync.Mutex
-	b           bytes.Buffer
-	status      Status
-	meta        string
-	mediatype   string
-	wroteHeader bool
-	timedOut    bool
-}
-
-func (w *timeoutWriter) SetMediaType(mediatype string) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.mediatype = mediatype
-}
-
-func (w *timeoutWriter) Write(b []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.timedOut {
-		return 0, ErrHandlerTimeout
-	}
-	if !w.wroteHeader {
-		w.writeHeaderLocked(StatusSuccess, w.mediatype)
-	}
-	return w.b.Write(b)
-}
-
-func (w *timeoutWriter) WriteHeader(status Status, meta string) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if w.timedOut {
-		return
-	}
-	w.writeHeaderLocked(status, meta)
-}
-
-func (w *timeoutWriter) writeHeaderLocked(status Status, meta string) {
-	if w.wroteHeader {
-		return
-	}
-	w.status = status
-	w.meta = meta
-	w.wroteHeader = true
-}
-
-func (w *timeoutWriter) Flush() error {
-	return nil
-}
-
-func (w *timeoutWriter) Close() error {
-	return nil
 }

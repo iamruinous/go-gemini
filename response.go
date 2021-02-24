@@ -138,6 +138,14 @@ func NewResponseWriter(w io.WriteCloser) *ResponseWriter {
 	}
 }
 
+func (w *ResponseWriter) reset(wc io.WriteCloser) {
+	w.bw.Reset(wc)
+	*w = ResponseWriter{
+		bw: w.bw,
+		cl: wc,
+	}
+}
+
 // SetMediaType sets the media type that will be sent by Write for a
 // successful response. If no media type is set, a default of
 // "text/gemini; charset=utf-8" will be used.
