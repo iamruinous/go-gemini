@@ -126,6 +126,7 @@ type ResponseWriter struct {
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
+	conn        net.Conn
 }
 
 // NewResponseWriter returns a ResponseWriter that uses the provided io.WriteCloser.
@@ -206,4 +207,18 @@ func (w *ResponseWriter) Flush() error {
 // Any blocked Write operations will be unblocked and return errors.
 func (w *ResponseWriter) Close() error {
 	return w.closer.Close()
+}
+
+// Conn returns the underlying network connection.
+func (w *ResponseWriter) Conn() net.Conn {
+	return w.conn
+}
+
+// TLS returns information about the underlying TLS connection.
+func (w *ResponseWriter) TLS() *tls.ConnectionState {
+	if tlsConn, ok := w.conn.(*tls.Conn); ok {
+		state := tlsConn.ConnectionState()
+		return &state
+	}
+	return nil
 }

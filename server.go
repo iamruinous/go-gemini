@@ -360,6 +360,7 @@ func (srv *Server) serveConn(ctx context.Context, conn net.Conn) error {
 	}
 
 	w := NewResponseWriter(cw)
+	w.conn = conn
 
 	req, err := ReadRequest(r)
 	if err != nil {
