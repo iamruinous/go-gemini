@@ -162,7 +162,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Printf("%d %s\n", resp.Status, resp.Meta)
+		fmt.Printf("%d %s\n", resp.Status(), resp.Meta())
 		os.Exit(1)
 	}
 }
