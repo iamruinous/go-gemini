@@ -20,17 +20,10 @@ const defaultMediaType = "text/gemini; charset=utf-8"
 //
 // It is the caller's responsibility to close the response.
 type Response struct {
-	// Status contains the response status code.
-	Status Status
-
-	// Meta contains more information related to the response status.
-	// For successful responses, Meta should contain the media type of the response.
-	// For failure responses, Meta should contain a short description of the failure.
-	// Meta should not be longer than 1024 bytes.
-	Meta string
-
-	body io.ReadCloser
-	conn net.Conn
+	status Status
+	meta   string
+	body   io.ReadCloser
+	conn   net.Conn
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
@@ -47,7 +40,7 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	if err != nil {
 		return nil, ErrInvalidResponse
 	}
-	resp.Status = Status(status)
+	resp.status = Status(status)
 
 	// Read one space
 	if b, err := br.ReadByte(); err != nil {
@@ -67,11 +60,11 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	if len(meta) > 1024 {
 		return nil, ErrInvalidResponse
 	}
-	if resp.Status.Class() == StatusSuccess && meta == "" {
+	if resp.status.Class() == StatusSuccess && meta == "" {
 		// Use default media type
 		meta = defaultMediaType
 	}
-	resp.Meta = meta
+	resp.meta = meta
 
 	// Read terminating newline
 	if b, err := br.ReadByte(); err != nil {
@@ -80,13 +73,25 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 
-	if resp.Status.Class() == StatusSuccess {
+	if resp.status.Class() == StatusSuccess {
 		resp.body = newBufReadCloser(br, r)
 	} else {
 		resp.body = nopReadCloser{}
 		r.Close()
 	}
 	return resp, nil
+}
+
+// Status returns the response status code.
+func (r *Response) Status() Status {
+	return r.status
+}
+
+// Meta returns the response meta.
+// For successful responses, the meta should contain the media type of the response.
+// For failure responses, the meta should contain a short description of the failure.
+func (r *Response) Meta() string {
+	return r.meta
 }
 
 // Read reads data from the response body.
