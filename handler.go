@@ -80,7 +80,8 @@ func StripPrefix(prefix string, h Handler) Handler {
 //
 // The new Handler calls h.ServeGemini to handle each request, but
 // if a call runs for longer than its time limit, the handler responds with a
-// 40 Temporary Failure error.
+// 40 Temporary Failure error.  After such a timeout, writes by h to
+// its ResponseWriter will return context.DeadlineExceeded.
 func TimeoutHandler(h Handler, dt time.Duration) Handler {
 	return &timeoutHandler{
 		h:  h,
