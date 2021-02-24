@@ -34,9 +34,9 @@ type Response struct {
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
-func ReadResponse(rc io.ReadCloser) (*Response, error) {
+func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp := &Response{}
-	br := bufio.NewReader(rc)
+	br := bufio.NewReader(r)
 
 	// Read the status
 	statusB := make([]byte, 2)
@@ -81,10 +81,10 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	}
 
 	if resp.Status.Class() == StatusSuccess {
-		resp.body = newBufReadCloser(br, rc)
+		resp.body = newBufReadCloser(br, r)
 	} else {
 		resp.body = nopReadCloser{}
-		rc.Close()
+		r.Close()
 	}
 	return resp, nil
 }
@@ -121,8 +121,8 @@ func (r *Response) TLS() *tls.ConnectionState {
 // A ResponseWriter may not be used after the Handler.ServeGemini method
 // has returned.
 type ResponseWriter struct {
-	b           *bufio.Writer
-	closer      io.Closer
+	bw          *bufio.Writer
+	cl          io.Closer
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
@@ -131,10 +131,10 @@ type ResponseWriter struct {
 }
 
 // NewResponseWriter returns a ResponseWriter that uses the provided io.WriteCloser.
-func NewResponseWriter(wc io.WriteCloser) *ResponseWriter {
+func NewResponseWriter(w io.WriteCloser) *ResponseWriter {
 	return &ResponseWriter{
-		b:      bufio.NewWriter(wc),
-		closer: wc,
+		bw: bufio.NewWriter(w),
+		cl: w,
 	}
 }
 
@@ -169,7 +169,7 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	if !w.bodyAllowed {
 		return 0, ErrBodyNotAllowed
 	}
-	return w.b.Write(b)
+	return w.bw.Write(b)
 }
 
 // WriteHeader sends a Gemini response header with the provided
@@ -194,10 +194,10 @@ func (w *ResponseWriter) WriteHeader(status Status, meta string) {
 		w.bodyAllowed = true
 	}
 
-	w.b.WriteString(strconv.Itoa(int(status)))
-	w.b.WriteByte(' ')
-	w.b.WriteString(meta)
-	w.b.Write(crlf)
+	w.bw.WriteString(strconv.Itoa(int(status)))
+	w.bw.WriteByte(' ')
+	w.bw.WriteString(meta)
+	w.bw.Write(crlf)
 	w.wroteHeader = true
 }
 
@@ -210,7 +210,7 @@ func (w *ResponseWriter) Flush() error {
 		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 	}
 	// Write errors from WriteHeader will be returned here.
-	return w.b.Flush()
+	return w.bw.Flush()
 }
 
 // Close closes the connection.
@@ -219,7 +219,7 @@ func (w *ResponseWriter) Close() error {
 	if w.hijacked {
 		return ErrHijacked
 	}
-	return w.closer.Close()
+	return w.cl.Close()
 }
 
 // Conn returns the underlying network connection.
