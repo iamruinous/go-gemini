@@ -109,7 +109,7 @@ func TestReadWriteResponse(t *testing.T) {
 		}
 
 		var b strings.Builder
-		w := NewResponseWriter(nopCloser{&b})
+		w := newResponseWriter(nopCloser{&b})
 		w.WriteHeader(test.Status, test.Meta)
 		io.Copy(w, strings.NewReader(test.Body))
 		if err := w.Flush(); err != nil {

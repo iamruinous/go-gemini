@@ -130,8 +130,7 @@ type ResponseWriter struct {
 	conn        net.Conn
 }
 
-// NewResponseWriter returns a ResponseWriter that uses the provided io.WriteCloser.
-func NewResponseWriter(w io.WriteCloser) *ResponseWriter {
+func newResponseWriter(w io.WriteCloser) *ResponseWriter {
 	return &ResponseWriter{
 		bw: bufio.NewWriter(w),
 		cl: w,
