@@ -17,10 +17,6 @@ var (
 	// when the response status code does not permit a body.
 	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow body")
 
-	// ErrHandlerTimeout is returned on ResponseWriter Write calls
-	// in handlers which have timed out.
-	ErrHandlerTimeout = errors.New("gemini: Handler timeout")
-
 	// ErrHijacked is returned by ResponseWriter.Write calls when
 	// the underlying connection has been hijacked using the
 	// Hijacker interface. A zero-byte write on a hijacked
