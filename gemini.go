@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"errors"
+	"mime"
 )
 
 func init() {
