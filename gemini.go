@@ -20,4 +20,11 @@ var (
 	// ErrHandlerTimeout is returned on ResponseWriter Write calls
 	// in handlers which have timed out.
 	ErrHandlerTimeout = errors.New("gemini: Handler timeout")
+
+	// ErrHijacked is returned by ResponseWriter.Write calls when
+	// the underlying connection has been hijacked using the
+	// Hijacker interface. A zero-byte write on a hijacked
+	// connection will return ErrHijacked without any other side
+	// effects.
+	ErrHijacked = errors.New("gemini: connection has been hijacked")
 )

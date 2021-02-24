@@ -126,6 +126,7 @@ type ResponseWriter struct {
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
+	hijacked    bool
 	conn        net.Conn
 }
 
@@ -154,6 +155,9 @@ func (w *ResponseWriter) SetMediaType(mediatype string) {
 // If no media type was set, Write uses a default media type of
 // "text/gemini; charset=utf-8".
 func (w *ResponseWriter) Write(b []byte) (int, error) {
+	if w.hijacked {
+		return 0, ErrHijacked
+	}
 	if !w.wroteHeader {
 		meta := w.mediatype
 		if meta == "" {
@@ -179,6 +183,9 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 // The provided meta must not be longer than 1024 bytes.
 // Only one header may be written.
 func (w *ResponseWriter) WriteHeader(status Status, meta string) {
+	if w.hijacked {
+		return
+	}
 	if w.wroteHeader {
 		return
 	}
@@ -196,6 +203,9 @@ func (w *ResponseWriter) WriteHeader(status Status, meta string) {
 
 // Flush sends any buffered data to the client.
 func (w *ResponseWriter) Flush() error {
+	if w.hijacked {
+		return ErrHijacked
+	}
 	if !w.wroteHeader {
 		w.WriteHeader(StatusTemporaryFailure, "Temporary failure")
 	}
@@ -206,10 +216,14 @@ func (w *ResponseWriter) Flush() error {
 // Close closes the connection.
 // Any blocked Write operations will be unblocked and return errors.
 func (w *ResponseWriter) Close() error {
+	if w.hijacked {
+		return ErrHijacked
+	}
 	return w.closer.Close()
 }
 
 // Conn returns the underlying network connection.
+// To take over the connection, use Hijack.
 func (w *ResponseWriter) Conn() net.Conn {
 	return w.conn
 }
@@ -221,4 +235,19 @@ func (w *ResponseWriter) TLS() *tls.ConnectionState {
 		return &state
 	}
 	return nil
+}
+
+// Hijack lets the caller take over the connection.
+// After a call to Hijack the Gemini server library
+// will not do anything else with the connection.
+// It becomes the caller's responsibility to manage
+// and close the connection.
+//
+// The returned net.Conn may have read or write deadlines
+// already set, depending on the configuration of the
+// Server. It is the caller's responsibility to set
+// or clear those deadlines as needed.
+func (w *ResponseWriter) Hijack() net.Conn {
+	w.hijacked = true
+	return w.conn
 }
