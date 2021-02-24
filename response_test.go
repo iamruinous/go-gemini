@@ -123,15 +123,3 @@ func TestReadWriteResponse(t *testing.T) {
 		}
 	}
 }
-
-type nopCloser struct {
-	io.Writer
-}
-
-func (w nopCloser) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
-
-func (nopCloser) Close() error {
-	return nil
-}

@@ -81,49 +81,12 @@ func ReadResponse(rc io.ReadCloser) (*Response, error) {
 	}
 
 	if resp.Status.Class() == StatusSuccess {
-		resp.body = newReadCloserBody(br, rc)
+		resp.body = newBufReadCloser(br, rc)
 	} else {
 		resp.body = nopReadCloser{}
 		rc.Close()
 	}
 	return resp, nil
-}
-
-type nopReadCloser struct{}
-
-func (nopReadCloser) Read(p []byte) (int, error) {
-	return 0, io.EOF
-}
-
-func (nopReadCloser) Close() error {
-	return nil
-}
-
-type readCloserBody struct {
-	br *bufio.Reader // used until empty
-	io.ReadCloser
-}
-
-func newReadCloserBody(br *bufio.Reader, rc io.ReadCloser) io.ReadCloser {
-	body := &readCloserBody{ReadCloser: rc}
-	if br.Buffered() != 0 {
-		body.br = br
-	}
-	return body
-}
-
-func (b *readCloserBody) Read(p []byte) (n int, err error) {
-	if b.br != nil {
-		if n := b.br.Buffered(); len(p) > n {
-			p = p[:n]
-		}
-		n, err = b.br.Read(p)
-		if b.br.Buffered() == 0 {
-			b.br = nil
-		}
-		return n, err
-	}
-	return b.ReadCloser.Read(p)
 }
 
 // Read reads data from the response body.
