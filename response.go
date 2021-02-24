@@ -26,6 +26,15 @@ type Response struct {
 	conn   net.Conn
 }
 
+// NewResponse returns a new response with the provided status, meta, and body.
+func NewResponse(status Status, meta string, body io.ReadCloser) *Response {
+	return &Response{
+		status: status,
+		meta:   meta,
+		body:   body,
+	}
+}
+
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
 func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp := &Response{}
