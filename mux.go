@@ -212,7 +212,7 @@ func (mux *ServeMux) Handler(r *Request) Handler {
 
 // ServeGemini dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) ServeGemini(ctx context.Context, w *ResponseWriter, r *Request) {
+func (mux *ServeMux) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	h := mux.Handler(r)
 	h.ServeGemini(ctx, w, r)
 }

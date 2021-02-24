@@ -120,7 +120,70 @@ func (r *Response) TLS() *tls.ConnectionState {
 //
 // A ResponseWriter may not be used after the Handler.ServeGemini method
 // has returned.
-type ResponseWriter struct {
+type ResponseWriter interface {
+	// SetMediaType sets the media type that will be sent by Write for a
+	// successful response. If no media type is set, a default of
+	// "text/gemini; charset=utf-8" will be used.
+	//
+	// Setting the media type after a call to Write or WriteHeader has
+	// no effect.
+	SetMediaType(mediatype string)
+
+	// Write writes the data to the connection as part of a Gemini response.
+	//
+	// If WriteHeader has not yet been called, Write calls WriteHeader with
+	// StatusSuccess and the media type set in SetMediaType before writing the data.
+	// If no media type was set, Write uses a default media type of
+	// "text/gemini; charset=utf-8".
+	Write([]byte) (int, error)
+
+	// WriteHeader sends a Gemini response header with the provided
+	// status code and meta.
+	//
+	// If WriteHeader is not called explicitly, the first call to Write
+	// will trigger an implicit call to WriteHeader with a successful
+	// status code and the media type set in SetMediaType.
+	//
+	// The provided code must be a valid Gemini status code.
+	// The provided meta must not be longer than 1024 bytes.
+	// Only one header may be written.
+	WriteHeader(status Status, meta string)
+
+	// Flush sends any buffered data to the client.
+	Flush() error
+
+	// Close closes the connection.
+	// Any blocked Write operations will be unblocked and return errors.
+	Close() error
+
+	// Conn returns the underlying network connection.
+	// To take over the connection, use Hijack.
+	Conn() net.Conn
+
+	// TLS returns information about the underlying TLS connection.
+	TLS() *tls.ConnectionState
+
+	// Hijack lets the caller take over the connection.
+	// After a call to Hijack the Gemini server library
+	// will not do anything else with the connection.
+	// It becomes the caller's responsibility to manage
+	// and close the connection.
+	//
+	// The returned net.Conn may have read or write deadlines
+	// already set, depending on the configuration of the
+	// Server. It is the caller's responsibility to set
+	// or clear those deadlines as needed.
+	Hijack() net.Conn
+
+	reset(io.WriteCloser)
+
+	// unexported method so we can extend this interface over time
+	// without breaking existing code. Implementers must embed a concrete
+	// type from elsewhere.
+	unexported()
+}
+
+type responseWriter struct {
 	bw          *bufio.Writer
 	cl          io.Closer
 	mediatype   string
@@ -130,38 +193,26 @@ type ResponseWriter struct {
 	conn        net.Conn
 }
 
-func newResponseWriter(w io.WriteCloser) *ResponseWriter {
-	return &ResponseWriter{
+func newResponseWriter(w io.WriteCloser) *responseWriter {
+	return &responseWriter{
 		bw: bufio.NewWriter(w),
 		cl: w,
 	}
 }
 
-func (w *ResponseWriter) reset(wc io.WriteCloser) {
+func (w *responseWriter) reset(wc io.WriteCloser) {
 	w.bw.Reset(wc)
-	*w = ResponseWriter{
+	*w = responseWriter{
 		bw: w.bw,
 		cl: wc,
 	}
 }
 
-// SetMediaType sets the media type that will be sent by Write for a
-// successful response. If no media type is set, a default of
-// "text/gemini; charset=utf-8" will be used.
-//
-// Setting the media type after a call to Write or WriteHeader has
-// no effect.
-func (w *ResponseWriter) SetMediaType(mediatype string) {
+func (w *responseWriter) SetMediaType(mediatype string) {
 	w.mediatype = mediatype
 }
 
-// Write writes the data to the connection as part of a Gemini response.
-//
-// If WriteHeader has not yet been called, Write calls WriteHeader with
-// StatusSuccess and the media type set in SetMediaType before writing the data.
-// If no media type was set, Write uses a default media type of
-// "text/gemini; charset=utf-8".
-func (w *ResponseWriter) Write(b []byte) (int, error) {
+func (w *responseWriter) Write(b []byte) (int, error) {
 	if w.hijacked {
 		return 0, ErrHijacked
 	}
@@ -179,17 +230,7 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return w.bw.Write(b)
 }
 
-// WriteHeader sends a Gemini response header with the provided
-// status code and meta.
-//
-// If WriteHeader is not called explicitly, the first call to Write
-// will trigger an implicit call to WriteHeader with a successful
-// status code and the media type set in SetMediaType.
-//
-// The provided code must be a valid Gemini status code.
-// The provided meta must not be longer than 1024 bytes.
-// Only one header may be written.
-func (w *ResponseWriter) WriteHeader(status Status, meta string) {
+func (w *responseWriter) WriteHeader(status Status, meta string) {
 	if w.hijacked {
 		return
 	}
@@ -208,8 +249,7 @@ func (w *ResponseWriter) WriteHeader(status Status, meta string) {
 	w.wroteHeader = true
 }
 
-// Flush sends any buffered data to the client.
-func (w *ResponseWriter) Flush() error {
+func (w *responseWriter) Flush() error {
 	if w.hijacked {
 		return ErrHijacked
 	}
@@ -220,23 +260,18 @@ func (w *ResponseWriter) Flush() error {
 	return w.bw.Flush()
 }
 
-// Close closes the connection.
-// Any blocked Write operations will be unblocked and return errors.
-func (w *ResponseWriter) Close() error {
+func (w *responseWriter) Close() error {
 	if w.hijacked {
 		return ErrHijacked
 	}
 	return w.cl.Close()
 }
 
-// Conn returns the underlying network connection.
-// To take over the connection, use Hijack.
-func (w *ResponseWriter) Conn() net.Conn {
+func (w *responseWriter) Conn() net.Conn {
 	return w.conn
 }
 
-// TLS returns information about the underlying TLS connection.
-func (w *ResponseWriter) TLS() *tls.ConnectionState {
+func (w *responseWriter) TLS() *tls.ConnectionState {
 	if tlsConn, ok := w.conn.(*tls.Conn); ok {
 		state := tlsConn.ConnectionState()
 		return &state
@@ -244,17 +279,9 @@ func (w *ResponseWriter) TLS() *tls.ConnectionState {
 	return nil
 }
 
-// Hijack lets the caller take over the connection.
-// After a call to Hijack the Gemini server library
-// will not do anything else with the connection.
-// It becomes the caller's responsibility to manage
-// and close the connection.
-//
-// The returned net.Conn may have read or write deadlines
-// already set, depending on the configuration of the
-// Server. It is the caller's responsibility to set
-// or clear those deadlines as needed.
-func (w *ResponseWriter) Hijack() net.Conn {
+func (w *responseWriter) Hijack() net.Conn {
 	w.hijacked = true
 	return w.conn
 }
+
+func (w *responseWriter) unexported() {}
