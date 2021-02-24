@@ -14,6 +14,9 @@ import (
 // of the ServeGemini call. Handlers may also call ResponseWriter.Close to
 // manually close the connection.
 //
+// The provided context is canceled when the client's connection is closed,
+// when ResponseWriter.Close is called, or when the ServeGemini method returns.
+//
 // Handlers should not modify the provided Request.
 type Handler interface {
 	ServeGemini(context.Context, ResponseWriter, *Request)
