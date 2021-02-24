@@ -15,24 +15,29 @@ const defaultMediaType = "text/gemini; charset=utf-8"
 //
 // The Client returns Responses from servers once the response
 // header has been received. The response body is streamed on demand
-// as the response is read. If the network connection fails or the server
-// terminates the response, Read calls return an error.
-//
-// It is the caller's responsibility to close the response.
+// as the Body field is read.
 type Response struct {
-	status Status
-	meta   string
-	body   io.ReadCloser
-	conn   net.Conn
-}
+	// Status is the response status code.
+	Status Status
 
-// NewResponse returns a new response with the provided status, meta, and body.
-func NewResponse(status Status, meta string, body io.ReadCloser) *Response {
-	return &Response{
-		status: status,
-		meta:   meta,
-		body:   body,
-	}
+	// Meta returns the response meta.
+	// For successful responses, the meta should contain the media type of the response.
+	// For failure responses, the meta should contain a short description of the failure.
+	Meta string
+
+	// Body represents the response body.
+	//
+	// The response body is streamed on demand as the Body field
+	// is read. If the network connection fails or the server
+	// terminates the response, Body.Read calls return an error.
+	//
+	// The Gemini client guarantees that Body is always
+	// non-nil, even on responses without a body or responses with
+	// a zero-length body. It is the caller's responsibility to
+	// close Body.
+	Body io.ReadCloser
+
+	conn net.Conn
 }
 
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
@@ -49,7 +54,7 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	if err != nil {
 		return nil, ErrInvalidResponse
 	}
-	resp.status = Status(status)
+	resp.Status = Status(status)
 
 	// Read one space
 	if b, err := br.ReadByte(); err != nil {
@@ -69,11 +74,11 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	if len(meta) > 1024 {
 		return nil, ErrInvalidResponse
 	}
-	if resp.status.Class() == StatusSuccess && meta == "" {
+	if resp.Status.Class() == StatusSuccess && meta == "" {
 		// Use default media type
 		meta = defaultMediaType
 	}
-	resp.meta = meta
+	resp.Meta = meta
 
 	// Read terminating newline
 	if b, err := br.ReadByte(); err != nil {
@@ -82,36 +87,13 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 		return nil, ErrInvalidResponse
 	}
 
-	if resp.status.Class() == StatusSuccess {
-		resp.body = newBufReadCloser(br, r)
+	if resp.Status.Class() == StatusSuccess {
+		resp.Body = newBufReadCloser(br, r)
 	} else {
-		resp.body = nopReadCloser{}
+		resp.Body = nopReadCloser{}
 		r.Close()
 	}
 	return resp, nil
-}
-
-// Status returns the response status code.
-func (r *Response) Status() Status {
-	return r.status
-}
-
-// Meta returns the response meta.
-// For successful responses, the meta should contain the media type of the response.
-// For failure responses, the meta should contain a short description of the failure.
-func (r *Response) Meta() string {
-	return r.meta
-}
-
-// Read reads data from the response body.
-// The response body is streamed on demand as Read is called.
-func (r *Response) Read(p []byte) (n int, err error) {
-	return r.body.Read(p)
-}
-
-// Close closes the response body.
-func (r *Response) Close() error {
-	return r.body.Close()
 }
 
 // Conn returns the network connection on which the response was received.

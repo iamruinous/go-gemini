@@ -103,9 +103,9 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 		return resp, err
 	}
 
-	switch resp.Status().Class() {
+	switch resp.Status.Class() {
 	case gemini.StatusInput:
-		input, ok := getInput(resp.Meta(), resp.Status() == gemini.StatusSensitiveInput)
+		input, ok := getInput(resp.Meta, resp.Status == gemini.StatusSensitiveInput)
 		if !ok {
 			break
 		}
@@ -119,7 +119,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 			return resp, errors.New("too many redirects")
 		}
 
-		target, err := url.Parse(resp.Meta())
+		target, err := url.Parse(resp.Meta)
 		if err != nil {
 			return resp, err
 		}
@@ -156,13 +156,13 @@ func main() {
 	defer resp.Close()
 
 	// Handle response
-	if resp.Status().Class() == gemini.StatusSuccess {
+	if resp.Status.Class() == gemini.StatusSuccess {
 		_, err := io.Copy(os.Stdout, resp)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Printf("%d %s\n", resp.Status(), resp.Meta())
+		fmt.Printf("%d %s\n", resp.Status, resp.Meta)
 		os.Exit(1)
 	}
 }

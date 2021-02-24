@@ -91,13 +91,13 @@ func TestReadWriteResponse(t *testing.T) {
 			// No response
 			continue
 		}
-		if resp.status != test.Status {
-			t.Errorf("expected status = %d, got %d", test.Status, resp.status)
+		if resp.Status != test.Status {
+			t.Errorf("expected status = %d, got %d", test.Status, resp.Status)
 		}
-		if resp.meta != test.Meta {
-			t.Errorf("expected meta = %s, got %s", test.Meta, resp.meta)
+		if resp.Meta != test.Meta {
+			t.Errorf("expected meta = %s, got %s", test.Meta, resp.Meta)
 		}
-		b, _ := ioutil.ReadAll(resp.body)
+		b, _ := ioutil.ReadAll(resp.Body)
 		body := string(b)
 		if body != test.Body {
 			t.Errorf("expected body = %#v, got %#v", test.Body, body)
