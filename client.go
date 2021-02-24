@@ -77,9 +77,10 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 
 		// Use the new URL in the request so that the server gets
 		// the punycoded hostname
-		req = &Request{
-			URL: u,
-		}
+		r := new(Request)
+		*r = *req
+		r.URL = u
+		req = r
 	}
 
 	// Use request host if provided
