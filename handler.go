@@ -14,11 +14,10 @@ import (
 // ServeGemini should write the response header and data to the ResponseWriter
 // and then return. Returning signals that the request is finished; it is not
 // valid to use the ResponseWriter after or concurrently with the completion
-// of the ServeGemini call. Handlers may also call ResponseWriter.Close to
-// manually close the connection.
+// of the ServeGemini call.
 //
-// The provided context is canceled when the client's connection is closed,
-// when ResponseWriter.Close is called, or when the ServeGemini method returns.
+// The provided context is canceled when the client's connection is closed
+// or the ServeGemini method returns.
 //
 // Handlers should not modify the provided Request.
 type Handler interface {
@@ -100,7 +99,7 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 
 	buf := &bytes.Buffer{}
 	tw := &timeoutWriter{
-		wc: &contextWriter{
+		wr: &contextWriter{
 			ctx:    ctx,
 			cancel: cancel,
 			done:   ctx.Done(),
@@ -124,7 +123,7 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 }
 
 type timeoutWriter struct {
-	wc          io.WriteCloser
+	wr          io.Writer
 	status      Status
 	meta        string
 	mediatype   string
@@ -139,7 +138,7 @@ func (w *timeoutWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
 		w.WriteHeader(StatusSuccess, w.mediatype)
 	}
-	return w.wc.Write(b)
+	return w.wr.Write(b)
 }
 
 func (w *timeoutWriter) WriteHeader(status Status, meta string) {
@@ -153,8 +152,4 @@ func (w *timeoutWriter) WriteHeader(status Status, meta string) {
 
 func (w *timeoutWriter) Flush() error {
 	return nil
-}
-
-func (w *timeoutWriter) Close() error {
-	return w.wc.Close()
 }

@@ -102,7 +102,3 @@ func (w *logResponseWriter) WriteHeader(status gemini.Status, meta string) {
 func (w *logResponseWriter) Flush() error {
 	return nil
 }
-
-func (w *logResponseWriter) Close() error {
-	return nil
-}
