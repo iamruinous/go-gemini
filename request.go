@@ -29,6 +29,7 @@ type Request struct {
 	Certificate *tls.Certificate
 
 	conn net.Conn
+	tls  *tls.ConnectionState
 }
 
 // NewRequest returns a new request.
@@ -101,9 +102,11 @@ func (r *Request) Conn() net.Conn {
 // TLS returns information about the TLS connection on which the
 // request was received.
 func (r *Request) TLS() *tls.ConnectionState {
-	if tlsConn, ok := r.conn.(*tls.Conn); ok {
-		state := tlsConn.ConnectionState()
-		return &state
+	if r.tls == nil {
+		if tlsConn, ok := r.conn.(*tls.Conn); ok {
+			state := tlsConn.ConnectionState()
+			r.tls = &state
+		}
 	}
-	return nil
+	return r.tls
 }
