@@ -39,6 +39,15 @@ func TestReadWriteResponse(t *testing.T) {
 			SkipWrite: true, // skip write test since result won't match Raw
 		},
 		{
+			Raw:    "32 " + maxURL + "\r\n",
+			Status: 32,
+			Meta:   maxURL,
+		},
+		{
+			Raw: "33 " + maxURL + "xxxx" + "\r\n",
+			Err: ErrInvalidResponse,
+		},
+		{
 			Raw:    "99 Unknown status code\r\n",
 			Status: 99,
 			Meta:   "Unknown status code",
@@ -87,7 +96,7 @@ func TestReadWriteResponse(t *testing.T) {
 		if err != test.Err {
 			t.Errorf("expected err = %v, got %v", test.Err, err)
 		}
-		if test.Err != nil {
+		if err != nil {
 			// No response
 			continue
 		}
