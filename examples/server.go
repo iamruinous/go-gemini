@@ -26,7 +26,7 @@ func main() {
 	mux.Handle("/", gemini.FileServer(os.DirFS("/var/www")))
 
 	server := &gemini.Server{
-		Handler:        logMiddleware(mux),
+		Handler:        LoggingMiddleware(mux),
 		ReadTimeout:    30 * time.Second,
 		WriteTimeout:   1 * time.Minute,
 		GetCertificate: certificates.Get,
@@ -57,22 +57,21 @@ func main() {
 	}
 }
 
-func logMiddleware(h gemini.Handler) gemini.Handler {
+func LoggingMiddleware(h gemini.Handler) gemini.Handler {
 	return gemini.HandlerFunc(func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		lw := &logResponseWriter{rw: w}
 		h.ServeGemini(ctx, lw, r)
 		host := r.TLS().ServerName
-		log.Printf("gemini: %s %q %d %d", host, r.URL, lw.status, lw.wrote)
+		log.Printf("gemini: %s %q %d %d", host, r.URL, lw.Status, lw.Wrote)
 	})
 }
 
 type logResponseWriter struct {
+	Status      gemini.Status
+	Wrote       int
 	rw          gemini.ResponseWriter
-	status      gemini.Status
-	meta        string
 	mediatype   string
 	wroteHeader bool
-	wrote       int
 }
 
 func (w *logResponseWriter) SetMediaType(mediatype string) {
@@ -84,7 +83,7 @@ func (w *logResponseWriter) Write(b []byte) (int, error) {
 		w.WriteHeader(gemini.StatusSuccess, w.mediatype)
 	}
 	n, err := w.rw.Write(b)
-	w.wrote += n
+	w.Wrote += n
 	return n, err
 }
 
@@ -92,11 +91,10 @@ func (w *logResponseWriter) WriteHeader(status gemini.Status, meta string) {
 	if w.wroteHeader {
 		return
 	}
-	w.status = status
-	w.meta = meta
 	w.wroteHeader = true
+	w.Status = status
+	w.Wrote += len(meta) + 5
 	w.rw.WriteHeader(status, meta)
-	w.wrote += len(meta) + 5
 }
 
 func (w *logResponseWriter) Flush() error {
