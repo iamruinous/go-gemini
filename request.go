@@ -110,3 +110,12 @@ func (r *Request) TLS() *tls.ConnectionState {
 	}
 	return r.tls
 }
+
+// ServerName returns the value of the TLS Server Name Indication extension
+// sent by the client.
+func (r *Request) ServerName() string {
+	if tls := r.TLS(); tls != nil {
+		return tls.ServerName
+	}
+	return ""
+}
