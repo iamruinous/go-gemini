@@ -6,53 +6,56 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 )
 
-// A Store represents a certificate store.
-// It generates certificates as needed and automatically rotates expired certificates.
+// A Store represents a TLS certificate store.
 // The zero value for Store is an empty store ready to use.
 //
-// Certificate scopes must be registered with Register before calling Get or Load.
-// This prevents the Store from creating or loading unnecessary certificates.
+// Store can be used to store server certificates.
+// Servers should provide a hostname or wildcard pattern as a certificate scope.
+// Servers will most likely use the methods Register, Load and Get.
+//
+// Store can also be used to store client certificates.
+// Clients should provide the hostname and path of a URL as a certificate scope.
+// Clients will most likely use the methods Add, Load, and Lookup.
 //
 // Store is safe for concurrent use by multiple goroutines.
 type Store struct {
-	// CreateCertificate, if not nil, is called to create a new certificate
-	// to replace a missing or expired certificate. If CreateCertificate
-	// is nil, a certificate with a duration of 1 year will be created.
+	// CreateCertificate, if not nil, is called by Get to create a new
+	// certificate to replace a missing or expired certificate.
 	// The provided scope is suitable for use in a certificate's DNSNames.
 	CreateCertificate func(scope string) (tls.Certificate, error)
 
-	certs map[string]tls.Certificate
-	path  string
-	mu    sync.RWMutex
+	scopes map[string]struct{}
+	certs  map[string]tls.Certificate
+	path   string
+	mu     sync.RWMutex
 }
 
 // Register registers the provided scope with the certificate store.
 // The scope can either be a hostname or a wildcard pattern (e.g. "*.example.com").
 // To accept all hostnames, use the special pattern "*".
+//
+// Calls to Get will only succeed for registered scopes.
+// Other methods are not affected.
 func (s *Store) Register(scope string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.certs == nil {
-		s.certs = make(map[string]tls.Certificate)
+	if s.scopes == nil {
+		s.scopes = make(map[string]struct{})
 	}
-	s.certs[scope] = tls.Certificate{}
+	s.scopes[scope] = struct{}{}
 }
 
-// Add adds a certificate with the given scope to the certificate store.
-// If a certificate for the given scope already exists, Add will overwrite it.
+// Add registers the certificate for the given scope.
+// If a certificate already exists for scope, Add will overwrite it.
 func (s *Store) Add(scope string, cert tls.Certificate) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.certs == nil {
-		s.certs = make(map[string]tls.Certificate)
-	}
-
 	// Parse certificate if not already parsed
 	if cert.Leaf == nil {
 		parsed, err := x509.ParseCertificate(cert.Certificate[0])
@@ -62,42 +65,64 @@ func (s *Store) Add(scope string, cert tls.Certificate) error {
 		cert.Leaf = parsed
 	}
 
+	if err := s.write(scope, cert); err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.certs == nil {
+		s.certs = make(map[string]tls.Certificate)
+	}
+	s.certs[scope] = cert
+	return nil
+}
+
+func (s *Store) write(scope string, cert tls.Certificate) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.path != "" {
 		certPath := filepath.Join(s.path, scope+".crt")
 		keyPath := filepath.Join(s.path, scope+".key")
+
+		dir := filepath.Dir(certPath)
+		os.MkdirAll(dir, 0755)
+
 		if err := Write(cert, certPath, keyPath); err != nil {
 			return err
 		}
 	}
-
-	s.certs[scope] = cert
 	return nil
 }
 
 // Get retrieves a certificate for the given hostname.
 // If no matching scope has been registered, Get returns an error.
 // Get generates new certificates as needed and rotates expired certificates.
+// It calls CreateCertificate to create a new certificate if it is not nil,
+// otherwise it creates certificates with a duration of 1 year.
 //
 // Get is suitable for use in a gemini.Server's GetCertificate field.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	cert, ok := s.certs[hostname]
+	_, ok := s.certs[hostname]
 	if !ok {
 		// Try wildcard
 		wildcard := strings.SplitN(hostname, ".", 2)
 		if len(wildcard) == 2 {
 			hostname = "*." + wildcard[1]
-			cert, ok = s.certs[hostname]
+			_, ok = s.scopes[hostname]
 		}
 	}
 	if !ok {
 		// Try "*"
-		cert, ok = s.certs["*"]
+		_, ok = s.scopes["*"]
 	}
 	if !ok {
 		return nil, errors.New("unrecognized scope")
 	}
+
+	cert := s.certs[hostname]
 
 	// If the certificate is empty or expired, generate a new one.
 	if cert.Leaf == nil || cert.Leaf.NotAfter.Before(time.Now()) {
@@ -112,6 +137,14 @@ func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	}
 
 	return &cert, nil
+}
+
+// Lookup returns the certificate for the provided scope.
+func (s *Store) Lookup(scope string) (tls.Certificate, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	cert, ok := s.certs[scope]
+	return cert, ok
 }
 
 func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
@@ -132,27 +165,32 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 // The path should lead to a directory containing certificates
 // and private keys named "scope.crt" and "scope.key" respectively,
 // where "scope" is the scope of the certificate.
-// Certificates with scopes that have not been registered will be ignored.
 func (s *Store) Load(path string) error {
-	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
-	if err != nil {
-		return err
-	}
+	matches := findCertificates(path)
 	for _, crtPath := range matches {
-		scope := strings.TrimSuffix(filepath.Base(crtPath), ".crt")
-		if _, ok := s.certs[scope]; !ok {
-			continue
-		}
-
 		keyPath := strings.TrimSuffix(crtPath, ".crt") + ".key"
 		cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 		if err != nil {
 			continue
 		}
+
+		scope := strings.TrimPrefix(crtPath, path)
+		scope = strings.TrimPrefix(scope, "/")
+		scope = strings.TrimSuffix(scope, ".crt")
 		s.Add(scope, cert)
 	}
 	s.SetPath(path)
 	return nil
+}
+
+func findCertificates(path string) (matches []string) {
+	filepath.Walk(path, func(path string, _ fs.FileInfo, err error) error {
+		if filepath.Ext(path) == ".crt" {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	return
 }
 
 // Entries returns a map of scopes to certificates.
