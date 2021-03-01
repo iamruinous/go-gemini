@@ -119,11 +119,3 @@ func (r *Request) ServerName() string {
 	}
 	return ""
 }
-
-// RemoteAddr returns the remote network address of the client.
-func (r *Request) RemoteAddr() net.Addr {
-	if r.conn != nil {
-		return r.conn.RemoteAddr()
-	}
-	return nil
-}
