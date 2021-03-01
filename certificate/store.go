@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -22,7 +23,8 @@ import (
 // Servers will most likely use the methods Register, Load and Get.
 //
 // Store can also be used to store client certificates.
-// Clients should provide the hostname and path of a URL as a certificate scope.
+// Clients should provide the hostname and path of a URL as a certificate scope
+// (without a trailing slash).
 // Clients will most likely use the methods Add, Load, and Lookup.
 //
 // Store is safe for concurrent use by multiple goroutines.
@@ -140,10 +142,25 @@ func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 }
 
 // Lookup returns the certificate for the provided scope.
+// Lookup also checks for certificates in parent scopes.
+// For example, given the scope "example.com/a/b/c", Lookup will first check
+// "example.com/a/b/c", then "example.com/a/b", then "example.com/a", and
+// finally "example.com" for a certificate. As a result, a certificate with
+// scope "example.com" will match all scopes beginning with "example.com".
 func (s *Store) Lookup(scope string) (tls.Certificate, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	cert, ok := s.certs[scope]
+	if !ok {
+		scope = path.Dir(scope)
+		for scope != "." {
+			cert, ok = s.certs[scope]
+			if ok {
+				break
+			}
+			scope = path.Dir(scope)
+		}
+	}
 	return cert, ok
 }
 
