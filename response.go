@@ -112,22 +112,27 @@ func (r *Response) TLS() *tls.ConnectionState {
 	return nil
 }
 
-// Write writes r to w in the Gemini response format, including the
+// WriteTo writes r to w in the Gemini response format, including the
 // header and body.
 //
 // This method consults the Status, Meta, and Body fields of the response.
 // The Response Body is closed after it is sent.
-func (r *Response) Write(w io.Writer) error {
-	if _, err := fmt.Fprintf(w, "%02d %s\r\n", r.Status, r.Meta); err != nil {
-		return err
+func (r *Response) WriteTo(w io.Writer) (int64, error) {
+	var wrote int64
+	n, err := fmt.Fprintf(w, "%02d %s\r\n", r.Status, r.Meta)
+	wrote += int64(n)
+	if err != nil {
+		return wrote, err
 	}
 	if r.Body != nil {
 		defer r.Body.Close()
-		if _, err := io.Copy(w, r.Body); err != nil {
-			return err
+		n, err := io.Copy(w, r.Body)
+		wrote += n
+		if err != nil {
+			return wrote, err
 		}
 	}
-	return nil
+	return wrote, nil
 }
 
 // A ResponseWriter interface is used by a Gemini handler to construct
