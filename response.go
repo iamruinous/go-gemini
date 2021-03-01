@@ -3,6 +3,7 @@ package gemini
 import (
 	"bufio"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -107,6 +108,24 @@ func (r *Response) TLS() *tls.ConnectionState {
 	if tlsConn, ok := r.conn.(*tls.Conn); ok {
 		state := tlsConn.ConnectionState()
 		return &state
+	}
+	return nil
+}
+
+// Write writes r to w in the Gemini response format, including the
+// header and body.
+//
+// This method consults the Status, Meta, and Body fields of the response.
+// The Response Body is closed after it is sent.
+func (r *Response) Write(w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "%02d %s\r\n", r.Status, r.Meta); err != nil {
+		return err
+	}
+	if r.Body != nil {
+		defer r.Body.Close()
+		if _, err := io.Copy(w, r.Body); err != nil {
+			return err
+		}
 	}
 	return nil
 }
