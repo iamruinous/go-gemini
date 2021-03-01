@@ -95,12 +95,14 @@ func (r *Request) Write(w io.Writer) error {
 }
 
 // Conn returns the network connection on which the request was received.
+// Conn returns nil for client requests.
 func (r *Request) Conn() net.Conn {
 	return r.conn
 }
 
 // TLS returns information about the TLS connection on which the
 // request was received.
+// TLS returns nil for client requests.
 func (r *Request) TLS() *tls.ConnectionState {
 	if r.tls == nil {
 		if tlsConn, ok := r.conn.(*tls.Conn); ok {
@@ -113,6 +115,7 @@ func (r *Request) TLS() *tls.ConnectionState {
 
 // ServerName returns the value of the TLS Server Name Indication extension
 // sent by the client.
+// ServerName returns an empty string for client requests.
 func (r *Request) ServerName() string {
 	if tls := r.TLS(); tls != nil {
 		return tls.ServerName
