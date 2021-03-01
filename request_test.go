@@ -119,7 +119,7 @@ func TestWriteRequest(t *testing.T) {
 		t.Logf("%s", test.Req.URL)
 		var b strings.Builder
 		bw := bufio.NewWriter(&b)
-		err := test.Req.Write(bw)
+		_, err := test.Req.WriteTo(bw)
 		if err != test.Err {
 			t.Errorf("expected err = %v, got %v", test.Err, err)
 		}

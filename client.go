@@ -153,7 +153,7 @@ func (c *Client) do(ctx context.Context, conn net.Conn, req *Request) (*Response
 	}
 
 	// Write the request
-	if err := req.Write(w); err != nil {
+	if _, err := req.WriteTo(w); err != nil {
 		return nil, err
 	}
 
