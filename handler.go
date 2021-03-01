@@ -79,18 +79,21 @@ func StripPrefix(prefix string, h Handler) Handler {
 //
 // The new Handler calls h.ServeGemini to handle each request, but
 // if a call runs for longer than its time limit, the handler responds with a
-// 40 Temporary Failure error.  After such a timeout, writes by h to
-// its ResponseWriter will return context.DeadlineExceeded.
-func TimeoutHandler(h Handler, dt time.Duration) Handler {
+// 40 Temporary Failure status code and the given message in its response meta.
+// After such a timeout, writes by h to its ResponseWriter will return
+// context.DeadlineExceeded.
+func TimeoutHandler(h Handler, dt time.Duration, message string) Handler {
 	return &timeoutHandler{
-		h:  h,
-		dt: dt,
+		h:   h,
+		dt:  dt,
+		msg: message,
 	}
 }
 
 type timeoutHandler struct {
-	h  Handler
-	dt time.Duration
+	h   Handler
+	dt  time.Duration
+	msg string
 }
 
 func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
@@ -118,7 +121,7 @@ func (t *timeoutHandler) ServeGemini(ctx context.Context, w ResponseWriter, r *R
 		w.WriteHeader(tw.status, tw.meta)
 		w.Write(buf.Bytes())
 	case <-ctx.Done():
-		w.WriteHeader(StatusTemporaryFailure, "Timeout")
+		w.WriteHeader(StatusTemporaryFailure, t.msg)
 	}
 }
 
