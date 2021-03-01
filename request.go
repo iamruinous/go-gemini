@@ -79,20 +79,20 @@ func ReadRequest(r io.Reader) (*Request, error) {
 
 // WriteTo writes r to w in the Gemini request format.
 // This method consults the request URL only.
-func (r *Request) WriteTo(w io.Writer) (int, error) {
+func (r *Request) WriteTo(w io.Writer) (int64, error) {
 	bw := bufio.NewWriterSize(w, 1026)
 	url := r.URL.String()
 	if len(url) > 1024 {
 		return 0, ErrInvalidRequest
 	}
-	var wrote int
+	var wrote int64
 	n, err := bw.WriteString(url)
-	wrote += n
+	wrote += int64(n)
 	if err != nil {
 		return wrote, err
 	}
 	n, err = bw.Write(crlf)
-	wrote += n
+	wrote += int64(n)
 	if err != nil {
 		return wrote, err
 	}
