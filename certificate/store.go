@@ -99,7 +99,7 @@ func (s *Store) write(scope string, cert tls.Certificate) error {
 // If no matching scope has been registered, Get returns an error.
 // Get generates new certificates as needed and rotates expired certificates.
 // It calls CreateCertificate to create a new certificate if it is not nil,
-// otherwise it creates certificates with a duration of 1 year.
+// otherwise it creates certificates with a duration of 250 years.
 //
 // Get is suitable for use in a gemini.Server's GetCertificate field.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
@@ -168,7 +168,7 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 	}
 	return Create(CreateOptions{
 		DNSNames: []string{scope},
-		Duration: 365 * 24 * time.Hour,
+		Duration: 250 * 365 * 24 * time.Hour,
 	})
 }
 
