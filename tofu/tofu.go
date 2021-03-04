@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 // KnownHosts represents a list of known hosts.
@@ -143,22 +142,17 @@ func (k *KnownHosts) Parse(r io.Reader) error {
 // TOFU implements basic trust on first use.
 //
 // If the host is not on file, it is added to the list.
-// If the host on file is expired, a new entry is added to the list.
 // If the fingerprint does not match the one on file, an error is returned.
 func (k *KnownHosts) TOFU(hostname string, cert *x509.Certificate) error {
-	host := NewHost(hostname, cert.Raw, cert.NotAfter)
-
+	host := NewHost(hostname, cert.Raw)
 	knownHost, ok := k.Lookup(hostname)
-	if !ok || time.Now().After(knownHost.Expires) {
+	if !ok {
 		k.Add(host)
 		return nil
 	}
-
-	// Check fingerprint
 	if !bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
 		return fmt.Errorf("fingerprint for %q does not match", hostname)
 	}
-
 	return nil
 }
 
@@ -266,21 +260,16 @@ func (p *PersistentHosts) Entries() []Host {
 // TOFU implements trust on first use with a persistent set of known hosts.
 //
 // If the host is not on file, it is added to the list.
-// If the host on file is expired, a new entry is added to the list.
 // If the fingerprint does not match the one on file, an error is returned.
 func (p *PersistentHosts) TOFU(hostname string, cert *x509.Certificate) error {
-	host := NewHost(hostname, cert.Raw, cert.NotAfter)
-
+	host := NewHost(hostname, cert.Raw)
 	knownHost, ok := p.Lookup(hostname)
-	if !ok || time.Now().After(knownHost.Expires) {
+	if !ok {
 		return p.Add(host)
 	}
-
-	// Check fingerprint
 	if !bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
 		return fmt.Errorf("fingerprint for %q does not match", hostname)
 	}
-
 	return nil
 }
 
@@ -294,19 +283,17 @@ type Host struct {
 	Hostname    string      // hostname
 	Algorithm   string      // fingerprint algorithm e.g. SHA-512
 	Fingerprint Fingerprint // fingerprint
-	Expires     time.Time   // unix time of the fingerprint expiration date
 }
 
 // NewHost returns a new host with a SHA-512 fingerprint of
 // the provided raw data.
-func NewHost(hostname string, raw []byte, expires time.Time) Host {
+func NewHost(hostname string, raw []byte) Host {
 	sum := sha512.Sum512(raw)
 
 	return Host{
 		Hostname:    hostname,
 		Algorithm:   "SHA-512",
 		Fingerprint: sum[:],
-		Expires:     expires,
 	}
 }
 
@@ -325,8 +312,6 @@ func (h Host) String() string {
 	b.WriteString(h.Algorithm)
 	b.WriteByte(' ')
 	b.WriteString(h.Fingerprint.String())
-	b.WriteByte(' ')
-	b.WriteString(strconv.FormatInt(h.Expires.Unix(), 10))
 	return b.String()
 }
 
@@ -335,7 +320,7 @@ func (h *Host) UnmarshalText(text []byte) error {
 	const format = "hostname algorithm hex-fingerprint expiry-unix-ts"
 
 	parts := bytes.Split(text, []byte(" "))
-	if len(parts) != 4 {
+	if len(parts) != 3 {
 		return fmt.Errorf("expected the format %q", format)
 	}
 
@@ -370,13 +355,6 @@ func (h *Host) UnmarshalText(text []byte) error {
 	}
 
 	h.Fingerprint = fingerprint
-
-	unix, err := strconv.ParseInt(string(parts[3]), 10, 0)
-	if err != nil {
-		return fmt.Errorf("invalid unix timestamp: %w", err)
-	}
-
-	h.Expires = time.Unix(unix, 0)
 
 	return nil
 }

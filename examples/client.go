@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"time"
 
 	"git.sr.ht/~adnano/go-gemini"
 	"git.sr.ht/~adnano/go-gemini/tofu"
@@ -61,10 +60,9 @@ Otherwise, this should be safe to trust.
 => `
 
 func trustCertificate(hostname string, cert *x509.Certificate) error {
-	host := tofu.NewHost(hostname, cert.Raw, cert.NotAfter)
-
+	host := tofu.NewHost(hostname, cert.Raw)
 	knownHost, ok := hosts.Lookup(hostname)
-	if ok && time.Now().Before(knownHost.Expires) {
+	if ok {
 		// Check fingerprint
 		if bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
 			return nil
