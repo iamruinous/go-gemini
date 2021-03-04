@@ -106,7 +106,6 @@ func (s *Store) write(scope string, cert tls.Certificate) error {
 // Get is suitable for use in a gemini.Server's GetCertificate field.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	_, ok := s.scopes[hostname]
 	if !ok {
 		// Try wildcard
@@ -121,10 +120,11 @@ func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 		_, ok = s.scopes["*"]
 	}
 	if !ok {
+		s.mu.RUnlock()
 		return nil, errors.New("unrecognized scope")
 	}
-
 	cert := s.certs[hostname]
+	s.mu.RUnlock()
 
 	// If the certificate is empty or expired, generate a new one.
 	if cert.Leaf == nil || cert.Leaf.NotAfter.Before(time.Now()) {
