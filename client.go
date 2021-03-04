@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"net"
 	"net/url"
-	"time"
 	"unicode/utf8"
 
 	"golang.org/x/net/idna"
@@ -179,10 +178,6 @@ func (c *Client) verifyConnection(cs tls.ConnectionState, hostname string) error
 	// Verify hostname
 	if err := verifyHostname(cert, hostname); err != nil {
 		return err
-	}
-	// Check expiration date
-	if !time.Now().Before(cert.NotAfter) {
-		return ErrCertificateExpired
 	}
 	// See if the client trusts the certificate
 	if c.TrustCertificate != nil {
