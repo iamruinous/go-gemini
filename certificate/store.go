@@ -33,10 +33,9 @@ type Store struct {
 	// The provided scope is suitable for use in a certificate's DNSNames.
 	CreateCertificate func(scope string) (tls.Certificate, error)
 
-	scopes map[string]struct{}
-	certs  map[string]tls.Certificate
-	path   string
-	mu     sync.RWMutex
+	certs map[string]tls.Certificate
+	path  string
+	mu    sync.RWMutex
 }
 
 // Register registers the provided scope with the certificate store.
@@ -48,10 +47,10 @@ type Store struct {
 func (s *Store) Register(scope string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.scopes == nil {
-		s.scopes = make(map[string]struct{})
+	if s.certs == nil {
+		s.certs = make(map[string]tls.Certificate)
 	}
-	s.scopes[scope] = struct{}{}
+	s.certs[scope] = tls.Certificate{}
 }
 
 // Add registers the certificate for the given scope.
@@ -105,24 +104,24 @@ func (s *Store) write(scope string, cert tls.Certificate) error {
 // Get is suitable for use in a gemini.Server's GetCertificate field.
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
-	_, ok := s.scopes[hostname]
+	cert, ok := s.certs[hostname]
 	if !ok {
 		// Try wildcard
 		wildcard := strings.SplitN(hostname, ".", 2)
 		if len(wildcard) == 2 {
 			hostname = "*." + wildcard[1]
-			_, ok = s.scopes[hostname]
+			cert, ok = s.certs[hostname]
 		}
 	}
 	if !ok {
 		// Try "*"
-		_, ok = s.scopes["*"]
+		hostname = "*"
+		cert, ok = s.certs[hostname]
 	}
 	if !ok {
 		s.mu.RUnlock()
 		return nil, errors.New("unrecognized scope")
 	}
-	cert := s.certs[hostname]
 	s.mu.RUnlock()
 
 	// If the certificate is empty or expired, generate a new one.
