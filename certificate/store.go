@@ -107,7 +107,7 @@ func (s *Store) write(scope string, cert tls.Certificate) error {
 func (s *Store) Get(hostname string) (*tls.Certificate, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	_, ok := s.certs[hostname]
+	_, ok := s.scopes[hostname]
 	if !ok {
 		// Try wildcard
 		wildcard := strings.SplitN(hostname, ".", 2)
