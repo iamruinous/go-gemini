@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
 	"net"
@@ -26,6 +27,13 @@ type CreateOptions struct {
 	// Subject Alternate Name values.
 	// Should contain the IP addresses that the certificate is valid for.
 	IPAddresses []net.IP
+
+	// Subject specifies the certificate Subject.
+	//
+	// Subject.CommonName can contain the DNS name that this certificate
+	// is valid for. Server certificates should specify both a Subject
+	// and a Subject Alternate Name.
+	Subject pkix.Name
 
 	// Duration specifies the amount of time that the certificate is valid for.
 	Duration time.Duration
@@ -92,6 +100,7 @@ func newX509KeyPair(options CreateOptions) (*x509.Certificate, crypto.PrivateKey
 		BasicConstraintsValid: true,
 		IPAddresses:           options.IPAddresses,
 		DNSNames:              options.DNSNames,
+		Subject:               options.Subject,
 	}
 
 	crt, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)

@@ -3,6 +3,7 @@ package certificate
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -169,6 +170,9 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 	}
 	return Create(CreateOptions{
 		DNSNames: []string{scope},
+		Subject: pkix.Name{
+			CommonName: scope,
+		},
 		Duration: 250 * 365 * 24 * time.Hour,
 	})
 }
