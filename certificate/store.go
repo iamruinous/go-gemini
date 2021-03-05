@@ -191,7 +191,8 @@ func (s *Store) Load(path string) error {
 			continue
 		}
 
-		scope := strings.TrimPrefix(crtPath, path)
+		scope := filepath.Clean(crtPath)
+		scope = strings.TrimPrefix(crtPath, filepath.Clean(path))
 		scope = strings.TrimPrefix(scope, "/")
 		scope = strings.TrimSuffix(scope, ".crt")
 		s.Add(scope, cert)
