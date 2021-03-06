@@ -83,7 +83,7 @@ func (k *KnownHosts) WriteTo(w io.Writer) (int64, error) {
 
 // Load loads the known hosts entries from the provided path.
 func (k *KnownHosts) Load(path string) error {
-	f, err := os.Open(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
