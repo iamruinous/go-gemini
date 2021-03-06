@@ -6,7 +6,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"crypto/x509"
 	"errors"
@@ -64,7 +63,7 @@ func trustCertificate(hostname string, cert *x509.Certificate) error {
 	knownHost, ok := hosts.Lookup(hostname)
 	if ok {
 		// Check fingerprint
-		if bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
+		if knownHost.Fingerprint != host.Fingerprint {
 			return nil
 		}
 		return errors.New("error: fingerprint does not match!")

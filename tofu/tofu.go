@@ -4,14 +4,14 @@ package tofu
 import (
 	"bufio"
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 )
@@ -150,7 +150,7 @@ func (k *KnownHosts) TOFU(hostname string, cert *x509.Certificate) error {
 		k.Add(host)
 		return nil
 	}
-	if !bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
+	if host.Fingerprint != knownHost.Fingerprint {
 		return fmt.Errorf("fingerprint for %q does not match", hostname)
 	}
 	return nil
@@ -267,7 +267,7 @@ func (p *PersistentHosts) TOFU(hostname string, cert *x509.Certificate) error {
 	if !ok {
 		return p.Add(host)
 	}
-	if !bytes.Equal(knownHost.Fingerprint, host.Fingerprint) {
+	if host.Fingerprint != knownHost.Fingerprint {
 		return fmt.Errorf("fingerprint for %q does not match", hostname)
 	}
 	return nil
@@ -280,20 +280,20 @@ func (p *PersistentHosts) Close() error {
 
 // Host represents a host entry with a fingerprint using a certain algorithm.
 type Host struct {
-	Hostname    string      // hostname
-	Algorithm   string      // fingerprint algorithm e.g. SHA-512
-	Fingerprint Fingerprint // fingerprint
+	Hostname    string // hostname
+	Algorithm   string // fingerprint algorithm e.g. sha256
+	Fingerprint string // fingerprint
 }
 
-// NewHost returns a new host with a SHA-512 fingerprint of
+// NewHost returns a new host with a SHA256 fingerprint of
 // the provided raw data.
 func NewHost(hostname string, raw []byte) Host {
-	sum := sha512.Sum512(raw)
+	sum := sha256.Sum256(raw)
 
 	return Host{
 		Hostname:    hostname,
-		Algorithm:   "SHA-512",
-		Fingerprint: sum[:],
+		Algorithm:   "sha256",
+		Fingerprint: base64.StdEncoding.EncodeToString(sum[:]),
 	}
 }
 
@@ -311,7 +311,7 @@ func (h Host) String() string {
 	b.WriteByte(' ')
 	b.WriteString(h.Algorithm)
 	b.WriteByte(' ')
-	b.WriteString(h.Fingerprint.String())
+	b.WriteString(h.Fingerprint)
 	return b.String()
 }
 
@@ -331,66 +331,18 @@ func (h *Host) UnmarshalText(text []byte) error {
 	h.Hostname = string(parts[0])
 
 	algorithm := string(parts[1])
-	if algorithm != "SHA-512" {
+	if algorithm != "sha256" {
 		return fmt.Errorf("unsupported algorithm %q", algorithm)
 	}
 
 	h.Algorithm = algorithm
 
-	fingerprint := make([]byte, 0, sha512.Size)
-	scanner := bufio.NewScanner(bytes.NewReader(parts[2]))
-	scanner.Split(scanFingerprint)
-
-	for scanner.Scan() {
-		b, err := strconv.ParseUint(scanner.Text(), 16, 8)
-		if err != nil {
-			return fmt.Errorf("failed to parse fingerprint hash: %w", err)
-		}
-		fingerprint = append(fingerprint, byte(b))
+	fingerprint, err := base64.StdEncoding.DecodeString(string(parts[2]))
+	if err != nil {
+		return err
 	}
 
-	if len(fingerprint) != sha512.Size {
-		return fmt.Errorf("invalid fingerprint size %d, expected %d",
-			len(fingerprint), sha512.Size)
-	}
-
-	h.Fingerprint = fingerprint
+	h.Fingerprint = string(fingerprint)
 
 	return nil
-}
-
-func scanFingerprint(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-	if i := bytes.IndexByte(data, ':'); i >= 0 {
-		// We have a full newline-terminated line.
-		return i + 1, data[0:i], nil
-	}
-
-	// If we're at EOF, we have a final, non-terminated hex byte
-	if atEOF {
-		return len(data), data, nil
-	}
-
-	// Request more data.
-	return 0, nil, nil
-}
-
-// Fingerprint represents a fingerprint.
-type Fingerprint []byte
-
-// String returns a string representation of the fingerprint.
-func (f Fingerprint) String() string {
-	var sb strings.Builder
-
-	for i, b := range f {
-		if i > 0 {
-			sb.WriteByte(':')
-		}
-
-		fmt.Fprintf(&sb, "%02X", b)
-	}
-
-	return sb.String()
 }
