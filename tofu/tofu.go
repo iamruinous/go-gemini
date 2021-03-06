@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -130,6 +129,9 @@ func (k *KnownHosts) Parse(r io.Reader) error {
 
 		h, err := ParseHost(text)
 		if err != nil {
+			continue
+		}
+		if h.Algorithm != "sha256" {
 			continue
 		}
 
@@ -317,32 +319,13 @@ func (h Host) String() string {
 
 // UnmarshalText unmarshals the host from the provided text.
 func (h *Host) UnmarshalText(text []byte) error {
-	const format = "hostname algorithm fingerprint"
-
 	parts := bytes.Split(text, []byte(" "))
 	if len(parts) != 3 {
-		return fmt.Errorf("expected the format %q", format)
-	}
-
-	if len(parts[0]) == 0 {
-		return errors.New("empty hostname")
+		return fmt.Errorf("expected the format 'hostname algorithm fingerprint'")
 	}
 
 	h.Hostname = string(parts[0])
-
-	algorithm := string(parts[1])
-	if algorithm != "sha256" {
-		return fmt.Errorf("unsupported algorithm %q", algorithm)
-	}
-
-	h.Algorithm = algorithm
-
-	fingerprint, err := base64.StdEncoding.DecodeString(string(parts[2]))
-	if err != nil {
-		return err
-	}
-
-	h.Fingerprint = string(fingerprint)
-
+	h.Algorithm = string(parts[1])
+	h.Fingerprint = string(parts[2])
 	return nil
 }
