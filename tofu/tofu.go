@@ -317,7 +317,7 @@ func (h Host) String() string {
 
 // UnmarshalText unmarshals the host from the provided text.
 func (h *Host) UnmarshalText(text []byte) error {
-	const format = "hostname algorithm hex-fingerprint expiry-unix-ts"
+	const format = "hostname algorithm fingerprint"
 
 	parts := bytes.Split(text, []byte(" "))
 	if len(parts) != 3 {
