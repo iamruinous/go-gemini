@@ -6,7 +6,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -83,10 +82,6 @@ func (s *Store) write(scope string, cert tls.Certificate) error {
 	if s.path != "" {
 		certPath := filepath.Join(s.path, scope+".crt")
 		keyPath := filepath.Join(s.path, scope+".key")
-
-		dir := filepath.Dir(certPath)
-		os.MkdirAll(dir, 0755)
-
 		if err := Write(cert, certPath, keyPath); err != nil {
 			return err
 		}
