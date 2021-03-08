@@ -84,7 +84,7 @@ func trustCertificate(hostname string, cert *x509.Certificate) error {
 	}
 }
 
-func getInput(prompt string, sensitive bool) (input string, ok bool) {
+func getInput(prompt string) (input string, ok bool) {
 	fmt.Printf("%s ", prompt)
 	scanner.Scan()
 	return scanner.Text(), true
@@ -102,7 +102,7 @@ func do(req *gemini.Request, via []*gemini.Request) (*gemini.Response, error) {
 
 	switch resp.Status.Class() {
 	case gemini.StatusInput:
-		input, ok := getInput(resp.Meta, resp.Status == gemini.StatusSensitiveInput)
+		input, ok := getInput(resp.Meta)
 		if !ok {
 			break
 		}
