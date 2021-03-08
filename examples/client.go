@@ -64,9 +64,9 @@ func trustCertificate(hostname string, cert *x509.Certificate) error {
 	if ok {
 		// Check fingerprint
 		if knownHost.Fingerprint != host.Fingerprint {
-			return nil
+			return errors.New("error: fingerprint does not match!")
 		}
-		return errors.New("error: fingerprint does not match!")
+		return nil
 	}
 
 	fmt.Printf(trustPrompt, hostname, host.Fingerprint)
