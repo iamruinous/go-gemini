@@ -83,7 +83,7 @@ func (k *KnownHosts) WriteTo(w io.Writer) (int64, error) {
 
 // Load loads the known hosts entries from the provided path.
 func (k *KnownHosts) Load(path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
 
