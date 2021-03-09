@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -82,6 +83,10 @@ func (k *KnownHosts) WriteTo(w io.Writer) (int64, error) {
 
 // Load loads the known hosts entries from the provided path.
 func (k *KnownHosts) Load(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return err
+	}
+
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDONLY, 0644)
 	if err != nil {
 		return err
