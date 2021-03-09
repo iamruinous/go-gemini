@@ -6,6 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -160,6 +161,10 @@ func (s *Store) createCertificate(scope string) (tls.Certificate, error) {
 // and private keys named "scope.crt" and "scope.key" respectively,
 // where "scope" is the scope of the certificate.
 func (s *Store) Load(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
+
 	path = filepath.Clean(path)
 	matches, err := filepath.Glob(filepath.Join(path, "*.crt"))
 	if err != nil {
