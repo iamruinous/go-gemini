@@ -29,10 +29,10 @@ Servers should be configured with certificates:
 	}
 	server.GetCertificate = certificates.Get
 
-ServeMux is a Gemini request multiplexer.
-ServeMux can handle requests for multiple hosts and schemes.
+Mux is a Gemini request multiplexer.
+Mux can handle requests for multiple hosts and schemes.
 
-	mux := &gemini.ServeMux{}
+	mux := &gemini.Mux{}
 	mux.HandleFunc("example.com", func(ctx context.Context, w gemini.ResponseWriter, r *gemini.Request) {
 		fmt.Fprint(w, "Welcome to example.com")
 	})

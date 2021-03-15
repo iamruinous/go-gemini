@@ -22,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := &gemini.ServeMux{}
+	mux := &gemini.Mux{}
 	mux.Handle("/", gemini.FileServer(os.DirFS("/var/www")))
 
 	server := &gemini.Server{

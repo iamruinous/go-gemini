@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-// ServeMux is a Gemini request multiplexer.
+// Mux is a Gemini request multiplexer.
 // It matches the URL of each incoming request against a list of registered
 // patterns and calls the handler for the pattern that
 // most closely matches the URL.
@@ -55,17 +55,17 @@ import (
 // scheme of "gemini".
 //
 // If a subtree has been registered and a request is received naming the
-// subtree root without its trailing slash, ServeMux redirects that
+// subtree root without its trailing slash, Mux redirects that
 // request to the subtree root (adding the trailing slash). This behavior can
 // be overridden with a separate registration for the path without
-// the trailing slash. For example, registering "/images/" causes ServeMux
+// the trailing slash. For example, registering "/images/" causes Mux
 // to redirect a request for "/images" to "/images/", unless "/images" has
 // been registered separately.
 //
-// ServeMux also takes care of sanitizing the URL request path and
+// Mux also takes care of sanitizing the URL request path and
 // redirecting any request containing . or .. elements or repeated slashes
 // to an equivalent, cleaner URL.
-type ServeMux struct {
+type Mux struct {
 	mu sync.RWMutex
 	m  map[muxKey]Handler
 	es []muxEntry // slice of entries sorted from longest to shortest
@@ -106,7 +106,7 @@ func cleanPath(p string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
-func (mux *ServeMux) match(key muxKey) Handler {
+func (mux *Mux) match(key muxKey) Handler {
 	// Check for exact match first.
 	if r, ok := mux.m[key]; ok {
 		return r
@@ -134,7 +134,7 @@ func (mux *ServeMux) match(key muxKey) Handler {
 // This occurs when a handler for path + "/" was already registered, but
 // not for path itself. If the path needs appending to, it creates a new
 // URL, setting the path to u.Path + "/" and returning true to indicate so.
-func (mux *ServeMux) redirectToPathSlash(key muxKey, u *url.URL) (*url.URL, bool) {
+func (mux *Mux) redirectToPathSlash(key muxKey, u *url.URL) (*url.URL, bool) {
 	mux.mu.RLock()
 	shouldRedirect := mux.shouldRedirectRLocked(key)
 	mux.mu.RUnlock()
@@ -146,8 +146,8 @@ func (mux *ServeMux) redirectToPathSlash(key muxKey, u *url.URL) (*url.URL, bool
 
 // shouldRedirectRLocked reports whether the given path and host should be redirected to
 // path+"/". This should happen if a handler is registered for path+"/" but
-// not path -- see comments at ServeMux.
-func (mux *ServeMux) shouldRedirectRLocked(key muxKey) bool {
+// not path -- see comments at Mux.
+func (mux *Mux) shouldRedirectRLocked(key muxKey) bool {
 	if _, exist := mux.m[key]; exist {
 		return false
 	}
@@ -177,7 +177,7 @@ func getWildcard(hostname string) (string, bool) {
 // the path is not in its canonical form, the handler will be an
 // internally-generated handler that redirects to the canonical path. If the
 // host contains a port, it is ignored when matching handlers.
-func (mux *ServeMux) Handler(r *Request) Handler {
+func (mux *Mux) Handler(r *Request) Handler {
 	scheme := r.URL.Scheme
 	host := r.URL.Hostname()
 	path := cleanPath(r.URL.Path)
@@ -212,14 +212,14 @@ func (mux *ServeMux) Handler(r *Request) Handler {
 
 // ServeGemini dispatches the request to the handler whose
 // pattern most closely matches the request URL.
-func (mux *ServeMux) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
+func (mux *Mux) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	h := mux.Handler(r)
 	h.ServeGemini(ctx, w, r)
 }
 
 // Handle registers the handler for the given pattern.
 // If a handler already exists for pattern, Handle panics.
-func (mux *ServeMux) Handle(pattern string, handler Handler) {
+func (mux *Mux) Handle(pattern string, handler Handler) {
 	if pattern == "" {
 		panic("gemini: invalid pattern")
 	}
@@ -294,6 +294,6 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 }
 
 // HandleFunc registers the handler function for the given pattern.
-func (mux *ServeMux) HandleFunc(pattern string, handler HandlerFunc) {
+func (mux *Mux) HandleFunc(pattern string, handler HandlerFunc) {
 	mux.Handle(pattern, handler)
 }

@@ -21,7 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := &gemini.ServeMux{}
+	mux := &gemini.Mux{}
 	mux.HandleFunc("/", stream)
 
 	server := &gemini.Server{

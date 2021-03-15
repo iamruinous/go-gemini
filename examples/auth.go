@@ -30,7 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := &gemini.ServeMux{}
+	mux := &gemini.Mux{}
 	mux.HandleFunc("/", profile)
 	mux.HandleFunc("/username", changeUsername)
 

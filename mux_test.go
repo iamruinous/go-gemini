@@ -10,7 +10,7 @@ type nopHandler struct{}
 
 func (*nopHandler) ServeGemini(context.Context, ResponseWriter, *Request) {}
 
-func TestServeMuxMatch(t *testing.T) {
+func TestMuxMatch(t *testing.T) {
 	type Match struct {
 		URL string
 		Ok  bool
@@ -292,7 +292,7 @@ func TestServeMuxMatch(t *testing.T) {
 
 	for i, test := range tests {
 		h := &nopHandler{}
-		var mux ServeMux
+		var mux Mux
 		mux.Handle(test.Pattern, h)
 
 		for _, match := range tests[i].Matches {
