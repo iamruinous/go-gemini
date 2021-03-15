@@ -6,6 +6,7 @@ type Status int
 // Gemini status codes.
 const (
 	StatusInput                    Status = 10
+	StatusSensitiveInput           Status = 11
 	StatusSuccess                  Status = 20
 	StatusRedirect                 Status = 30
 	StatusPermanentRedirect        Status = 31
@@ -36,6 +37,8 @@ func (s Status) String() string {
 	switch s {
 	case StatusInput:
 		return "Input"
+	case StatusSensitiveInput:
+		return "Sensitive input"
 	case StatusSuccess:
 		return "Success"
 	case StatusRedirect:
