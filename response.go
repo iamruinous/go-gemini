@@ -10,7 +10,7 @@ import (
 )
 
 // The default media type for responses.
-const defaultMediaType = "text/gemini; charset=utf-8"
+const defaultMediaType = "text/gemini"
 
 // Response represents the response from a Gemini request.
 //
@@ -142,8 +142,8 @@ func (r *Response) WriteTo(w io.Writer) (int64, error) {
 // has returned.
 type ResponseWriter interface {
 	// SetMediaType sets the media type that will be sent by Write for a
-	// successful response. If no media type is set, a default of
-	// "text/gemini; charset=utf-8" will be used.
+	// successful response. If no media type is set, a default media type of
+	// "text/gemini" will be used.
 	//
 	// Setting the media type after a call to Write or WriteHeader has
 	// no effect.
@@ -154,7 +154,7 @@ type ResponseWriter interface {
 	// If WriteHeader has not yet been called, Write calls WriteHeader with
 	// StatusSuccess and the media type set in SetMediaType before writing the data.
 	// If no media type was set, Write uses a default media type of
-	// "text/gemini; charset=utf-8".
+	// "text/gemini".
 	Write([]byte) (int, error)
 
 	// WriteHeader sends a Gemini response header with the provided
