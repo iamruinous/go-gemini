@@ -131,6 +131,9 @@ func (c *Client) Do(ctx context.Context, req *Request) (*Response, error) {
 		conn.Close()
 		return nil, ctx.Err()
 	case r := <-res:
+		if r.err != nil {
+			conn.Close()
+		}
 		return r.resp, r.err
 	}
 }
