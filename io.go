@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"bufio"
 	"context"
 	"io"
 )
@@ -74,31 +73,4 @@ func (nopReadCloser) Read(p []byte) (int, error) {
 
 func (nopReadCloser) Close() error {
 	return nil
-}
-
-type bufReadCloser struct {
-	br *bufio.Reader // used until empty
-	io.ReadCloser
-}
-
-func newBufReadCloser(br *bufio.Reader, rc io.ReadCloser) io.ReadCloser {
-	body := &bufReadCloser{ReadCloser: rc}
-	if br.Buffered() != 0 {
-		body.br = br
-	}
-	return body
-}
-
-func (b *bufReadCloser) Read(p []byte) (n int, err error) {
-	if b.br != nil {
-		if n := b.br.Buffered(); len(p) > n {
-			p = p[:n]
-		}
-		n, err = b.br.Read(p)
-		if b.br.Buffered() == 0 {
-			b.br = nil
-		}
-		return n, err
-	}
-	return b.ReadCloser.Read(p)
 }

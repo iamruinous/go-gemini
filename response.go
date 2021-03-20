@@ -81,7 +81,11 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp.Meta = string(meta)
 
 	if resp.Status.Class() == StatusSuccess {
-		resp.Body = newBufReadCloser(br, r)
+		type readCloser struct {
+			io.Reader
+			io.Closer
+		}
+		resp.Body = readCloser{br, r}
 	} else {
 		resp.Body = nopReadCloser{}
 		r.Close()
