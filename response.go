@@ -80,7 +80,7 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	if !ok {
 		return nil, ErrInvalidResponse
 	}
-	if len(meta) == 0 || len(meta) > 1024 {
+	if len(meta) == 0 {
 		return nil, ErrInvalidResponse
 	}
 	resp.Meta = string(meta)
