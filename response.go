@@ -44,7 +44,12 @@ type Response struct {
 // ReadResponse reads a Gemini response from the provided io.ReadCloser.
 func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp := &Response{}
-	br := bufio.NewReader(r)
+
+	// Limit response header size
+	lr := io.LimitReader(r, 1029)
+	// Wrap the reader to remove the limit later on
+	wr := &struct{ io.Reader }{lr}
+	br := bufio.NewReader(wr)
 
 	// Read response header
 	b, err := br.ReadBytes('\n')
@@ -81,6 +86,9 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp.Meta = string(meta)
 
 	if resp.Status.Class() == StatusSuccess {
+		// Use unlimited reader
+		wr.Reader = r
+
 		type readCloser struct {
 			io.Reader
 			io.Closer
