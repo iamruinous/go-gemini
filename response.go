@@ -72,12 +72,8 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	// Trim carriage return
 	meta = meta[:len(meta)-1]
 	// Ensure meta is less than or equal to 1024 bytes
-	if len(meta) > 1024 {
+	if len(meta) == 0 || len(meta) > 1024 {
 		return nil, ErrInvalidResponse
-	}
-	if resp.Status.Class() == StatusSuccess && meta == "" {
-		// Use default media type
-		meta = defaultMediaType
 	}
 	resp.Meta = meta
 
