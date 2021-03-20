@@ -177,9 +177,9 @@ func (c *Client) dialContext(ctx context.Context, network, addr string) (net.Con
 }
 
 func (c *Client) verifyConnection(cs tls.ConnectionState, hostname string) error {
-	cert := cs.PeerCertificates[0]
 	// See if the client trusts the certificate
 	if c.TrustCertificate != nil {
+		cert := cs.PeerCertificates[0]
 		return c.TrustCertificate(hostname, cert)
 	}
 	return nil
