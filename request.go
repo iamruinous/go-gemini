@@ -51,26 +51,25 @@ func NewRequest(rawurl string) (*Request, error) {
 // for specialized applications; most code should use the Server
 // to read requests and handle them via the Handler interface.
 func ReadRequest(r io.Reader) (*Request, error) {
-	// Read URL
+	// Limit request size
 	r = io.LimitReader(r, 1026)
 	br := bufio.NewReaderSize(r, 1026)
-	rawurl, err := br.ReadString('\r')
+	b, err := br.ReadBytes('\n')
 	if err != nil {
+		if err == io.EOF {
+			return nil, ErrInvalidRequest
+		}
 		return nil, err
 	}
-	// Read terminating line feed
-	if b, err := br.ReadByte(); err != nil {
-		return nil, err
-	} else if b != '\n' {
+	// Read URL
+	rawurl, ok := trimCRLF(b)
+	if !ok {
 		return nil, ErrInvalidRequest
 	}
-	// Trim carriage return
-	rawurl = rawurl[:len(rawurl)-1]
-	// Validate URL
-	if len(rawurl) > 1024 {
+	if len(rawurl) == 0 {
 		return nil, ErrInvalidRequest
 	}
-	u, err := url.Parse(rawurl)
+	u, err := url.Parse(string(rawurl))
 	if err != nil {
 		return nil, err
 	}

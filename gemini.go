@@ -11,8 +11,6 @@ func init() {
 	mime.AddExtensionType(".gemini", "text/gemini")
 }
 
-var crlf = []byte("\r\n")
-
 // Errors.
 var (
 	ErrInvalidRequest  = errors.New("gemini: invalid request")
@@ -22,3 +20,15 @@ var (
 	// when the response status code does not permit a body.
 	ErrBodyNotAllowed = errors.New("gemini: response status code does not allow body")
 )
+
+var crlf = []byte("\r\n")
+
+func trimCRLF(b []byte) ([]byte, bool) {
+	// Check for CR
+	if len(b) < 2 || b[len(b)-2] != '\r' {
+		return nil, false
+	}
+	// Trim CRLF
+	b = b[:len(b)-2]
+	return b, true
+}

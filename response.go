@@ -46,43 +46,39 @@ func ReadResponse(r io.ReadCloser) (*Response, error) {
 	resp := &Response{}
 	br := bufio.NewReader(r)
 
-	// Read the status
-	statusB := make([]byte, 2)
-	if _, err := br.Read(statusB); err != nil {
+	// Read response header
+	b, err := br.ReadBytes('\n')
+	if err != nil {
+		if err == io.EOF {
+			return nil, ErrInvalidResponse
+		}
 		return nil, err
 	}
-	status, err := strconv.Atoi(string(statusB))
+	if len(b) < 3 {
+		return nil, ErrInvalidResponse
+	}
+
+	// Read the status
+	status, err := strconv.Atoi(string(b[:2]))
 	if err != nil {
 		return nil, ErrInvalidResponse
 	}
 	resp.Status = Status(status)
 
 	// Read one space
-	if b, err := br.ReadByte(); err != nil {
-		return nil, err
-	} else if b != ' ' {
+	if b[2] != ' ' {
 		return nil, ErrInvalidResponse
 	}
 
 	// Read the meta
-	meta, err := br.ReadString('\r')
-	if err != nil {
-		return nil, err
+	meta, ok := trimCRLF(b[3:])
+	if !ok {
+		return nil, ErrInvalidResponse
 	}
-	// Trim carriage return
-	meta = meta[:len(meta)-1]
-	// Ensure meta is less than or equal to 1024 bytes
 	if len(meta) == 0 || len(meta) > 1024 {
 		return nil, ErrInvalidResponse
 	}
-	resp.Meta = meta
-
-	// Read terminating newline
-	if b, err := br.ReadByte(); err != nil {
-		return nil, err
-	} else if b != '\n' {
-		return nil, ErrInvalidResponse
-	}
+	resp.Meta = string(meta)
 
 	if resp.Status.Class() == StatusSuccess {
 		resp.Body = newBufReadCloser(br, r)

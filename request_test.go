@@ -2,7 +2,6 @@ package gemini
 
 import (
 	"bufio"
-	"io"
 	"net/url"
 	"strings"
 	"testing"
@@ -36,25 +35,25 @@ func TestReadRequest(t *testing.T) {
 		},
 		{
 			Raw: "\r\n",
-			URL: &url.URL{},
+			Err: ErrInvalidRequest,
 		},
 		{
 			Raw: "gemini://example.com\n",
-			Err: io.EOF,
+			Err: ErrInvalidRequest,
 		},
 		{
 			Raw: "gemini://example.com",
-			Err: io.EOF,
+			Err: ErrInvalidRequest,
 		},
 		{
 			// 1030 bytes
 			Raw: maxURL + "xxxxxx",
-			Err: io.EOF,
+			Err: ErrInvalidRequest,
 		},
 		{
 			// 1027 bytes
 			Raw: maxURL + "x" + "\r\n",
-			Err: io.EOF,
+			Err: ErrInvalidRequest,
 		},
 		{
 			// 1024 bytes

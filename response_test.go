@@ -65,15 +65,15 @@ func TestReadWriteResponse(t *testing.T) {
 		},
 		{
 			Raw: "",
-			Err: io.EOF,
+			Err: ErrInvalidResponse,
 		},
 		{
 			Raw: "10 Search query",
-			Err: io.EOF,
+			Err: ErrInvalidResponse,
 		},
 		{
 			Raw: "20 text/gemini\nHello, world!",
-			Err: io.EOF,
+			Err: ErrInvalidResponse,
 		},
 		{
 			Raw: "20 text/gemini\rHello, world!",
@@ -81,7 +81,7 @@ func TestReadWriteResponse(t *testing.T) {
 		},
 		{
 			Raw: "20 text/gemini\r",
-			Err: io.EOF,
+			Err: ErrInvalidResponse,
 		},
 		{
 			Raw: "abcdefghijklmnopqrstuvwxyz",
