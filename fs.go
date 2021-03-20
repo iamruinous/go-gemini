@@ -151,7 +151,8 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		}
 
 		// Use contents of index.gmi if present
-		index, err := fsys.Open(path.Join(name, indexPage))
+		name = path.Join(name, indexPage)
+		index, err := fsys.Open(name)
 		if err == nil {
 			defer index.Close()
 			istat, err := index.Stat()
