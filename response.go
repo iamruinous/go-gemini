@@ -175,7 +175,6 @@ type ResponseWriter interface {
 
 type responseWriter struct {
 	bw          *bufio.Writer
-	cl          io.Closer
 	mediatype   string
 	wroteHeader bool
 	bodyAllowed bool
