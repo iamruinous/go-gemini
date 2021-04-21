@@ -29,58 +29,7 @@ type fileServer struct {
 	fs.FS
 }
 
-func (fs fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
-	serveFile(w, r, fs, path.Clean(r.URL.Path), true)
-}
-
-// ServeFile responds to the request with the contents of the named file
-// or directory.
-//
-// If the provided file or directory name is a relative path, it is interpreted
-// relative to the current directory and may ascend to parent directories. If
-// the provided name is constructed from user input, it should be sanitized
-// before calling ServeFile.
-//
-// As a precaution, ServeFile will reject requests where r.URL.Path contains a
-// ".." path element; this protects against callers who might unsafely use
-// path.Join on r.URL.Path without sanitizing it and then use that
-// path.Join result as the name argument.
-//
-// As another special case, ServeFile redirects any request where r.URL.Path
-// ends in "/index.gmi" to the same path, without the final "index.gmi". To
-// avoid such redirects either modify the path or use ServeContent.
-//
-// Outside of those two special cases, ServeFile does not use r.URL.Path for
-// selecting the file or directory to serve; only the file or directory
-// provided in the name argument is used.
-func ServeFile(w ResponseWriter, r *Request, fsys fs.FS, name string) {
-	if containsDotDot(r.URL.Path) {
-		// Too many programs use r.URL.Path to construct the argument to
-		// serveFile. Reject the request under the assumption that happened
-		// here and ".." may not be wanted.
-		// Note that name might not contain "..", for example if code (still
-		// incorrectly) used path.Join(myDir, r.URL.Path).
-		w.WriteHeader(StatusBadRequest, "invalid URL path")
-		return
-	}
-	serveFile(w, r, fsys, name, false)
-}
-
-func containsDotDot(v string) bool {
-	if !strings.Contains(v, "..") {
-		return false
-	}
-	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
-		if ent == ".." {
-			return true
-		}
-	}
-	return false
-}
-
-func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
-
-func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect bool) {
+func (fsys fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	const indexPage = "/index.gmi"
 
 	// Redirect .../index.gmi to .../
@@ -89,6 +38,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		return
 	}
 
+	name := path.Clean(r.URL.Path)
 	if name == "/" {
 		name = "."
 	} else {
@@ -109,48 +59,79 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 	}
 
 	// Redirect to canonical path
-	if redirect {
-		url := r.URL.Path
+	if len(name) != 0 {
 		if stat.IsDir() {
 			// Add trailing slash
-			if len(url) != 0 && url[len(url)-1] != '/' {
-				w.WriteHeader(StatusPermanentRedirect, path.Base(url)+"/")
+			if name[len(name)-1] != '/' {
+				w.WriteHeader(StatusPermanentRedirect, path.Base(name)+"/")
 				return
 			}
-		} else {
+		} else if name[len(name)-1] == '/' {
 			// Remove trailing slash
-			if len(url) != 0 && url[len(url)-1] == '/' {
-				w.WriteHeader(StatusPermanentRedirect, "../"+path.Base(url))
-				return
-			}
+			w.WriteHeader(StatusPermanentRedirect, "../"+path.Base(name))
+			return
 		}
 	}
 
 	if stat.IsDir() {
-		// Redirect if the directory name doesn't end in a slash
-		url := r.URL.Path
-		if len(url) != 0 && url[len(url)-1] != '/' {
-			w.WriteHeader(StatusRedirect, path.Base(url)+"/")
-			return
-		}
-
 		// Use contents of index.gmi if present
 		name = path.Join(name, indexPage)
 		index, err := fsys.Open(name)
 		if err == nil {
 			defer index.Close()
-			istat, err := index.Stat()
-			if err == nil {
-				f = index
-				stat = istat
-			}
+			f = index
+		} else {
+			// Failed to find index file
+			dirList(w, f)
+			return
 		}
 	}
 
-	if stat.IsDir() {
-		// Failed to find index file
-		dirList(w, f)
+	// Detect mimetype from file extension
+	ext := path.Ext(name)
+	mimetype := mime.TypeByExtension(ext)
+	w.SetMediaType(mimetype)
+	io.Copy(w, f)
+}
+
+// ServeFile responds to the request with the contents of the named file
+// or directory. If the provided name is constructed from user input, it should
+// be sanitized before calling ServeFile.
+func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
+	const indexPage = "/index.gmi"
+
+	// Ensure name is relative
+	if name == "/" {
+		name = "."
+	} else {
+		name = strings.TrimLeft(name, "/")
+	}
+
+	f, err := fsys.Open(name)
+	if err != nil {
+		w.WriteHeader(toGeminiError(err))
 		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		w.WriteHeader(toGeminiError(err))
+		return
+	}
+
+	if stat.IsDir() {
+		// Use contents of index file if present
+		name = path.Join(name, indexPage)
+		index, err := fsys.Open(name)
+		if err == nil {
+			defer index.Close()
+			f = index
+		} else {
+			// Failed to find index file
+			dirList(w, f)
+			return
+		}
 	}
 
 	// Detect mimetype from file extension
