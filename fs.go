@@ -67,7 +67,7 @@ func (fsys fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Req
 			if target != "/" {
 				target += "/"
 			}
-			if r.URL.Path != target {
+			if len(r.URL.Path) != len(target) || r.URL.Path != target {
 				w.WriteHeader(StatusPermanentRedirect, target)
 				return
 			}
