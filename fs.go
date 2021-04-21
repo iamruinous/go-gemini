@@ -32,17 +32,19 @@ type fileServer struct {
 func (fsys fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Request) {
 	const indexPage = "/index.gmi"
 
+	url := path.Clean(r.URL.Path)
+
 	// Redirect .../index.gmi to .../
-	if strings.HasSuffix(r.URL.Path, indexPage) {
-		w.WriteHeader(StatusPermanentRedirect, "./")
+	if strings.HasSuffix(url, indexPage) {
+		w.WriteHeader(StatusPermanentRedirect, strings.TrimSuffix(url, "index.gmi"))
 		return
 	}
 
-	name := path.Clean(r.URL.Path)
+	name := url
 	if name == "/" {
 		name = "."
 	} else {
-		name = strings.Trim(name, "/")
+		name = strings.TrimPrefix(name, "/")
 	}
 
 	f, err := fsys.Open(name)
@@ -59,16 +61,19 @@ func (fsys fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Req
 	}
 
 	// Redirect to canonical path
-	if len(name) != 0 {
+	if len(r.URL.Path) != 0 {
 		if stat.IsDir() {
-			// Add trailing slash
-			if name[len(name)-1] != '/' {
-				w.WriteHeader(StatusPermanentRedirect, path.Base(name)+"/")
+			target := url
+			if target != "/" {
+				target += "/"
+			}
+			if r.URL.Path != target {
+				w.WriteHeader(StatusPermanentRedirect, target)
 				return
 			}
-		} else if name[len(name)-1] == '/' {
+		} else if r.URL.Path[len(r.URL.Path)-1] == '/' {
 			// Remove trailing slash
-			w.WriteHeader(StatusPermanentRedirect, "../"+path.Base(name))
+			w.WriteHeader(StatusPermanentRedirect, url)
 			return
 		}
 	}
@@ -95,8 +100,8 @@ func (fsys fileServer) ServeGemini(ctx context.Context, w ResponseWriter, r *Req
 }
 
 // ServeFile responds to the request with the contents of the named file
-// or directory. If the provided name is constructed from user input, it should
-// be sanitized before calling ServeFile.
+// or directory. If the provided name is constructed from user input, it
+// should be sanitized before calling ServeFile.
 func ServeFile(w ResponseWriter, fsys fs.FS, name string) {
 	const indexPage = "/index.gmi"
 
