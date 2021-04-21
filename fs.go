@@ -131,13 +131,13 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 		url := r.URL.Path
 		if stat.IsDir() {
 			// Add trailing slash
-			if url[len(url)-1] != '/' {
+			if len(url) != 0 && url[len(url)-1] != '/' {
 				w.WriteHeader(StatusPermanentRedirect, path.Base(url)+"/")
 				return
 			}
 		} else {
 			// Remove trailing slash
-			if url[len(url)-1] == '/' {
+			if len(url) != 0 && url[len(url)-1] == '/' {
 				w.WriteHeader(StatusPermanentRedirect, "../"+path.Base(url))
 				return
 			}
@@ -147,7 +147,7 @@ func serveFile(w ResponseWriter, r *Request, fsys fs.FS, name string, redirect b
 	if stat.IsDir() {
 		// Redirect if the directory name doesn't end in a slash
 		url := r.URL.Path
-		if url[len(url)-1] != '/' {
+		if len(url) != 0 && url[len(url)-1] != '/' {
 			w.WriteHeader(StatusRedirect, path.Base(url)+"/")
 			return
 		}
