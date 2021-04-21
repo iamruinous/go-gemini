@@ -31,7 +31,12 @@ func (w *logResponseWriter) SetMediaType(mediatype string) {
 
 func (w *logResponseWriter) Write(b []byte) (int, error) {
 	if !w.wroteHeader {
-		w.WriteHeader(StatusSuccess, w.mediatype)
+		meta := w.mediatype
+		if meta == "" {
+			// Use default media type
+			meta = defaultMediaType
+		}
+		w.WriteHeader(StatusSuccess, meta)
 	}
 	n, err := w.rw.Write(b)
 	w.Wrote += n
