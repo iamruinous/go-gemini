@@ -32,31 +32,15 @@ import (
 // the pattern "/" matches all paths not matched by other registered
 // patterns, not just the URL with Path == "/".
 //
-// Patterns may also contain schemes and hostnames.
-// Wildcard patterns can be used to match multiple hostnames (e.g. "*.example.com").
+// Patterns may optionally begin with a host name, restricting matches to
+// URLs on that host only. Host-specific patterns take precedence over
+// general patterns, so that a handler might register for the two patterns
+// "/search" and "search.example.com/" without also taking over requests
+// for "gemini://example.com/".
 //
-// The following are examples of valid patterns, along with the scheme,
-// hostname, and path that they match.
-//
-//     Pattern                      │ Scheme │ Hostname │ Path
-//     ─────────────────────────────┼────────┼──────────┼─────────────
-//     /file                        │ gemini │ *        │ /file
-//     /directory/                  │ gemini │ *        │ /directory/*
-//     hostname/file                │ gemini │ hostname │ /file
-//     hostname/directory/          │ gemini │ hostname │ /directory/*
-//     scheme://hostname/file       │ scheme │ hostname │ /file
-//     scheme://hostname/directory/ │ scheme │ hostname │ /directory/*
-//     //hostname/file              │ *      │ hostname │ /file
-//     //hostname/directory/        │ *      │ hostname │ /directory/*
-//     scheme:///file               │ scheme │ *        │ /file
-//     scheme:///directory/         │ scheme │ *        │ /directory/*
-//     ///file                      │ *      │ *        │ /file
-//     ///directory/                │ *      │ *        │ /directory/*
-//
-// A pattern without a hostname will match any hostname.
-// If a pattern begins with "//", it will match any scheme.
-// Otherwise, a pattern with no scheme is treated as though it has a
-// scheme of "gemini".
+// Wildcard patterns can be used to match multiple hostnames, so that the
+// pattern "*.example.com" will match requests for "blog.example.com" and
+// "gemini.example.com", but not "example.org".
 //
 // If a subtree has been registered and a request is received naming the
 // subtree root without its trailing slash, Mux redirects that
@@ -71,19 +55,19 @@ import (
 // to an equivalent, cleaner URL.
 type Mux struct {
 	mu sync.RWMutex
-	m  map[muxKey]Handler
+	m  map[hostpath]Handler
 	es []muxEntry // slice of entries sorted from longest to shortest
 }
 
-type muxKey struct {
-	scheme string
-	host   string
-	path   string
+type hostpath struct {
+	host string
+	path string
 }
 
 type muxEntry struct {
 	handler Handler
-	key     muxKey
+	host    string
+	path    string
 }
 
 // cleanPath returns the canonical path for p, eliminating . and .. elements.
@@ -110,24 +94,17 @@ func cleanPath(p string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
-func (mux *Mux) match(key muxKey) Handler {
+func (mux *Mux) match(host, path string) Handler {
 	// Check for exact match first.
-	if r, ok := mux.m[key]; ok {
-		return r
-	} else if r, ok := mux.m[muxKey{"", key.host, key.path}]; ok {
-		return r
-	} else if r, ok := mux.m[muxKey{key.scheme, "", key.path}]; ok {
-		return r
-	} else if r, ok := mux.m[muxKey{"", "", key.path}]; ok {
-		return r
+	if h, ok := mux.m[hostpath{host, path}]; ok {
+		return h
 	}
 
 	// Check for longest valid match.  mux.es contains all patterns
 	// that end in / sorted from longest to shortest.
 	for _, e := range mux.es {
-		if (e.key.scheme == "" || key.scheme == e.key.scheme) &&
-			(e.key.host == "" || key.host == e.key.host) &&
-			strings.HasPrefix(key.path, e.key.path) {
+		if len(e.host) == len(host) && e.host == host &&
+			strings.HasPrefix(path, e.path) {
 			return e.handler
 		}
 	}
@@ -138,31 +115,32 @@ func (mux *Mux) match(key muxKey) Handler {
 // This occurs when a handler for path + "/" was already registered, but
 // not for path itself. If the path needs appending to, it creates a new
 // URL, setting the path to u.Path + "/" and returning true to indicate so.
-func (mux *Mux) redirectToPathSlash(key muxKey, u *url.URL) (*url.URL, bool) {
+func (mux *Mux) redirectToPathSlash(host, path string, u *url.URL) (*url.URL, bool) {
 	mux.mu.RLock()
-	shouldRedirect := mux.shouldRedirectRLocked(key)
+	shouldRedirect := mux.shouldRedirectRLocked(host, path)
 	mux.mu.RUnlock()
 	if !shouldRedirect {
 		return u, false
 	}
-	return u.ResolveReference(&url.URL{Path: key.path + "/"}), true
+	return u.ResolveReference(&url.URL{Path: path + "/"}), true
 }
 
 // shouldRedirectRLocked reports whether the given path and host should be redirected to
 // path+"/". This should happen if a handler is registered for path+"/" but
 // not path -- see comments at Mux.
-func (mux *Mux) shouldRedirectRLocked(key muxKey) bool {
-	if _, exist := mux.m[key]; exist {
+func (mux *Mux) shouldRedirectRLocked(host, path string) bool {
+	if _, exist := mux.m[hostpath{host, path}]; exist {
 		return false
 	}
 
-	n := len(key.path)
+	n := len(path)
 	if n == 0 {
 		return false
 	}
-	if _, exist := mux.m[muxKey{key.scheme, key.host, key.path + "/"}]; exist {
-		return key.path[n-1] != '/'
+	if _, exist := mux.m[hostpath{host, path + "/"}]; exist {
+		return path[n-1] != '/'
 	}
+
 	return false
 }
 
@@ -182,13 +160,17 @@ func getWildcard(hostname string) (string, bool) {
 // internally-generated handler that redirects to the canonical path. If the
 // host contains a port, it is ignored when matching handlers.
 func (mux *Mux) Handler(r *Request) Handler {
-	scheme := r.URL.Scheme
+	// Disallow non-Gemini schemes
+	if r.URL.Scheme != "gemini" {
+		return NotFoundHandler()
+	}
+
 	host := r.URL.Hostname()
 	path := cleanPath(r.URL.Path)
 
 	// If the given path is /tree and its handler is not registered,
 	// redirect for /tree/.
-	if u, ok := mux.redirectToPathSlash(muxKey{scheme, host, path}, r.URL); ok {
+	if u, ok := mux.redirectToPathSlash(host, path, r.URL); ok {
 		return StatusHandler(StatusPermanentRedirect, u.String())
 	}
 
@@ -201,16 +183,30 @@ func (mux *Mux) Handler(r *Request) Handler {
 	mux.mu.RLock()
 	defer mux.mu.RUnlock()
 
-	h := mux.match(muxKey{scheme, host, path})
+	h := mux.match(host, path)
+
 	if h == nil {
 		// Try wildcard
 		if wildcard, ok := getWildcard(host); ok {
-			h = mux.match(muxKey{scheme, wildcard, path})
+			if u, ok := mux.redirectToPathSlash(wildcard, path, r.URL); ok {
+				return StatusHandler(StatusPermanentRedirect, u.String())
+			}
+			h = mux.match(wildcard, path)
 		}
 	}
+
+	if h == nil {
+		// Try empty host
+		if u, ok := mux.redirectToPathSlash("", path, r.URL); ok {
+			return StatusHandler(StatusPermanentRedirect, u.String())
+		}
+		h = mux.match("", path)
+	}
+
 	if h == nil {
 		h = NotFoundHandler()
 	}
+
 	return h
 }
 
@@ -234,48 +230,32 @@ func (mux *Mux) Handle(pattern string, handler Handler) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
 
-	var key muxKey
-	if strings.HasPrefix(pattern, "//") {
-		// match any scheme
-		key.scheme = ""
-		pattern = pattern[2:]
-	} else {
-		// extract scheme
-		cut := strings.Index(pattern, "://")
-		if cut == -1 {
-			// default scheme of gemini
-			key.scheme = "gemini"
-		} else {
-			key.scheme = pattern[:cut]
-			pattern = pattern[cut+3:]
-		}
-	}
-
+	var host, path string
 	// extract hostname and path
 	cut := strings.Index(pattern, "/")
 	if cut == -1 {
-		key.host = pattern
-		key.path = "/"
+		host = pattern
+		path = "/"
 	} else {
-		key.host = pattern[:cut]
-		key.path = pattern[cut:]
+		host = pattern[:cut]
+		path = pattern[cut:]
 	}
 
 	// strip port from hostname
-	if hostname, _, err := net.SplitHostPort(key.host); err == nil {
-		key.host = hostname
+	if hostname, _, err := net.SplitHostPort(host); err == nil {
+		host = hostname
 	}
 
-	if _, exist := mux.m[key]; exist {
+	if _, exist := mux.m[hostpath{host, path}]; exist {
 		panic("gemini: multiple registrations for " + pattern)
 	}
 
 	if mux.m == nil {
-		mux.m = make(map[muxKey]Handler)
+		mux.m = make(map[hostpath]Handler)
 	}
-	mux.m[key] = handler
-	e := muxEntry{handler, key}
-	if key.path[len(key.path)-1] == '/' {
+	mux.m[hostpath{host, path}] = handler
+	e := muxEntry{handler, host, path}
+	if path[len(path)-1] == '/' {
 		mux.es = appendSorted(mux.es, e)
 	}
 }
@@ -283,9 +263,7 @@ func (mux *Mux) Handle(pattern string, handler Handler) {
 func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	n := len(es)
 	i := sort.Search(n, func(i int) bool {
-		return len(es[i].key.scheme) < len(e.key.scheme) ||
-			len(es[i].key.host) < len(es[i].key.host) ||
-			len(es[i].key.path) < len(e.key.path)
+		return len(es[i].path) < len(e.path)
 	})
 	if i == n {
 		return append(es, e)
