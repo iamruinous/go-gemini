@@ -38,9 +38,9 @@ import (
 // "/search" and "search.example.com/" without also taking over requests
 // for "gemini://example.com/".
 //
-// Wildcard patterns can be used to match multiple hostnames, so that the
-// pattern "*.example.com" will match requests for "blog.example.com" and
-// "gemini.example.com", but not "example.org".
+// Wildcard patterns can be used to match multiple hostnames. For example,
+// the pattern "*.example.com" will match requests for "blog.example.com"
+// and "gemini.example.com", but not "example.org".
 //
 // If a subtree has been registered and a request is received naming the
 // subtree root without its trailing slash, Mux redirects that
